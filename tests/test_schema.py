@@ -74,8 +74,8 @@ class TestCollection:
         c = Collection("posts", fields=[TextField("title")])
         handler = lambda record, ctx: record
         c.on("before_create", handler)
-        assert len(c._hooks["before_create"]) == 1
-        assert c._hooks["before_create"][0] is handler
+        assert len(c._registry.get("posts:before_create")) == 1
+        assert c._registry.get("posts:before_create")[0] is handler
 
     def test_build_create_table_sql(self):
         c = Collection("posts", fields=[
