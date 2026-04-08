@@ -15,6 +15,7 @@ Define your data schema in Python, and Cinder auto-generates a full CRUD API wit
 - [Filtering, Pagination & Sorting](#filtering-pagination--sorting)
 - [Relations & Expand](#relations--expand)
 - [Hooks & Lifecycle Events](#hooks--lifecycle-events)
+- [Realtime](#realtime)
 - [Middleware](#middleware)
 - [CLI](#cli)
 - [Configuration](#configuration)
@@ -820,6 +821,315 @@ app.on("app:error", log_error)
 
 ---
 
+## Realtime
+
+Cinder has built-in realtime support via **WebSockets** and **Server-Sent Events (SSE)**. Both transports are first-class — neither is a wrapper around the other. Choose based on your client's needs: WebSocket for bidirectional communication, SSE for simple one-way streaming to browsers.
+
+Realtime is enabled automatically when you call `app.build()`. No extra install, no separate server.
+
+### Endpoints
+
+| Endpoint | Transport | Description |
+|----------|-----------|-------------|
+| `GET /api/realtime/ws` | WebSocket | Persistent bidirectional connection |
+| `GET /api/realtime/sse` | Server-Sent Events | HTTP streaming, browser-native |
+
+### Channels
+
+Everything in Cinder's realtime system is organized around **channels** — named event streams. There are two kinds:
+
+| Channel format | Example | Description |
+|----------------|---------|-------------|
+| `collection:{name}` | `collection:posts` | Auto-emitted CRUD events for a registered collection |
+| Any custom string | `chat:room-42`, `fraud:detected` | Your own events, published manually |
+
+### Auto-Emit Bridge
+
+When you register a collection, Cinder automatically wires up the hook system to publish events to the broker on every successful `create`, `update`, and `delete`. Your clients receive events in real time without any extra code.
+
+**Envelope format** — every message has this shape:
+
+```json
+{
+  "channel": "collection:posts",
+  "event":   "create",
+  "record":  { "id": "...", "title": "Hello", "created_at": "..." },
+  "previous": null
+}
+```
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `channel` | `collection:{name}` | The channel the event was published to |
+| `event` | `create`, `update`, `delete` | The operation that triggered the event |
+| `record` | object | The current state of the record |
+| `previous` | object or `null` | Previous state of the record (only on `update`) |
+
+---
+
+### WebSocket
+
+Connect to `/api/realtime/ws` and communicate via JSON messages.
+
+#### Connecting
+
+```js
+const ws = new WebSocket("ws://localhost:8000/api/realtime/ws");
+```
+
+No token is required on connection. You can authenticate mid-session (see below).
+
+#### Subscribing to a Channel
+
+Send a `subscribe` action to start receiving events:
+
+```json
+{ "action": "subscribe", "channel": "collection:posts" }
+```
+
+Cinder acknowledges with:
+
+```json
+{ "type": "ack", "action": "subscribe", "channel": "collection:posts" }
+```
+
+Subscribe to multiple channels by sending multiple `subscribe` messages.
+
+#### Receiving Events
+
+Once subscribed, events arrive as JSON:
+
+```json
+{
+  "channel": "collection:posts",
+  "event":   "create",
+  "record":  { "id": "abc", "title": "My Post", "created_at": "..." },
+  "previous": null
+}
+```
+
+#### Unsubscribing
+
+```json
+{ "action": "unsubscribe", "channel": "collection:posts" }
+```
+
+#### Authenticating Mid-Session
+
+Send an `auth` message at any time to identify yourself:
+
+```json
+{ "action": "auth", "token": "eyJhbGciOi..." }
+```
+
+Cinder responds with:
+
+```json
+{ "type": "ack", "action": "auth" }
+```
+
+On success, your user identity is attached to the connection — subsequent events are filtered according to the collection's read rules (e.g. `owner`-scoped events will only show records you created).
+
+If the token is invalid, the connection is closed with a `4401` close code.
+
+#### Full Browser Example
+
+```js
+const ws = new WebSocket("ws://localhost:8000/api/realtime/ws");
+
+ws.onopen = () => {
+  // Optionally authenticate first
+  ws.send(JSON.stringify({ action: "auth", token: localStorage.getItem("token") }));
+
+  // Subscribe to a collection channel
+  ws.send(JSON.stringify({ action: "subscribe", channel: "collection:posts" }));
+};
+
+ws.onmessage = ({ data }) => {
+  const msg = JSON.parse(data);
+
+  if (msg.type === "ack") {
+    console.log("Acknowledged:", msg.action);
+    return;
+  }
+
+  if (msg.channel === "collection:posts") {
+    console.log(`Post ${msg.event}d:`, msg.record);
+  }
+};
+```
+
+---
+
+### Server-Sent Events (SSE)
+
+Connect to `/api/realtime/sse` with query parameters. The browser's native `EventSource` API works out of the box.
+
+#### Subscribing
+
+```
+GET /api/realtime/sse?channel=collection:posts
+GET /api/realtime/sse?channel=collection:posts&channel=collection:comments
+GET /api/realtime/sse?token=eyJhbGciOi...&channel=collection:notes
+```
+
+| Query param | Required | Description |
+|-------------|----------|-------------|
+| `channel` | Yes | One or more channel names to subscribe to (repeatable) |
+| `token` | Only for protected collections | JWT bearer token |
+
+#### SSE Frame Format
+
+Each event is sent as a standard SSE frame:
+
+```
+event: create
+data: {"channel":"collection:posts","event":"create","record":{...},"previous":null}
+id: <record-id>
+
+```
+
+A `: ping` comment is sent every 15 seconds to keep the connection alive through proxies and load balancers.
+
+#### Full Browser Example
+
+```js
+const token = localStorage.getItem("token");
+const url = `/api/realtime/sse?token=${token}&channel=collection:posts`;
+const source = new EventSource(url);
+
+source.addEventListener("create", (e) => {
+  const data = JSON.parse(e.data);
+  console.log("New post:", data.record);
+});
+
+source.addEventListener("update", (e) => {
+  const data = JSON.parse(e.data);
+  console.log("Post updated:", data.record);
+});
+
+source.addEventListener("delete", (e) => {
+  const data = JSON.parse(e.data);
+  console.log("Post deleted:", data.record.id);
+});
+
+source.onerror = () => {
+  console.error("SSE connection lost, browser will retry automatically");
+};
+```
+
+---
+
+### Auth-Aware Filtering
+
+Cinder automatically applies the collection's read rule as a realtime filter. Clients only receive events they are allowed to see.
+
+| Read rule | WebSocket / SSE behaviour |
+|-----------|--------------------------|
+| `public` | All clients receive all events, no token required |
+| `authenticated` | Only authenticated clients receive events |
+| `admin` | Only clients whose token has `role: admin` receive events |
+| `owner` | Each client only receives events for records they created (`created_by == user.id`) |
+
+For **WebSocket**, authenticate mid-session with the `auth` action (see above). For **SSE**, pass `?token=` in the query string.
+
+An invalid token returns `401` immediately. A missing token is allowed — the connection starts anonymous and events are filtered accordingly (public collections still stream).
+
+---
+
+### Custom Channels
+
+You are not limited to collection channels. Publish to any string channel and subscribe to it from the client — same API.
+
+**Server-side — publish from anywhere:**
+
+```python
+# From inside a hook
+async def on_payment_updated(payload, ctx):
+    record, prev = payload
+    if record["status"] == "paid":
+        await app.realtime.publish(
+            "payments:completed",
+            {"order_id": record["id"], "amount": record["total"]},
+            event="payment_completed",
+        )
+
+orders.on("after_update", on_payment_updated)
+```
+
+**Client-side — subscribe via WebSocket:**
+
+```js
+ws.send(JSON.stringify({ action: "subscribe", channel: "payments:completed" }));
+```
+
+**Client-side — subscribe via SSE:**
+
+```
+GET /api/realtime/sse?channel=payments:completed
+```
+
+Custom channels carry no default auth filter — events are delivered to all subscribers. Apply your own filtering via the hook that publishes.
+
+---
+
+### Controlling Auto-Emit
+
+By default, every `create`, `update`, and `delete` operation on a registered collection publishes to `collection:{name}`. You can turn this off globally or per-event:
+
+```python
+# Disable all auto-emit for this app
+app.realtime.disable_auto_emit()
+
+# Re-enable later
+app.realtime.enable_auto_emit()
+```
+
+When auto-emit is disabled, you can still publish manually from hooks:
+
+```python
+async def manual_emit(record, ctx):
+    await app.realtime.publish("collection:posts", record, event="create")
+
+posts.on("after_create", manual_emit)
+```
+
+---
+
+### Custom Envelope Builder
+
+Override the default envelope format with your own builder:
+
+```python
+def my_envelope(collection_name, event, record, previous):
+    return {
+        "type":       "data",
+        "collection": collection_name,
+        "action":     event,
+        "payload":    record,
+        "diff":       previous,
+        "ts":         time.time(),
+    }
+
+app.realtime.envelope_builder = my_envelope
+```
+
+The builder is called every time the bridge emits to the broker. Clients receive exactly what it returns.
+
+---
+
+### Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `CINDER_SSE_HEARTBEAT` | `15` | Seconds between SSE `ping` heartbeat comments |
+
+```env
+CINDER_SSE_HEARTBEAT=30
+```
+
+---
+
 ## Middleware
 
 Cinder includes three built-in middleware layers applied to every request:
@@ -950,7 +1260,7 @@ See [phases.md](phases.md) for the full roadmap of upcoming features:
 - **Phase 3** — Hooks & Lifecycle Events ✅
 - **Phase 4** — File Storage (local + S3)
 - **Phase 5** — Email & Notifications
-- **Phase 6** — Realtime (WebSocket subscriptions)
+- **Phase 6** — Realtime (WebSocket + SSE) ✅
 - **Phase 7** — AI Integration
 - **Phase 8** — Redis & Caching
 
