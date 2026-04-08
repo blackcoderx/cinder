@@ -4,6 +4,7 @@ import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
+from functools import partial
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -14,6 +15,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from cinder.auth import Auth
 from cinder.auth.models import create_auth_tables, cleanup_expired_blocklist
 from cinder.auth.routes import build_auth_routes
+from cinder.cache.backends import CacheBackend, MemoryCacheBackend, RedisCacheBackend
+from cinder.cache.invalidation import install_invalidation
+from cinder.cache.middleware import CacheMiddleware
 from cinder.collections.router import build_collection_routes
 from cinder.collections.schema import Collection, TextField
 from cinder.collections.store import CollectionStore
@@ -22,10 +26,153 @@ from cinder.hooks.context import CinderContext
 from cinder.hooks.registry import HookRegistry
 from cinder.hooks.runner import HookRunner
 from cinder.pipeline import build_middleware_stack
+from cinder.ratelimit.backends import MemoryRateLimitBackend, RateLimitBackend, RedisRateLimitBackend
+from cinder.ratelimit.middleware import RateLimitMiddleware, RateLimitRule
 from cinder.realtime import RealtimeFacade
 from cinder.realtime.broker import RealtimeBroker
 
 logger = logging.getLogger("cinder")
+
+
+class _CacheConfig:
+    """Fluent cache configuration facade — accessible via ``app.cache``."""
+
+    def __init__(self) -> None:
+        self._backend: CacheBackend | None = None
+        self._enabled: bool | None = None  # None = auto (True when Redis configured)
+        self._default_ttl: int = int(os.getenv("CINDER_CACHE_TTL", "300"))
+        self._per_user: bool = True
+        self._excluded: list[str] = []
+
+    def use(self, backend: CacheBackend) -> "_CacheConfig":
+        """Plug in a custom :class:`CacheBackend` implementation."""
+        self._backend = backend
+        return self
+
+    def configure(self, *, default_ttl: int | None = None, per_user: bool | None = None) -> "_CacheConfig":
+        if default_ttl is not None:
+            self._default_ttl = default_ttl
+        if per_user is not None:
+            self._per_user = per_user
+        return self
+
+    def exclude(self, *paths: str) -> "_CacheConfig":
+        """Opt specific path prefixes out of caching."""
+        self._excluded.extend(paths)
+        return self
+
+    def enable(self, value: bool = True) -> "_CacheConfig":
+        self._enabled = value
+        return self
+
+    def _is_enabled(self) -> bool:
+        if self._enabled is not None:
+            return self._enabled
+        env = os.getenv("CINDER_CACHE_ENABLED", "").lower()
+        if env in ("true", "1", "yes"):
+            return True
+        if env in ("false", "0", "no"):
+            return False
+        # Auto: enable if Redis URL is set or a custom backend was provided
+        return bool(self._backend or os.getenv("CINDER_REDIS_URL"))
+
+    def _resolve_backend(self) -> CacheBackend:
+        if self._backend:
+            return self._backend
+        redis_url = os.getenv("CINDER_REDIS_URL")
+        if redis_url:
+            prefix = os.getenv("CINDER_CACHE_PREFIX", "cinder")
+            return RedisCacheBackend(prefix=prefix)
+        return MemoryCacheBackend()
+
+    def _build_middleware_factory(self):
+        """Return a one-arg factory ``(app) -> CacheMiddleware`` for pipeline wiring."""
+        backend = self._resolve_backend()
+        ttl = self._default_ttl
+        per_user = self._per_user
+        excluded = list(self._excluded)
+
+        def factory(app):
+            return CacheMiddleware(
+                app,
+                backend,
+                default_ttl=ttl,
+                per_user=per_user,
+                excluded_paths=excluded,
+            )
+
+        return factory, backend
+
+
+class _RateLimitConfig:
+    """Fluent rate-limit configuration facade — accessible via ``app.rate_limit``."""
+
+    def __init__(self) -> None:
+        self._backend: RateLimitBackend | None = None
+        self._enabled: bool | None = None  # None = auto (env var)
+        self._rules: list[RateLimitRule] = []
+        self._anon_limit, self._anon_window = self._parse_rule(
+            os.getenv("CINDER_RATE_LIMIT_ANON", "100/60")
+        )
+        self._user_limit, self._user_window = self._parse_rule(
+            os.getenv("CINDER_RATE_LIMIT_USER", "1000/60")
+        )
+
+    @staticmethod
+    def _parse_rule(spec: str) -> tuple[int, int]:
+        try:
+            limit, window = spec.split("/")
+            return int(limit), int(window)
+        except (ValueError, AttributeError):
+            return 100, 60
+
+    def use(self, backend: RateLimitBackend) -> "_RateLimitConfig":
+        self._backend = backend
+        return self
+
+    def rule(self, path_prefix: str, *, limit: int, window: int = 60, scope: str = "ip") -> "_RateLimitConfig":
+        self._rules.append(RateLimitRule(path_prefix, limit=limit, window=window, scope=scope))
+        return self
+
+    def enable(self, value: bool = True) -> "_RateLimitConfig":
+        self._enabled = value
+        return self
+
+    def _is_enabled(self) -> bool:
+        if self._enabled is not None:
+            return self._enabled
+        env = os.getenv("CINDER_RATE_LIMIT_ENABLED", "true").lower()
+        return env not in ("false", "0", "no")
+
+    def _resolve_backend(self) -> RateLimitBackend:
+        if self._backend:
+            return self._backend
+        redis_url = os.getenv("CINDER_REDIS_URL")
+        if redis_url:
+            return RedisRateLimitBackend()
+        return MemoryRateLimitBackend()
+
+    def _build_middleware_factory(self):
+        """Return a one-arg factory ``(app) -> RateLimitMiddleware`` for pipeline wiring."""
+        backend = self._resolve_backend()
+        rules = list(self._rules)
+        anon_limit, anon_window = self._anon_limit, self._anon_window
+        user_limit, user_window = self._user_limit, self._user_window
+
+        def factory(app):
+            mw = RateLimitMiddleware(
+                app,
+                backend,
+                anon_limit=anon_limit,
+                anon_window=anon_window,
+                user_limit=user_limit,
+                user_window=user_window,
+            )
+            for rule in rules:
+                mw.add_rule(rule)
+            return mw
+
+        return factory
 
 
 class _AppHooks:
@@ -66,6 +213,24 @@ class Cinder:
         self.hooks: _AppHooks = _AppHooks(self._registry, self._runner)
         self._broker: RealtimeBroker = RealtimeBroker()
         self.realtime: RealtimeFacade = RealtimeFacade(self._broker, self)
+        # Phase 8 subsystems
+        self.cache: _CacheConfig = _CacheConfig()
+        self.rate_limit: _RateLimitConfig = _RateLimitConfig()
+
+    def configure_redis(self, *, url: str) -> "Cinder":
+        """Configure Redis for all subsystems in one call.
+
+        Enables Redis-backed cache, rate-limiting, and realtime broker unless
+        the developer has already plugged in custom backends.
+
+        Equivalent to setting ``CINDER_REDIS_URL`` environment variable but
+        programmatic, which is useful in tests or when the URL is not known at
+        module import time.
+        """
+        from cinder.cache import redis_client as _rc
+        _rc.configure(url=url)
+        os.environ["CINDER_REDIS_URL"] = url
+        return self
 
     def on(self, event: str, handler=None):
         """Shorthand for ``app.hooks.on(event, handler)``.
@@ -111,12 +276,31 @@ class Cinder:
             )
         return self._secret
 
+    def _resolve_broker(self):
+        """Select realtime broker based on CINDER_REALTIME_BROKER env var or Redis URL."""
+        broker_type = os.getenv("CINDER_REALTIME_BROKER", "").lower()
+        redis_url = os.getenv("CINDER_REDIS_URL")
+        if broker_type == "redis" or (broker_type == "" and redis_url):
+            try:
+                from cinder.realtime.redis_broker import RedisBroker
+                logger.info("Using Redis realtime broker")
+                return RedisBroker()
+            except ImportError:
+                logger.warning("RedisBroker requested but redis not installed — falling back to in-process broker")
+        return self._broker
+
     def build(self) -> Starlette:
         db = Database(self.database)
         store = CollectionStore(db)
         secret = self._get_secret()
         collections = self._collections
         auth = self._auth
+
+        # Resolve broker (may swap to RedisBroker if configured)
+        broker = self._resolve_broker()
+        if broker is not self._broker:
+            self._broker = broker
+            self.realtime = RealtimeFacade(broker, self)
 
         # Track whether the one-time startup initialisation has been performed.
         # Using a mutable container so the nested coroutine can update it.
@@ -142,8 +326,6 @@ class Cinder:
 
         app_runner = self._runner
 
-        broker = self._broker
-
         @asynccontextmanager
         async def lifespan(app: Starlette):
             await _init()
@@ -153,6 +335,9 @@ class Cinder:
             await broker.close()
             await db.disconnect()
             logger.info("Database disconnected")
+            # Close shared Redis client if one was created
+            from cinder.cache import redis_client as _rc
+            await _rc.close()
 
         routes: list[Route] = []
 
@@ -171,6 +356,19 @@ class Cinder:
 
         starlette_app = Starlette(routes=routes, lifespan=lifespan)
 
+        # Build cache & rate-limit middleware factories (None = disabled)
+        cache_factory = None
+        cache_backend = None
+        if self.cache._is_enabled():
+            cache_factory, cache_backend = self.cache._build_middleware_factory()
+            install_invalidation(self._registry, cache_backend, collections)
+            logger.info("Cache enabled (backend: %s)", type(cache_backend).__name__)
+
+        rl_factory = None
+        if self.rate_limit._is_enabled():
+            rl_factory = self.rate_limit._build_middleware_factory()
+            logger.info("Rate limiting enabled")
+
         # LazyInitMiddleware ensures _init() is called before the first request
         # even when the lifespan is not triggered (e.g. Starlette TestClient
         # used without a context manager).
@@ -188,6 +386,8 @@ class Cinder:
             db=db if auth else None,
             secret=secret if auth else None,
             hook_runner=self._runner,
+            cache_middleware=cache_factory,
+            ratelimit_middleware=rl_factory,
         )
 
         # Wrap *outside* the existing middleware stack so lazy init fires first.

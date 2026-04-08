@@ -128,6 +128,8 @@ def build_middleware_stack(
     db=None,
     secret: str | None = None,
     hook_runner: HookRunner | None = None,
+    cache_middleware=None,
+    ratelimit_middleware=None,
 ) -> ASGIApp:
     """Wrap the app with the standard Cinder middleware stack.
 
@@ -135,7 +137,9 @@ def build_middleware_stack(
     1. ErrorHandler — catches all errors
     2. RequestID — adds X-Request-ID header
     3. CORS — handles cross-origin requests
-    4. Auth — resolves JWT and sets request.state.user (when db+secret provided)
+    4. RateLimit — enforces per-IP/user request limits (optional)
+    5. Cache — cache-aside for GET responses (optional)
+    6. Auth — resolves JWT and sets request.state.user (when db+secret provided)
     """
     # Register exception handlers on the inner Starlette app before wrapping.
     # Starlette's internal ServerErrorMiddleware handles exceptions before our
@@ -149,6 +153,14 @@ def build_middleware_stack(
     # Auth (innermost, closest to routes)
     if db is not None and secret is not None:
         app = AuthMiddleware(app, db=db, secret=secret)
+
+    # Cache (sits above Auth so user identity is already in scope["state"])
+    if cache_middleware is not None:
+        app = cache_middleware(app)
+
+    # RateLimit (above cache — abusive traffic is rejected before cache lookup)
+    if ratelimit_middleware is not None:
+        app = ratelimit_middleware(app)
 
     # CORS
     app = CORSMiddleware(

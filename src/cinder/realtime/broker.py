@@ -3,8 +3,36 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Any, Callable
+from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger("cinder.realtime.broker")
+
+
+@runtime_checkable
+class BrokerProtocol(Protocol):
+    """Interface that all Cinder realtime brokers must satisfy.
+
+    Both :class:`RealtimeBroker` (in-process) and ``RedisBroker`` (Redis
+    pub/sub) implement this protocol.  Custom brokers should also satisfy it
+    so type-checkers can verify drop-in compatibility.
+    """
+
+    async def subscribe(
+        self,
+        channels: list[str],
+        *,
+        user: dict | None = None,
+        filter: Callable[[dict, dict | None], bool] | None = None,
+    ) -> "Subscription": ...
+
+    async def unsubscribe(self, subscription: "Subscription") -> None: ...
+
+    async def publish(self, channel: str, envelope: dict) -> None: ...
+
+    async def close(self) -> None: ...
+
+    @property
+    def subscription_count(self) -> int: ...
 
 
 class Subscription:

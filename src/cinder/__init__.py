@@ -18,6 +18,9 @@ from cinder.collections.schema import (
     RelationField,
 )
 from cinder.errors import CinderError
+from cinder.cache.backends import CacheBackend, MemoryCacheBackend, RedisCacheBackend
+from cinder.ratelimit.backends import RateLimitBackend, MemoryRateLimitBackend, RedisRateLimitBackend
+from cinder.ratelimit.middleware import RateLimitRule
 
 __all__ = [
     "Cinder",
@@ -33,4 +36,13 @@ __all__ = [
     "JSONField",
     "RelationField",
     "CinderError",
+    # Cache
+    "CacheBackend",
+    "MemoryCacheBackend",
+    "RedisCacheBackend",
+    # Rate limit
+    "RateLimitBackend",
+    "MemoryRateLimitBackend",
+    "RedisRateLimitBackend",
+    "RateLimitRule",
 ]
