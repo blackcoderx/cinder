@@ -20,3 +20,11 @@ htmlcov/
 .vscode/
 *.swp
 *.swo
+todo.db-shm
+todo.db-wal
+assets
+docs
+app.js
+index.html
+todo_app.py
+style.css
