@@ -15,6 +15,7 @@ Define your data schema in Python, and Cinder auto-generates a full CRUD API wit
 - [Filtering, Pagination & Sorting](#filtering-pagination--sorting)
 - [Relations & Expand](#relations--expand)
 - [Hooks & Lifecycle Events](#hooks--lifecycle-events)
+- [File Storage](#file-storage)
 - [Realtime](#realtime)
 - [Caching](#caching)
 - [Rate Limiting](#rate-limiting)
@@ -42,7 +43,7 @@ uv add cinder
 **Optional extras:**
 
 ```bash
-pip install cinder[s3]      # S3 file storage (boto3)
+pip install cinder[s3]      # S3-compatible file storage (boto3) — AWS, R2, MinIO, etc.
 pip install cinder[email]   # Email delivery (aiosmtplib)
 pip install cinder[redis]   # Redis caching & sessions
 pip install cinder[ai]      # AI integration (Anthropic)
@@ -162,6 +163,7 @@ This means you can safely add fields to your collections and restart — existin
 | `URLField` | TEXT | `required`, `default`, `unique` | Validated URL strings |
 | `JSONField` | TEXT | `required`, `default` | Arbitrary JSON data (stored as string) |
 | `RelationField` | TEXT | `required`, `unique`, `collection` | Foreign key reference to another collection |
+| `FileField` | TEXT | `max_size`, `allowed_types`, `multiple`, `public` | File upload — metadata stored in SQLite, bytes in storage backend |
 
 ### Common Parameters
 
@@ -821,6 +823,250 @@ app.on("app:error", log_error)
 - `CinderError.cancel_delete()` stops the chain **without** an error — used for soft deletes.
 - There is **one shared registry** per app, namespaced by event string. Collection / auth / app-level `on()` calls all land in the same place, so you can observe any event from any surface.
 - Hook loop prevention is your responsibility — use guard clauses (`if record["already_processed"]: return`).
+
+---
+
+## File Storage
+
+Cinder auto-generates upload, download, and delete endpoints for any collection field defined as `FileField`. File bytes are stored in a pluggable backend — local disk by default, or any S3-compatible object store in production. Switching backends requires changing one line.
+
+Install the S3 extra to use cloud providers:
+
+```bash
+pip install cinder[s3]
+# or
+uv add cinder[s3]
+```
+
+### Defining a FileField
+
+```python
+from cinder import Cinder, Collection, TextField
+from cinder.collections.schema import FileField
+from cinder.storage import LocalFileBackend
+
+posts = Collection("posts", fields=[
+    TextField("title", required=True),
+    # Single public image — anyone can download, auth required to upload
+    FileField("cover", max_size=5_000_000, allowed_types=["image/*"], public=True),
+    # Multiple private attachments — auth required to upload and download
+    FileField("attachments", multiple=True, allowed_types=["application/pdf"]),
+])
+
+app = Cinder("app.db")
+app.register(posts, auth=["read:public", "write:authenticated"])
+app.configure_storage(LocalFileBackend("./uploads"))
+```
+
+### FileField Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_size` | `int` | `10_000_000` | Maximum file size in bytes (10 MB default) |
+| `allowed_types` | `list[str]` | `["*/*"]` | Accepted MIME type patterns. Supports wildcards: `"image/*"`, `"*/*"` |
+| `multiple` | `bool` | `False` | Allow multiple files per field (stored as a list) |
+| `public` | `bool` | `False` | If `True`, the download route skips authentication. Use for avatars, cover images, etc. |
+
+### Auto-Generated File Endpoints
+
+For every `FileField`, Cinder generates three endpoints:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/{collection}/{id}/files/{field}` | Upload a file (multipart/form-data) |
+| `GET` | `/api/{collection}/{id}/files/{field}` | Download or redirect to file |
+| `DELETE` | `/api/{collection}/{id}/files/{field}` | Delete a file |
+
+#### Upload — `POST /api/{collection}/{id}/files/{field}`
+
+Send a `multipart/form-data` request with a `file` field:
+
+```bash
+curl -X POST http://localhost:8000/api/posts/post-uuid/files/cover \
+  -H "Authorization: Bearer eyJhbGciOi..." \
+  -F "file=@/path/to/photo.jpg"
+```
+
+Response (`201`) — the updated record with file metadata:
+```json
+{
+  "id": "post-uuid",
+  "title": "My Post",
+  "cover": {
+    "key": "posts/post-uuid/cover/a3f9b2c1_photo.jpg",
+    "name": "photo.jpg",
+    "size": 204800,
+    "mime": "image/jpeg"
+  }
+}
+```
+
+For `multiple=True` fields, each upload appends to the list. Use `DELETE` with `?index=N` to remove individual files.
+
+#### Download — `GET /api/{collection}/{id}/files/{field}`
+
+```bash
+# Single file
+curl http://localhost:8000/api/posts/post-uuid/files/cover
+
+# Multiple file — specify index
+curl http://localhost:8000/api/posts/post-uuid/files/attachments?index=0 \
+  -H "Authorization: Bearer eyJhbGciOi..."
+```
+
+- For remote backends (S3, R2, MinIO, etc.) — returns a `302` redirect to a time-limited **signed URL** (default: 15 minutes)
+- For `LocalFileBackend` — proxies the bytes directly through the Cinder server
+- For `FileField(public=True)` fields — no authentication required
+
+#### Delete — `DELETE /api/{collection}/{id}/files/{field}`
+
+```bash
+# Delete the single file
+curl -X DELETE http://localhost:8000/api/posts/post-uuid/files/cover \
+  -H "Authorization: Bearer eyJhbGciOi..."
+
+# Delete one file from a multiple field
+curl -X DELETE "http://localhost:8000/api/posts/post-uuid/files/attachments?index=0" \
+  -H "Authorization: Bearer eyJhbGciOi..."
+
+# Delete all files in a multiple field
+curl -X DELETE "http://localhost:8000/api/posts/post-uuid/files/attachments?all=true" \
+  -H "Authorization: Bearer eyJhbGciOi..."
+```
+
+Deleting a record automatically removes all associated files from the storage backend (orphan cleanup via `after_delete` hooks).
+
+### Storage Backends
+
+#### LocalFileBackend
+
+Zero configuration. Files are stored on disk under `base_path`. Best for development and single-server deployments.
+
+```python
+from cinder.storage import LocalFileBackend
+
+app.configure_storage(LocalFileBackend("./uploads"))
+```
+
+Files are always served by proxying bytes through the Cinder server.
+
+#### S3CompatibleBackend
+
+Supports any S3-compatible object store via boto3. Uses presigned URLs for downloads — files are served directly from the provider, not through your server.
+
+```python
+from cinder.storage import S3CompatibleBackend
+
+# AWS S3
+app.configure_storage(S3CompatibleBackend.aws(
+    bucket="my-bucket",
+    access_key="AKIAIOSFODNN7EXAMPLE",
+    secret_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    region="us-east-1",
+))
+
+# Cloudflare R2
+app.configure_storage(S3CompatibleBackend.r2(
+    account_id="your-cloudflare-account-id",
+    bucket="my-bucket",
+    access_key="your-r2-access-key",
+    secret_key="your-r2-secret-key",
+))
+
+# MinIO
+app.configure_storage(S3CompatibleBackend.minio(
+    endpoint="http://localhost:9000",
+    bucket="my-bucket",
+    access_key="minioadmin",
+    secret_key="minioadmin",
+))
+
+# Backblaze B2
+app.configure_storage(S3CompatibleBackend.backblaze(
+    endpoint="https://s3.us-west-001.backblazeb2.com",
+    bucket="my-bucket",
+    key_id="your-key-id",
+    app_key="your-app-key",
+))
+
+# DigitalOcean Spaces
+app.configure_storage(S3CompatibleBackend.digitalocean(
+    region="nyc3",
+    space="my-space",
+    access_key="your-access-key",
+    secret_key="your-secret-key",
+))
+
+# Wasabi
+app.configure_storage(S3CompatibleBackend.wasabi(
+    region="us-east-1",
+    bucket="my-bucket",
+    access_key="your-access-key",
+    secret_key="your-secret-key",
+))
+
+# Google Cloud Storage (S3 interop — requires HMAC credentials)
+app.configure_storage(S3CompatibleBackend.gcs(
+    bucket="my-bucket",
+    access_key="your-hmac-access-key",
+    secret_key="your-hmac-secret",
+))
+```
+
+All providers use the same underlying class — only the `endpoint_url` and `region_name` differ. Custom endpoint? Use the constructor directly:
+
+```python
+app.configure_storage(S3CompatibleBackend(
+    bucket="my-bucket",
+    access_key="key",
+    secret_key="secret",
+    endpoint_url="https://my-custom-provider.example.com",
+    region_name="us-east-1",
+    key_prefix="myapp",           # optional subfolder prefix
+    signed_url_expires=1800,      # presigned URL lifetime in seconds (default 900)
+))
+```
+
+#### Custom Backend
+
+Subclass `FileStorageBackend` to integrate any storage system:
+
+```python
+from cinder.storage import FileStorageBackend
+
+class MyStorageBackend(FileStorageBackend):
+    async def put(self, key: str, data: bytes, content_type: str) -> None:
+        # Store the file
+        ...
+
+    async def get(self, key: str) -> tuple[bytes, str]:
+        # Return (data, content_type). Raise FileNotFoundError if missing.
+        ...
+
+    async def delete(self, key: str) -> None:
+        # Delete the file. No-op if it doesn't exist.
+        ...
+
+    async def signed_url(self, key: str, expires_in: int = 900) -> str | None:
+        # Return a presigned URL, or None to fall back to proxy mode.
+        ...
+
+    async def url(self, key: str) -> str | None:
+        # Return a permanent public URL for public=True fields, or None.
+        ...
+
+app.configure_storage(MyStorageBackend())
+```
+
+### Security
+
+Cinder enforces several protections on every file upload:
+
+- **MIME type validation** — checks both the `Content-Type` header and the file's magic bytes (first 512 bytes). A file claiming to be `image/jpeg` but containing a PDF binary is rejected with `422`.
+- **Size enforcement** — streaming read with a byte counter. The connection is aborted mid-stream before the full file is buffered if `max_size` is exceeded (`413`).
+- **Path traversal prevention** — storage keys are always `{collection}/{id}/{field}/{uuid}_{sanitized_name}`. The user-supplied filename is sanitized (alphanumeric, `-`, `_`, `.` only) and prefixed with a UUID. User input never controls the storage path directly.
+- **Auth gating** — upload and delete always require write permission. Download requires read permission unless `FileField(public=True)` is set explicitly.
+- **Signed URL expiry** — presigned download URLs expire after 15 minutes by default (configurable via `signed_url_expires`). The URL is generated fresh per request and never stored.
 
 ---
 
@@ -1507,7 +1753,7 @@ Cinder uses WAL mode for better concurrent read performance and enables foreign 
 See [phases.md](phases.md) for the full roadmap of upcoming features:
 
 - **Phase 3** — Hooks & Lifecycle Events ✅
-- **Phase 4** — File Storage (local + S3)
+- **Phase 4** — File Storage (local + S3-compatible) ✅
 - **Phase 5** — Email & Notifications
 - **Phase 6** — Realtime (WebSocket + SSE) ✅
 - **Phase 7** — AI Integration
