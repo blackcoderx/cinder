@@ -317,6 +317,7 @@ class _EmailConfig:
         if self._template_password_reset:
             return self._template_password_reset(ctx)
         from cinder.email.templates import password_reset_email
+
         return password_reset_email(reset_url, self._app_name, expiry_minutes)
 
     def _render_verification(self, verify_url: str):
@@ -324,6 +325,7 @@ class _EmailConfig:
         if self._template_verification:
             return self._template_verification(ctx)
         from cinder.email.templates import email_verification_email
+
         return email_verification_email(verify_url, self._app_name)
 
     def _render_welcome(self, user_email: str):
@@ -331,12 +333,14 @@ class _EmailConfig:
         if self._template_welcome:
             return self._template_welcome(ctx)
         from cinder.email.templates import welcome_email
+
         return welcome_email(user_email, self._app_name)
 
     def _resolve_backend(self):
         if self._backend:
             return self._backend
         from cinder.email.backends import ConsoleEmailBackend
+
         return ConsoleEmailBackend()
 
     async def send(self, message) -> None:
@@ -395,8 +399,16 @@ class _AppHooks:
 
 
 class Cinder:
-    def __init__(self, database: str = "app.db"):
+    def __init__(
+        self,
+        database: str = "app.db",
+        *,
+        title: str = "Cinder API",
+        version: str = "1.0.0",
+    ):
         self.database = database
+        self.title = title
+        self.version = version
         self._collections: dict[str, tuple[Collection, dict[str, str]]] = {}
         self._auth: Auth | None = None
         self._secret: str | None = None
@@ -613,6 +625,7 @@ class Cinder:
         # Install orphan file cleanup hooks
         if self._storage_backend is not None:
             from cinder.storage.cleanup import install_file_cleanup
+
             install_file_cleanup(self._registry, self._storage_backend, collections)
 
         routes: list[Route] = []
@@ -621,7 +634,11 @@ class Cinder:
             return JSONResponse({"status": "ok"})
 
         routes.append(Route("/api/health", health, methods=["GET"]))
-        routes.extend(build_collection_routes(collections, store, storage_backend=self._storage_backend))
+        routes.extend(
+            build_collection_routes(
+                collections, store, storage_backend=self._storage_backend
+            )
+        )
 
         if auth:
             routes.extend(build_auth_routes(auth, db, secret, email_config=self.email))
@@ -629,6 +646,17 @@ class Cinder:
         # Install the auto-emit bridge and add realtime routes
         self.realtime._install_bridge(self._registry, collections)
         routes.extend(self.realtime._build_routes(db, secret))
+
+        # Add OpenAPI/Swagger routes
+        from cinder.openapi import CinderOpenAPI
+
+        openapi = CinderOpenAPI(
+            title=self.title,
+            version=self.version,
+            collections=collections,
+            auth_enabled=auth is not None,
+        )
+        routes.extend(openapi.build_routes())
 
         starlette_app = Starlette(routes=routes, lifespan=lifespan)
 

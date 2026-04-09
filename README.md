@@ -12,6 +12,7 @@ Define your data schema in Python, and Cinder auto-generates a full CRUD API wit
 - [Field Types](#field-types)
 - [Authentication](#authentication)
 - [API Endpoints](#api-endpoints)
+- [OpenAPI / Swagger](#openapi--swagger)
 - [Filtering, Pagination & Sorting](#filtering-pagination--sorting)
 - [Relations & Expand](#relations--expand)
 - [Hooks & Lifecycle Events](#hooks--lifecycle-events)
@@ -94,6 +95,8 @@ That's it. You now have:
 - `PATCH /api/posts/{id}` — update a post
 - `DELETE /api/posts/{id}` — delete a post
 - `GET /api/health` — health check
+- `GET /openapi.json` — OpenAPI 3.1 schema
+- `GET /docs` — Swagger UI (requires internet)
 
 ---
 
@@ -515,6 +518,51 @@ Response (`200`):
 ```json
 { "status": "ok" }
 ```
+
+---
+
+## OpenAPI / Swagger
+
+Cinder auto-generates a full OpenAPI 3.1 schema and provides an interactive Swagger UI for exploring and testing your API.
+
+**Note:** Swagger UI requires internet to load assets from CDN.
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /openapi.json` | OpenAPI 3.1 schema |
+| `GET /docs` | Interactive Swagger UI |
+
+### Customization
+
+Customize the API title and version when initializing Cinder:
+
+```python
+app = Cinder(
+    title="My API",
+    version="1.0.0",
+    database="app.db"
+)
+```
+
+### What's Documented
+
+The schema automatically includes:
+
+- **Auth endpoints** — register, login, logout, refresh, password reset, email verification
+- **Collection CRUD** — list, get, create, update, delete
+- **Query parameters** — `limit`, `offset`, `order_by`, `expand`
+- **Auth requirements** — Bearer token security on protected endpoints
+- **Field constraints** — min/max values, required fields, field types
+
+### Testing
+
+```bash
+curl http://localhost:8000/openapi.json | jq .
+```
+
+Or visit `http://localhost:8000/docs` in your browser for the interactive Swagger UI.
 
 ---
 
