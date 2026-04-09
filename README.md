@@ -1481,6 +1481,52 @@ app.configure_database(MyTursoBackend())
 
 All callers write SQL using `?` as the placeholder. Your backend converts it internally to whatever style the driver expects.
 
+### Indexes
+
+Cinder supports database indexes for query optimization. Indexes can be defined at the field level or as composite indexes on collections.
+
+#### Field-Level Indexing
+
+Add `indexed=True` to any field to create an index automatically:
+
+```python
+from cinder import Collection, TextField, IntField
+
+class Posts(Collection):
+    name = TextField(required=True)
+    category = TextField(indexed=True)  # Creates index on category
+    views = IntField(indexed=True)      # Creates index on views
+```
+
+The index is created automatically when you call `store.sync_schema()` or run migrations with `--auto`.
+
+#### Composite Indexes
+
+Define composite indexes for multi-column queries using the `indexes` parameter:
+
+```python
+class Posts(Collection):
+    name = TextField(required=True)
+    category = TextField()
+    created_at = TextField()
+
+    indexes = [
+        ("category", "created_at"),  # Composite index on (category, created_at)
+    ]
+```
+
+Index naming follows the pattern `idx_{table}_{column1}_{column2}`.
+
+#### Unique Fields
+
+Fields with `unique=True` already have a database-enforced unique constraint, which implicitly creates an index. You don't need to add `indexed=True` for unique fields — doing so would create a duplicate index.
+
+#### Index Behavior
+
+- **Auto-sync**: Indexes are created automatically when running `sync_schema()` on existing tables
+- **Migrations**: Use `cinder migrate --auto` to generate migration files that include index operations
+- **Non-destructive**: Cinder never drops indexes that exist in the database but are not in your schema. This prevents accidental breaking of production queries.
+
 ### Error Handling
 
 | Situation | Response |
