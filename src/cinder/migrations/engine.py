@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
+
+_logger = logging.getLogger(__name__)
 
 from cinder.db.connection import Database
 
@@ -64,6 +67,10 @@ class MigrationEngine:
         mod = _load_migration_module(migration)
         if not callable(getattr(mod, "up", None)):
             raise RuntimeError(f"Migration {migration.id!r} is missing an 'up' function: {migration.path}")
+        # NOTE: DDL transactions are not natively abstracted by the Database interface.
+        # If up() partially fails mid-migration, the schema may be left in an inconsistent
+        # state. Migration authors should keep individual migration files atomic (single
+        # DDL operation) where possible, or use compensating migrations to recover.
         try:
             await mod.up(self.db)
         except Exception as exc:
@@ -87,7 +94,13 @@ class MigrationEngine:
         all_migrations = self.discover()
         last = next((m for m in all_migrations if m.id == last_id), None)
         if last is None:
-            # File was deleted after being applied — remove record and return None
+            # File was deleted after being applied — remove orphaned record
+            _logger.warning(
+                "Migration %r was applied but its file no longer exists. "
+                "Removing orphaned record from _schema_migrations. "
+                "Verify your database schema manually.",
+                last_id,
+            )
             await self.db.execute("DELETE FROM _schema_migrations WHERE id = ?", (last_id,))
             return None
         mod = _load_migration_module(last)

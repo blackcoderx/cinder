@@ -194,11 +194,11 @@ async def test_rollback_uses_applied_at_order(mem_db, tmp_path):
     # This means mig_a is the MOST RECENTLY applied, despite being alphabetically first
     await mem_db.execute(
         "INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
-        ("20260101_000002_b", "2026-01-01T00:00:01Z"),
+        ("20260101_000002_b", "2026-01-01T00:00:01+00:00"),
     )
     await mem_db.execute(
         "INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
-        ("20260101_000001_a", "2026-01-01T00:00:02Z"),  # later timestamp = rolled back first
+        ("20260101_000001_a", "2026-01-01T00:00:02+00:00"),  # later timestamp = rolled back first
     )
 
     # Rollback should pick mig_a (later applied_at), not mig_b (alphabetically last)

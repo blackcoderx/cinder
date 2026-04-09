@@ -22,8 +22,8 @@ def generate_migration_content(operations: list | None = None, name: str = "") -
 
     for op in operations:
         if isinstance(op, AddTable):
-            sql = op.collection.build_create_table_sql().replace('"', '\\"')
-            up_lines.append(f'    await db.execute("{sql}")')
+            sql = op.collection.build_create_table_sql()
+            up_lines.append(f'    await db.execute({repr(sql)})')
             down_lines.append(f'    await db.execute("DROP TABLE IF EXISTS {op.collection.name}")')
         elif isinstance(op, AddColumn):
             up_lines.append(f'    await db.execute("ALTER TABLE {op.table} ADD COLUMN {op.col_sql}")')
