@@ -789,7 +789,7 @@ class Cinder:
                         </div>
                         <div class="links">
                             <a
-                                href="https://github.com/blackcoderx/cinder-github"
+                                href="https://github.com/blackcoderx/cinder"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 >GitHub</a
