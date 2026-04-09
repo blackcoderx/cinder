@@ -4,7 +4,7 @@
 
 Cinder is a lightweight, open-source backend framework for Python. It is designed to rapidly build production-ready REST APIs and realtime applications by automatically generating CRUD endpoints and Pub/Sub streams directly from Python data schemas.
 
-It significantly reduces boilerplate by providing built-in features including JWT-based authentication, role-based access control (RBAC), advanced relationship expansion, dynamic sorting/filtering, automatic SQLite database provisioning, pluggable file storage (local + S3-compatible), transactional email delivery, and seamless WebSockets/SSE integration for real-time state sync.
+It significantly reduces boilerplate by providing built-in features including JWT-based authentication, role-based access control (RBAC), advanced relationship expansion, dynamic sorting/filtering, pluggable multi-database support (SQLite · PostgreSQL · MySQL), pluggable file storage (local + S3-compatible), transactional email delivery, and seamless WebSockets/SSE integration for real-time state sync.
 
 ---
 
@@ -20,7 +20,7 @@ graph TD
     %% Main Application Layer
     APP --> PIPE["cinder/pipeline.py ASGI App / Middleware"]
     PIPE -. "Yields Errors" .-> ERR["cinder/errors.py Exception Handling"]
-    APP --> DB["cinder/db/connection.py SQLite DB Manager"]
+    APP --> DB["cinder/db/connection.py Multi-DB Manager (shim)"]
 
     %% Hook System Layer
     APP --> HREG["cinder/hooks/registry.py Hook Storage"]
@@ -37,6 +37,7 @@ graph TD
     CROUTER --> STORE["cinder/collections/store.py Query Builder & Executor"]
     SCHEMA -. "Validates Data" .-> STORE
     STORE --> DB
+    DB --> DB_BE["cinder/db/backends/ DatabaseBackend ABC + SQLite/PG/MySQL"]
 
     %% File Storage Subsystem (Phase 4)
     APP --> STORAGE["cinder/storage/ File Storage Subsystem"]
@@ -120,18 +121,31 @@ graph TD
 
 ### 1. The Application Core (`src/cinder/`)
 
-* **`app.py`** — Defines the `Cinder` class. Central registry where developers register schemas, configure auth, email, storage, caching, and rate-limiting, and initialize the realtime broker. Exposes four fluent configuration facades:
+* **`app.py`** — Defines the `Cinder` class. Central registry where developers register schemas, configure auth, email, storage, database, caching, and rate-limiting, and initialize the realtime broker. Exposes five fluent configuration entry-points:
   - `app.cache` → `_CacheConfig` — cache backend, TTL, per-user segmentation, excluded paths.
   - `app.rate_limit` → `_RateLimitConfig` — backend, global defaults, per-route rules.
   - `app.email` → `_EmailConfig` — SMTP backend, sender address, app name, base URL, template overrides for password-reset / verification / welcome emails. Dispatches via `asyncio.create_task` (non-blocking).
   - `app.configure_storage(backend)` — sets the `FileStorageBackend` used by all `FileField` columns. Validated at `build()` time.
+  - `app.configure_database(backend)` — plugs in a fully pre-configured `DatabaseBackend`. Takes highest precedence over env vars and the `database=` constructor arg. Useful for custom pool settings, SSL, or bring-your-own-driver scenarios.
 * **`pipeline.py`** — Formats HTTP and WebSocket requests. Manages CORS, standardises error shapes, assigns request IDs, and decides whether a request routes to Auth, Collections, or Realtime endpoints.
 * **`cli.py`** — Handles terminal commands (via Typer) for starting the server and scaffolding new projects.
 * **`errors.py`** — A unified set of exceptions allowing standard error responses across all modules.
 
 ### 2. The Database Layer (`src/cinder/db/`)
 
-* **`connection.py`** — Manages SQLite connections. Enables WAL mode and foreign key enforcement for high-concurrency access. All queries use parameterised statements to prevent SQL injection.
+Cinder's database layer is fully pluggable, mirroring the same backend-ABC pattern used by storage, email, cache, and rate-limit subsystems. All callers write SQL using `?` as the universal placeholder; each backend converts it internally to the native style.
+
+* **`connection.py`** — Thin shim (`Database` class) that delegates all operations to the active `DatabaseBackend`. Constructor accepts a bare path, a `sqlite:///` URL, `postgresql://`, or `mysql://`. Two additional methods beyond the original five: `table_exists(name)` and `get_columns(name)` — used by `store.py` for database-agnostic schema introspection. Environment variables override the programmatic URL: `CINDER_DATABASE_URL` (highest) → `DATABASE_URL` (standard PaaS) → constructor arg → `"app.db"` (default SQLite).
+
+* **`backends/base.py`** — `DatabaseBackend` ABC defines the seven-method contract all backends must satisfy: `connect`, `disconnect`, `execute`, `fetch_one`, `fetch_all`, `table_exists`, `get_columns`. `DatabaseIntegrityError` — a driver-agnostic exception raised by all backends on UNIQUE / NOT NULL constraint violations; replaces `sqlite3.IntegrityError` throughout the codebase so callers never import driver-specific types.
+
+* **`backends/sqlite.py`** — `SQLiteBackend`. Extracts the original `aiosqlite` logic. WAL mode, foreign-key enforcement, lazy auto-connect. `table_exists` uses `sqlite_master`; `get_columns` uses `PRAGMA table_info`. Wraps `IntegrityError` (detected by class name, for aiosqlite portability) as `DatabaseIntegrityError`.
+
+* **`backends/postgresql.py`** — `PostgreSQLBackend`. Uses `asyncpg` (optional extra: `cinder[postgres]`). Creates an `asyncpg.create_pool` with configurable `min_size` / `max_size` / `max_inactive_connection_lifetime` (default 300 s — prevents stale connections on NeonDB/Supabase serverless). Converts `?` → `$1, $2, ...`. `table_exists` / `get_columns` query `information_schema`. Catches `asyncpg.UniqueViolationError` and `asyncpg.IntegrityConstraintViolationError` → `DatabaseIntegrityError`. Retries transient connection errors once. Pool size configurable via `CINDER_DB_POOL_MIN/MAX/TIMEOUT/CONNECT_TIMEOUT` env vars.
+
+* **`backends/mysql.py`** — `MySQLBackend`. Uses `aiomysql` (optional extra: `cinder[mysql]`). Creates `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. Converts `?` → `%s`. Rewrites `TEXT PRIMARY KEY` → `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for TEXT primary keys; all Cinder primary keys are 36-char UUID strings). Accepts `mysql://`, `mysql+aiomysql://`, and `mysql+asyncmy://` URL schemes. Catches `aiomysql.IntegrityError` → `DatabaseIntegrityError`.
+
+* **`backends/__init__.py`** — `resolve_backend(url)` factory. Reads env vars first (`CINDER_DATABASE_URL` → `DATABASE_URL`), then falls back to the programmatic URL. Dispatches on URL prefix: `postgresql://` / `postgres://` → `PostgreSQLBackend`; `mysql://` / `mysql+*://` → `MySQLBackend`; anything else → `SQLiteBackend`. Drivers are imported lazily — SQLite-only users never need asyncpg or aiomysql installed.
 
 ### 3. Dynamic Collections & API Generation (`src/cinder/collections/`)
 
@@ -139,7 +153,7 @@ graph TD
   - `TextField`, `IntField` (min/max), `FloatField` (min/max), `BoolField`, `DateTimeField` (auto_now), `URLField`, `JSONField`, `RelationField`
   - **`FileField`** *(Phase 4)* — stores file metadata as JSON in a SQLite TEXT column; actual bytes live in the configured `FileStorageBackend`. Parameters: `max_size`, `allowed_types` (MIME wildcards), `multiple`, `public`.
 * **`router.py`** — Generates CRUD REST endpoints (`GET`, `POST`, `PATCH`, `DELETE`). Connects requests, extracts query filters/pagination, enforces RBAC, triggers hooks. Additionally mounts three file endpoints for every `FileField` on a collection: `POST/GET/DELETE /api/{collection}/{id}/files/{field}`.
-* **`store.py`** — SQL query building engine. Handles serialisation/deserialisation of `BoolField`, `JSONField`, and `FileField` values. Catches `sqlite3.IntegrityError` (e.g. UNIQUE constraint violations) and converts them to `CinderError(400, ...)` so callers always receive a clean 400 instead of an unhandled 500.
+* **`store.py`** — SQL query building engine. Handles serialisation/deserialisation of `BoolField`, `JSONField`, and `FileField` values. Uses `db.table_exists()` and `db.get_columns()` for schema introspection (database-agnostic — no SQLite-specific queries). Catches `DatabaseIntegrityError` (UNIQUE / NOT NULL constraint violations from any backend) and converts them to `CinderError(400, ...)` so callers always receive a clean 400 instead of an unhandled 500.
 
 ### 4. Lifecycle Hooks (`src/cinder/hooks/`)
 
@@ -150,7 +164,7 @@ graph TD
 ### 5. Authentication System (`src/cinder/auth/`)
 
 * **`models.py`** — Configures the built-in `_users` table, allows developers to extend it with custom fields. Creates and owns:
-  - `_token_blocklist` — revoked JWT tokens (auto-cleaned on startup).
+  - `_token_blocklist` — revoked JWT tokens (auto-cleaned on startup). `block_token()` uses a try/except on `DatabaseIntegrityError` instead of `INSERT OR IGNORE` — portable across all backends.
   - `_email_verifications` — one-time 24-hour verification tokens. `create_verification_token(db, user_id, email)` deletes any prior token for the user before inserting the new one (re-send invalidation). `cleanup_expired_verifications(db)` is called on startup.
 * **`routes.py`** — Standardised endpoints for user registration, login, logout, token refresh, forgot-password, reset-password, and **email verification** (`GET /api/auth/verify-email?token=<token>`). When `email_config` is injected:
   - Registration → dispatches verification email.
@@ -220,6 +234,7 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
 | Email verification flow | `test_email_verification.py` |
 | File storage | `test_storage_backends.py`, `test_storage_routes.py`, `test_storage_keys.py` |
 | Hooks & lifecycle | `test_hooks.py` |
+| Database layer & backends | `test_db.py` |
 | Cache backends | `test_cache_backends.py` |
 | Cache invalidation | `test_cache_invalidation.py` |
 | Rate limiting | `test_ratelimit.py` |
@@ -236,7 +251,8 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
   - `FloatField` — `min_value`/`max_value` attribute assertions and full Pydantic validation (over/under boundary, required-field rejection) in `test_schema.py`.
   - Multi-field expand (`?expand=a,b`) and expand on list endpoints in `test_router.py::TestExpand`.
   - Invalid expand field (non-relation field) — verifies no crash, graceful 200.
-  - UNIQUE constraint violations — `TestUniqueConstraints` covers both `POST` (duplicate create) and `PATCH` (update to conflicting value) returning 400, backed by the `sqlite3.IntegrityError` → `CinderError(400)` conversion added to `store.py`.
+  - UNIQUE constraint violations — `TestUniqueConstraints` covers both `POST` (duplicate create) and `PATCH` (update to conflicting value) returning 400, backed by the `DatabaseIntegrityError` → `CinderError(400)` conversion in `store.py` (driver-agnostic, works across SQLite, PostgreSQL, and MySQL).
+  - Database backend dispatch — `test_db.py` covers `table_exists`, `get_columns`, `resolve_backend` URL dispatch for all three drivers, env-var priority chain (`CINDER_DATABASE_URL` > `DATABASE_URL` > programmatic), and `DatabaseIntegrityError` surfacing through the `Database` shim.
   - Multiple required fields missing — `TestFieldConstraintsAtHTTPLayer` covers partial and fully missing required fields, `IntField` min constraint, and `FloatField` max constraint at the HTTP layer.
 
 ---
@@ -245,7 +261,7 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
 
 1. **Code-as-Schema** — Python classes completely define the data state. There are no standalone migration files; the schema definition *is* the migration. `FileField` extends this to binary assets.
 2. **Zero Boilerplate APIs** — Defining a `Collection` generates CRUD endpoints automatically. Adding a `FileField` also generates upload/download/delete endpoints. Time is spent defining models, permissions, and hooks.
-3. **Pluggable Everything** — Every subsystem that touches external infrastructure has an ABC and ships with concrete implementations and provider presets. Storage backends, email backends, cache backends, rate-limit backends, and realtime brokers are all swappable with a single `app.configure_*(...)` or `app.*.use(...)` call.
+3. **Pluggable Everything** — Every subsystem that touches external infrastructure has an ABC and ships with concrete implementations and provider presets. Database backends (SQLite / PostgreSQL / MySQL / custom), storage backends, email backends, cache backends, rate-limit backends, and realtime brokers are all swappable with a single `app.configure_*(...)` or `app.*.use(...)` call.
 4. **Non-Blocking by Default** — Email dispatch uses `asyncio.create_task`; storage operations on remote backends run in thread executors; cache and rate-limit failures are fail-open. No user-facing request is blocked by infrastructure.
 5. **Reactive by Default** — Hooking the Collections pipeline to the Realtime Broker via the Bridge means any mutation on a Collection accurately emits an event to subscribed frontend clients.
-6. **Minimal Dependency Footprint** — Core Cinder uses standard libraries, SQLite, and an ASGI server. S3 support (`boto3`), email delivery (`aiosmtplib`), and Redis (`redis`) are optional extras that are lazily imported with clear `ImportError` messages.
+6. **Minimal Dependency Footprint** — Core Cinder uses standard libraries, SQLite, and an ASGI server. S3 support (`boto3`), email delivery (`aiosmtplib`), Redis (`redis`), PostgreSQL (`asyncpg`), and MySQL (`aiomysql`) are all optional extras that are lazily imported with clear `ImportError` messages. SQLite-only users never need any database driver installed beyond the built-in `aiosqlite`.

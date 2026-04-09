@@ -1,6 +1,6 @@
 # Cinder
 
-A lightweight, open-source backend framework for Python. Build production-ready REST APIs with built-in auth, dynamic collections, and SQLite persistence — no heavy frameworks required.
+A lightweight, open-source backend framework for Python. Build production-ready REST APIs with built-in auth, dynamic collections, and pluggable multi-database support — no heavy frameworks required.
 
 Define your data schema in Python, and Cinder auto-generates a full CRUD API with JWT authentication, role-based access control, filtering, pagination, and relation expansion.
 
@@ -17,6 +17,7 @@ Define your data schema in Python, and Cinder auto-generates a full CRUD API wit
 - [Hooks & Lifecycle Events](#hooks--lifecycle-events)
 - [File Storage](#file-storage)
 - [Email](#email)
+- [Database](#database)
 - [Realtime](#realtime)
 - [Caching](#caching)
 - [Rate Limiting](#rate-limiting)
@@ -44,11 +45,12 @@ uv add cinder
 **Optional extras:**
 
 ```bash
-pip install cinder[s3]      # S3-compatible file storage (boto3) — AWS, R2, MinIO, etc.
-pip install cinder[email]   # Email delivery (aiosmtplib)
-pip install cinder[redis]   # Redis caching & sessions
-pip install cinder[ai]      # AI integration (Anthropic)
-pip install cinder[all]     # All extras
+pip install cinder[s3]        # S3-compatible file storage (boto3) — AWS, R2, MinIO, etc.
+pip install cinder[email]     # Email delivery (aiosmtplib)
+pip install cinder[redis]     # Redis caching & sessions
+pip install cinder[postgres]  # PostgreSQL support (asyncpg)
+pip install cinder[mysql]     # MySQL support (aiomysql)
+pip install cinder[all]       # All extras
 ```
 
 ---
@@ -1284,6 +1286,163 @@ CINDER_BASE_URL=https://myapp.com
 
 ---
 
+## Database
+
+Cinder ships with SQLite out of the box (zero configuration, no server required) and supports PostgreSQL and MySQL in production through a pluggable `DatabaseBackend` system. Switching databases is a single environment variable — no code changes required.
+
+### SQLite (default)
+
+```python
+app = Cinder(database="app.db")        # bare path — SQLite
+app = Cinder(database="sqlite:///app.db")  # explicit scheme, same thing
+```
+
+SQLite runs in WAL mode with foreign key enforcement enabled. It is the recommended choice for development, small projects, and single-server deployments. No extras needed.
+
+### PostgreSQL
+
+Requires the `postgres` extra (`asyncpg`):
+
+```bash
+pip install cinder[postgres]
+# or
+uv add cinder[postgres]
+```
+
+```python
+app = Cinder(database="postgresql://user:pass@localhost/mydb")
+```
+
+Cinder creates a **connection pool** (`asyncpg.create_pool`) with:
+- Configurable `min_size` / `max_size` (default: 1 / 10)
+- `max_inactive_connection_lifetime=300` seconds — prevents stale connections on serverless platforms (NeonDB, Supabase)
+- One automatic retry on transient connection errors
+
+#### NeonDB / Supabase (serverless Postgres)
+
+```bash
+DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+```
+
+No code change — just set the environment variable. The `?sslmode=require` suffix is handled by asyncpg natively.
+
+### MySQL
+
+Requires the `mysql` extra (`aiomysql`):
+
+```bash
+pip install cinder[mysql]
+# or
+uv add cinder[mysql]
+```
+
+```python
+app = Cinder(database="mysql://user:pass@localhost:3306/mydb")
+# Dialect aliases also accepted:
+# "mysql+aiomysql://..."
+# "mysql+asyncmy://..."
+```
+
+Cinder uses `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. `TEXT PRIMARY KEY` is automatically rewritten to `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for text primary keys; Cinder always uses 36-character UUID strings).
+
+### Switching Between Environments
+
+The recommended pattern is to write the default path in code and override it with an environment variable in production — **no code changes ever needed**:
+
+```python
+# main.py — never touch this line again
+app = Cinder(database="app.db")
+```
+
+```bash
+# .env.development
+DATABASE_URL=sqlite:///dev.db
+
+# .env.production (set on Railway, Render, Heroku, etc.)
+DATABASE_URL=postgresql://user:pass@host/db
+
+# .env.test
+DATABASE_URL=sqlite:///test.db
+```
+
+**Priority chain (highest → lowest):**
+
+| Priority | Source | Example |
+|----------|--------|---------|
+| 1 (highest) | `CINDER_DATABASE_URL` env var | Cinder-specific override |
+| 2 | `DATABASE_URL` env var | Standard PaaS convention |
+| 3 | `database=` constructor arg | Programmatic default |
+| 4 (lowest) | `"app.db"` | Zero-config SQLite |
+
+`CINDER_DATABASE_URL` beats `DATABASE_URL` when both are set — useful if your hosting platform injects `DATABASE_URL` but you want Cinder to use a different database.
+
+### Advanced Configuration — `configure_database()`
+
+For full control over pool size, SSL, and connection timeouts, pass a pre-configured backend directly:
+
+```python
+from cinder.db.backends.postgresql import PostgreSQLBackend
+
+app.configure_database(
+    PostgreSQLBackend(
+        url=os.environ["DATABASE_URL"],
+        min_size=2,
+        max_size=20,
+        max_inactive_connection_lifetime=60,  # aggressive for serverless
+        ssl="require",
+    )
+)
+```
+
+`configure_database()` takes precedence over all environment variables and the `database=` constructor argument.
+
+### Pool Size Environment Variables
+
+These apply to PostgreSQL and MySQL backends:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CINDER_DB_POOL_MIN` | `1` | Minimum pool connections |
+| `CINDER_DB_POOL_MAX` | `10` | Maximum pool connections |
+| `CINDER_DB_POOL_TIMEOUT` | `30` | Seconds to wait for a free connection |
+| `CINDER_DB_CONNECT_TIMEOUT` | `10` | Seconds to open a new connection |
+
+### Custom Backend
+
+Subclass `DatabaseBackend` to integrate any database driver — Turso, libsql, DynamoDB, or anything else:
+
+```python
+from cinder.db.backends.base import DatabaseBackend, DatabaseIntegrityError
+
+class MyTursoBackend(DatabaseBackend):
+    async def connect(self) -> None: ...
+    async def disconnect(self) -> None: ...
+    async def execute(self, sql: str, params: tuple = ()) -> None:
+        # Raise DatabaseIntegrityError on UNIQUE/constraint violations
+        ...
+    async def fetch_one(self, sql: str, params: tuple = ()) -> dict | None: ...
+    async def fetch_all(self, sql: str, params: tuple = ()) -> list[dict]: ...
+    async def table_exists(self, name: str) -> bool: ...
+    async def get_columns(self, name: str) -> list[dict]:
+        # Each dict must have at least a 'name' key
+        ...
+
+app.configure_database(MyTursoBackend())
+```
+
+All callers write SQL using `?` as the placeholder. Your backend converts it internally to whatever style the driver expects.
+
+### Error Handling
+
+| Situation | Response |
+|-----------|----------|
+| Cannot connect to host | `503 Service Unavailable` |
+| Pool exhausted (too many concurrent requests) | `503 Service Unavailable` |
+| UNIQUE / NOT NULL constraint violated | `400 Bad Request` |
+| Transient connection loss during a request | Retried once automatically, then `503` |
+
+---
+
 ## Realtime
 
 Cinder has built-in realtime support via **WebSockets** and **Server-Sent Events (SSE)**. Both transports are first-class — neither is a wrapper around the other. Choose based on your client's needs: WebSocket for bidirectional communication, SSE for simple one-way streaming to browsers.
@@ -1925,15 +2084,27 @@ cinder promote user@example.com --role moderator --database myapp.db
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `CINDER_SECRET` | Recommended | JWT signing secret. If not set, a random secret is generated on each startup (tokens won't survive restarts). |
+| **Database** | | |
+| `CINDER_DATABASE_URL` | Optional | Database URL — highest priority, overrides all other DB config. |
+| `DATABASE_URL` | Optional | Standard PaaS convention (Railway, Render, Heroku, Neon, Supabase). Second priority after `CINDER_DATABASE_URL`. |
+| `CINDER_DB_POOL_MIN` | Optional | Minimum pool connections for PostgreSQL/MySQL (default: `1`). |
+| `CINDER_DB_POOL_MAX` | Optional | Maximum pool connections for PostgreSQL/MySQL (default: `10`). |
+| `CINDER_DB_POOL_TIMEOUT` | Optional | Seconds to wait for a free pool connection (default: `30`). |
+| `CINDER_DB_CONNECT_TIMEOUT` | Optional | Seconds to open a new connection (default: `10`). |
+| **Redis** | | |
 | `CINDER_REDIS_URL` | Optional | Redis connection string (e.g. `redis://localhost:6379/0`). Enables Redis-backed cache, rate-limit, and realtime broker. |
+| **Cache** | | |
 | `CINDER_CACHE_ENABLED` | Optional | `true`/`false`. Auto-enabled when `CINDER_REDIS_URL` is set. |
 | `CINDER_CACHE_TTL` | Optional | Default cache TTL in seconds (default: `300`). |
 | `CINDER_CACHE_PREFIX` | Optional | Redis key namespace prefix (default: `cinder`). |
+| **Rate Limiting** | | |
 | `CINDER_RATE_LIMIT_ENABLED` | Optional | `true`/`false` (default: `true`). |
 | `CINDER_RATE_LIMIT_ANON` | Optional | Anonymous rate limit as `requests/window_seconds` (default: `100/60`). |
 | `CINDER_RATE_LIMIT_USER` | Optional | Authenticated rate limit as `requests/window_seconds` (default: `1000/60`). |
+| **Realtime** | | |
 | `CINDER_REALTIME_BROKER` | Optional | `memory` (default) or `redis`. Set to `redis` to enable multi-process realtime fan-out. |
 | `CINDER_SSE_HEARTBEAT` | Optional | Seconds between SSE ping heartbeat comments (default: `15`). |
+| **Email** | | |
 | `CINDER_EMAIL_FROM` | Optional | Default sender address for all outbound emails (default: `noreply@localhost`). |
 | `CINDER_APP_NAME` | Optional | App name shown in built-in email templates (default: `Your App`). |
 | `CINDER_BASE_URL` | Optional | Base URL prepended to verification and password-reset links (default: `http://localhost:8000`). |
@@ -1954,14 +2125,16 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ### Database
 
-SQLite is the default (and currently only) database. Pass the file path when creating the app:
+SQLite is the zero-config default. Pass a URL or bare path:
 
 ```python
-app = Cinder(database="app.db")       # Relative path
-app = Cinder(database="/data/app.db") # Absolute path
+app = Cinder(database="app.db")                           # SQLite (relative path)
+app = Cinder(database="sqlite:///app.db")                 # SQLite (explicit scheme)
+app = Cinder(database="postgresql://user:pass@host/db")   # PostgreSQL
+app = Cinder(database="mysql://user:pass@host/db")        # MySQL
 ```
 
-Cinder uses WAL mode for better concurrent read performance and enables foreign key enforcement.
+In production, set `DATABASE_URL` (or `CINDER_DATABASE_URL`) in your environment — it always overrides the programmatic value. See the [Database](#database) section for the full guide, environment variables, and custom backend API.
 
 ---
 
@@ -1974,6 +2147,7 @@ See [phases.md](phases.md) for the full roadmap of upcoming features:
 - **Phase 5** — Email & Notifications ✅
 - **Phase 6** — Realtime (WebSocket + SSE) ✅
 - **Phase 8** — Redis & Caching ✅
+- **Multi-Database Support** — PostgreSQL, MySQL, pluggable backends, env-var database switching ✅
 
 ---
 
