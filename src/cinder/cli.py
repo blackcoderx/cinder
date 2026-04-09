@@ -38,7 +38,9 @@ def _load_app(app_path: str):
         typer.echo(f"Error: File not found: {app_path}", err=True)
         raise typer.Exit(1)
 
-    sys.path.insert(0, str(path.parent))
+    parent = str(path.parent)
+    if parent not in sys.path:
+        sys.path.insert(0, parent)
     module_name = path.stem
     module = importlib.import_module(module_name)
 
@@ -185,14 +187,17 @@ def doctor(
         try:
             await db.connect()
             await db.fetch_one("SELECT 1")
-            await db.disconnect()
             return True, url
         except Exception as exc:
             return False, str(exc)
+        finally:
+            await db.disconnect()
 
     db_ok, db_detail = asyncio.run(_check_db(db_url))
     if db_ok:
-        typer.echo(f"[OK] Database: {db_url[:30]}...")
+        db_masked = re.sub(r"://([^:@]+):([^@]+)@", "://***:***@", db_url)
+        display = db_masked if len(db_masked) <= 40 else db_masked[:40] + "..."
+        typer.echo(f"[OK] Database: {display}")
     else:
         typer.echo(f"[FAIL] Database: {db_detail}")
         all_ok = False
@@ -214,7 +219,9 @@ def doctor(
 
             redis_ok, redis_detail = asyncio.run(_check_redis(redis_url))
             if redis_ok:
-                typer.echo(f"[OK] Redis: {redis_url[:30]}...")
+                redis_masked = re.sub(r"://([^:@]+):([^@]+)@", "://***:***@", redis_url)
+                redis_display = redis_masked if len(redis_masked) <= 40 else redis_masked[:40] + "..."
+                typer.echo(f"[OK] Redis: {redis_display}")
             else:
                 typer.echo(f"[FAIL] Redis: {redis_detail}")
                 all_ok = False
@@ -280,14 +287,17 @@ def info(
     db_url = cinder_app.database or ""
     db_masked = re.sub(r"://([^:@]+):([^@]+)@", "://***:***@", db_url)
 
-    collections = list(cinder_app._collections.keys())
-    auth_status = "enabled" if cinder_app._auth else "disabled"
+    collections = list(getattr(cinder_app, "_collections", {}).keys())
+    auth = getattr(cinder_app, "_auth", None)
+    storage = getattr(cinder_app, "_storage_backend", None)
+    broker = getattr(cinder_app, "_broker", None)
+    auth_status = "enabled" if auth else "disabled"
     storage_type = (
-        type(cinder_app._storage_backend).__name__
-        if cinder_app._storage_backend
+        type(storage).__name__
+        if storage
         else "not configured"
     )
-    broker_type = type(cinder_app._broker).__name__
+    broker_type = type(broker).__name__
 
     typer.echo(f"Title:            {cinder_app.title}")
     typer.echo(f"Version:          {cinder_app.version}")
@@ -427,13 +437,12 @@ def migrate_create(
 ):
     """Create a new migration file."""
     from cinder.migrations.generator import (
-        _blank_template,
         generate_migration_content,
         write_migration_file,
     )
 
     if not auto:
-        content = _blank_template(name)
+        content = generate_migration_content(name=name)
         filepath = write_migration_file(migrations_dir, name, content)
         typer.echo(f"Created migration: {filepath}")
         return
@@ -441,8 +450,6 @@ def migrate_create(
     # Auto mode: diff the schema
     from cinder.db.connection import Database
     from cinder.migrations.diff import SchemaComparator
-    from cinder.migrations.engine import MigrationEngine  # noqa: F401 (used for type awareness)
-
     db_url, cinder_app = _get_db_url_for_migrate(app_path)
     if cinder_app is None:
         typer.echo("Error: --app is required for --auto", err=True)
