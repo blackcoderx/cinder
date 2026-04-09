@@ -38,6 +38,7 @@ def test_blank_template_no_ops():
     content = generate_migration_content()
     assert "async def up(db):" in content
     assert "pass" in content
+    assert "async def down(db):" in content
 
 
 def test_blank_template_with_name():
