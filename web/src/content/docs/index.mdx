@@ -1,0 +1,92 @@
+---
+template: splash
+title: Cinder
+description: A lightweight, open-source backend framework for Python
+hero:
+  tagline: Build production-ready REST APIs with built-in auth, dynamic collections, and pluggable multi-database support
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/blackcoderx/cinder
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid>
+  <Card title="Auto-generated CRUD" icon="rocket">
+    Define your data schema in Python and Cinder auto-generates a full REST API with filtering, pagination, and relation expansion.
+  </Card>
+  <Card title="Built-in Auth" icon="lock">
+    JWT authentication with role-based access control, email verification, and password reset out of the box.
+  </Card>
+  <Card title="Multi-Database" icon="database">
+    Pluggable backends for SQLite, PostgreSQL, and MySQL. Switch databases with a single environment variable.
+  </Card>
+  <Card title="Realtime" icon="refresh">
+    WebSocket and Server-Sent Events support for real-time state sync across all clients.
+  </Card>
+  <Card title="File Storage" icon="folder">
+    Upload, download, and manage files with support for local disk and S3-compatible storage backends.
+  </Card>
+  <Card title="Hooks & Events" icon="pulse">
+    Lifecycle events for every CRUD operation. Run custom logic before or after any database action.
+  </Card>
+  <Card title="Email" icon="mail">
+    Transactional email delivery with support for SMTP, SendGrid, Mailgun, and more.
+  </Card>
+  <Card title="CLI" icon="terminal">
+    Powerful command-line tools for serving, migrations, user management, and more.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+```python
+from cinder import Cinder, Collection, TextField, IntField, Auth
+
+app = Cinder(database="app.db")
+
+posts = Collection("posts", fields=[
+    TextField("title", required=True),
+    TextField("body"),
+    IntField("views", default=0),
+])
+
+auth = Auth(token_expiry=86400, allow_registration=True)
+
+app.register(posts, auth=["read:public", "write:authenticated"])
+app.use_auth(auth)
+app.serve()
+```
+
+Run it:
+
+```bash
+cinder serve main.py
+```
+
+You now have:
+- `POST /api/auth/register` — register users
+- `POST /api/auth/login` — get a JWT token
+- `GET /api/posts` — list posts (public)
+- `POST /api/posts` — create a post (requires auth)
+- `GET /api/posts/{id}` — get a single post
+- `PATCH /api/posts/{id}` — update a post
+- `DELETE /api/posts/{id}` — delete a post
+- `GET /api/health` — health check
+- `GET /openapi.json` — OpenAPI 3.1 schema
+- `GET /docs` — Swagger UI
+
+## Why Cinder?
+
+- **Zero Boilerplate** — Define schemas, not endpoints
+- **Production-Ready** — Built-in caching, rate-limiting, migrations
+- **Pluggable Everything** — Swap databases, storage, email backends with one line
+- **Developer Experience** — Auto-reload, OpenAPI docs, CLI tools
+- **Minimal Dependencies** — Core uses only standard libraries

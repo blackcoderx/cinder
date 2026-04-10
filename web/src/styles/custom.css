@@ -1,0 +1,76 @@
+:root {
+    --sl-font: "JetBrains Mono", monospace;
+    --sl-font-mono: "JetBrains Mono", monospace;
+
+    --sl-color-accent-low: #3d1c00; /* Dark orange - for dark backgrounds */
+    --sl-color-accent: #f47b20; /* Main orange - brand color */
+    --sl-color-accent-high: #ffb078; /* Light orange - for light text on dark */
+
+    --sl-color-white: #ffffff; /* Pure white - headings, emphasis */
+    --sl-color-gray-1: #eeeeee; /* Lightest gray - subtle highlights */
+    --sl-color-gray-2: #c1c1c1; /* Light gray - body text */
+    --sl-color-gray-3: #8e8e8e; /* Medium gray - muted/secondary text */
+    --sl-color-gray-4: #4f4f4f; /* Dark gray - borders, dividers */
+    --sl-color-gray-5: #2d2d2d; /* Darker gray - cards, elevated surfaces */
+    --sl-color-gray-6: #1e1e1e; /* Dark charcoal - sidebar, header bg */
+    --sl-color-black: #121212; /* Deep black - main page background */
+
+    /* ========================================================================
+	   BACKGROUND & TEXT COLORS
+	   ========================================================================
+	   These map the gray scale values to semantic uses.
+	   You can adjust these to override specific UI elements. */
+    --sl-color-bg: var(--sl-color-black); /* Main background */
+    --sl-color-bg-nav: var(--sl-color-gray-6); /* Navigation background */
+    --sl-color-text: var(--sl-color-gray-2); /* Body text color */
+    --sl-color-text-accent: var(--sl-color-accent); /* Link color */
+    --sl-color-heading: var(--sl-color-white); /* Heading text */
+
+    /* ========================================================================
+	   BORDERS & RADIUS
+	   ========================================================================
+	   Controls the rounding of UI elements. */
+    --sl-border-radius: 4px; /* Subtle rounded corners */
+}
+
+/* -----------------------------------------------------------------------------
+   LIGHT THEME
+   ----------------------------------------------------------------------------- */
+:root[data-theme="light"] {
+    /* ========================================================================
+	   ACCENT COLORS (Same orange, adjusted for light backgrounds)
+	   ========================================================================
+	   For light mode, the accent-low is lighter and accent-high is darker
+	   to maintain contrast on light backgrounds. */
+    --sl-color-accent-low: #ffe0c2; /* Light orange - light backgrounds */
+    --sl-color-accent: #f47b20; /* Main orange - keep consistent */
+    --sl-color-accent-high: #8b4200; /* Dark orange - dark text on light */
+
+    --sl-color-white: #121212; /* Near black - headings */
+    --sl-color-gray-1: #2d2d2d; /* Dark - primary text */
+    --sl-color-gray-2: #4f4f4f; /* Medium dark - secondary text */
+    --sl-color-gray-3: #8e8e8e; /* Medium gray - muted text */
+    --sl-color-gray-4: #c1c1c1; /* Light gray - borders */
+    --sl-color-gray-5: #eeeeee; /* Very light gray - subtle surfaces */
+    --sl-color-gray-6: #ffffff; /* White - cards, elevated surfaces */
+    --sl-color-black: #ffffff; /* White - main background */
+
+    /* ========================================================================
+	   BACKGROUND & TEXT COLORS
+	   ========================================================================
+	   Remapped for light mode readability. */
+    --sl-color-bg: var(--sl-color-black); /* Main background - white */
+    --sl-color-bg-nav: var(--sl-color-gray-6); /* Navigation - white */
+    --sl-color-text: var(--sl-color-gray-1); /* Body text - dark */
+    --sl-color-text-accent: var(--sl-color-accent); /* Links - orange */
+    --sl-color-heading: var(--sl-color-white);
+    --sl-border-radius: 4px; /* Keep consistent */
+}
+
+.sl-markdown-content button,
+.sl-markdown-content pre,
+.sl-markdown-content code,
+.sl-badge,
+.sl-link-card {
+    border-radius: var(--sl-border-radius) !important;
+}
