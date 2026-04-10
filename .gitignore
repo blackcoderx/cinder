@@ -22,9 +22,10 @@ htmlcov/
 *.swo
 todo.db-shm
 todo.db-wal
-assets
-docs
 app.js
 index.html
 todo_app.py
 style.css
+assets
+node_modules
+.astro
