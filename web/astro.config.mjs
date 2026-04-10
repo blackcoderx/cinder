@@ -24,8 +24,14 @@ export default defineConfig({
             { label: "Field Types", link: "/fields/field-types/" },
             { label: "Relations", link: "/core-concepts/relations/" },
             { label: "Access Control", link: "/core-concepts/access-control/" },
-            { label: "Lifecycle Hooks", link: "/core-concepts/lifecycle-hooks/" },
-            { label: "Schema Auto-Sync", link: "/core-concepts/schema-autosync/" },
+            {
+              label: "Lifecycle Hooks",
+              link: "/core-concepts/lifecycle-hooks/",
+            },
+            {
+              label: "Schema Auto-Sync",
+              link: "/core-concepts/schema-autosync/",
+            },
             { label: "Realtime", link: "/core-concepts/realtime/" },
           ],
         },
@@ -43,7 +49,10 @@ export default defineConfig({
             { label: "Endpoints", link: "/authentication/endpoints/" },
             { label: "Hooks", link: "/authentication/hooks/" },
             { label: "Security", link: "/authentication/security/" },
-            { label: "Troubleshooting", link: "/authentication/troubleshooting/" },
+            {
+              label: "Troubleshooting",
+              link: "/authentication/troubleshooting/",
+            },
           ],
         },
         { label: "Database", autogenerate: { directory: "database" } },
