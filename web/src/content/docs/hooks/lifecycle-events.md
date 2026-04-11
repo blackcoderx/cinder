@@ -9,16 +9,31 @@ Cinder fires events before and after every database operation. Register handlers
 
 For each collection named `{name}`:
 
-| Event | Fires | Handler signature |
-|-------|-------|-------------------|
-| `{name}:before_create` | Before INSERT | `async def handler(data: dict, ctx: CinderContext) -> dict` |
-| `{name}:after_create` | After INSERT | `async def handler(record: dict, ctx: CinderContext)` |
-| `{name}:before_update` | Before UPDATE | `async def handler(data: dict, ctx: CinderContext) -> dict` |
-| `{name}:after_update` | After UPDATE | `async def handler(record: dict, ctx: CinderContext)` |
-| `{name}:before_delete` | Before DELETE | `async def handler(record: dict, ctx: CinderContext)` |
-| `{name}:after_delete` | After DELETE | `async def handler(record: dict, ctx: CinderContext)` |
+| Event | Fires | Payload type | Can modify |
+|-------|-------|-------------|------------|
+| `{name}:before_create` | Before INSERT | `dict` (input data) | Yes — return modified dict |
+| `{name}:after_create` | After INSERT | `dict` (saved record) | No |
+| `{name}:before_update` | Before UPDATE | `dict` (patch data) | Yes — return modified dict |
+| `{name}:after_update` | After UPDATE | `tuple[dict, dict]` (updated, previous) | No |
+| `{name}:before_delete` | Before DELETE | `dict` (record to delete) | No |
+| `{name}:after_delete` | After DELETE | `dict` (deleted record) | No |
+| `{name}:before_read` | Before single GET | `str` (record ID) | Yes — return modified ID |
+| `{name}:after_read` | After single GET | `dict` (record) | Yes — return modified dict |
+| `{name}:before_list` | Before list GET | `dict` (query descriptor) | Yes — return modified descriptor |
+| `{name}:after_list` | After list GET | `list[dict]` (records) | Yes — return modified list |
 
-`before_*` handlers can modify and return data. `after_*` handlers are fire-and-forget.
+### List query descriptor
+
+The `before_list` hook receives a dict you can modify to alter the query:
+
+```python
+@posts.on("before_list")
+async def restrict_to_published(query, ctx):
+    query["filters"]["status"] = "published"
+    return query
+```
+
+The descriptor has these keys: `filters` (dict), `order_by` (str), `limit` (int), `offset` (int).
 
 ## App lifecycle events
 
