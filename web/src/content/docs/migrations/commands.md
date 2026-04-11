@@ -1,98 +1,113 @@
 ---
-title: Commands
-description: Migration CLI commands reference
+title: Migrations
+description: Manage database schema changes with migration files
 ---
 
-## create
+Migrations let you apply schema changes in a controlled, tracked way — essential for production deployments where you can't afford data loss or downtime from auto-sync.
 
-Create a new migration file:
+## How migrations work
 
-### Blank Template
+Each migration is a Python file in a `migrations/` directory. Cinder tracks which migrations have been applied in a `_schema_migrations` table. Running `cinder migrate` applies any pending migrations in order.
 
-```bash
-cinder migrate create add_index_posts --app main.py
-# Created migration: migrations/20260409_143022_add_index_posts.py
-```
+## Commands
 
-### Auto-Generate from Schema
-
-```bash
-cinder migrate create sync_schema --app main.py --auto
-```
-
-The `--auto` flag generates SQL for:
-- New collections not yet in the database → `CREATE TABLE`
-- New fields not yet in existing tables → `ALTER TABLE ADD COLUMN`
-- Columns in DB not in any collection → commented-out `DROP COLUMN`
-
-## run / apply
+### `cinder migrate`
 
 Apply all pending migrations:
 
 ```bash
+cinder migrate
 cinder migrate --app main.py
-# Or explicitly
+cinder migrate --dir custom/migrations/path
+```
+
+Options:
+- `--app` — path to your Cinder app file (used to read the database URL)
+- `--dir` — migration directory (default: `migrations`)
+
+### `cinder migrate run`
+
+Same as `cinder migrate` (explicit sub-command form):
+
+```bash
 cinder migrate run --app main.py
 ```
 
-Cinder applies each pending file in filename order.
+### `cinder migrate status`
 
-## status
-
-Show migration history:
+Show the status of all migrations:
 
 ```bash
 cinder migrate status --app main.py
 ```
 
 Output:
+
 ```
-ID                                           STATUS    APPLIED AT
-20260409_143022_add_index_posts_category     applied   2026-04-09T14:30:22+00:00
-20260410_090000_add_audit_table              pending   -
+ID                                       Status     Applied At
+---------------------------------------------------------------------------
+20240101_add_slug_to_posts               applied    2024-01-01T10:00:00
+20240102_add_author_index                pending    -
 ```
 
-Orphaned entries (applied but file deleted) appear with status `orphaned`.
+### `cinder migrate create`
 
-## rollback
+Create a new blank migration file:
 
-Undo the most recently applied migration:
+```bash
+cinder migrate create add_slug_to_posts
+# Creates: migrations/20240101_120000_add_slug_to_posts.py
+```
+
+### `cinder migrate create --auto`
+
+Auto-generate a migration by diffing your current schema against the database:
+
+```bash
+cinder migrate create add_new_fields --auto --app main.py
+```
+
+Cinder compares each `Collection` definition to the live database and generates `up()` / `down()` functions for the detected changes.
+
+### `cinder migrate rollback`
+
+Roll back the last applied migration (runs its `down()` function):
 
 ```bash
 cinder migrate rollback --app main.py
 ```
 
-Rolls back by calling the migration's `down()` function and removing the tracking record.
+## Migration file format
 
-## Custom Directory
+```python
+# migrations/20240101_120000_add_slug_to_posts.py
 
-All migrate commands accept `--dir` to override the default `migrations/` path:
+async def up(db):
+    await db.execute("ALTER TABLE posts ADD COLUMN slug TEXT")
+    await db.execute("CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts (slug)")
 
-```bash
-cinder migrate --app main.py --dir db/migrations
-cinder migrate create add_index --app main.py --dir db/migrations
+async def down(db):
+    await db.execute("DROP INDEX IF EXISTS idx_posts_slug")
+    # SQLite doesn't support DROP COLUMN directly; use table rebuild if needed
 ```
 
-## Full Example
+`db` is a Cinder `Database` instance with `execute()`, `fetch_one()`, and `fetch_all()` methods.
 
-```bash
-# Create a new migration
-cinder migrate create add_index_posts --app main.py --auto
+## Typical workflow
 
-# Apply pending migrations
-cinder migrate --app main.py
+1. Make a schema change in your `Collection` definition
+2. Create a migration: `cinder migrate create describe_the_change --auto --app main.py`
+3. Review the generated file in `migrations/`
+4. Test locally: `cinder migrate --app main.py`
+5. Deploy and run `cinder migrate --app main.py` in your CI/CD pipeline before starting the server
 
-# Check status
-cinder migrate status --app main.py
+## Auto-sync vs migrations
 
-# If something goes wrong, rollback
-cinder migrate rollback --app main.py
-
-# Apply again after fixing
-cinder migrate --app main.py
-```
-
-## Next Steps
-
-- [Overview](/migrations/overview/) — Migration system
-- [Configuration](/configuration/env-variables/) — Environment variables
+| | Auto-sync | Migrations |
+|---|-----------|------------|
+| Adds new columns | Yes | Yes |
+| Drops columns | No | Yes |
+| Renames columns | No | Yes |
+| Changes column types | No | Yes |
+| Tracked / reversible | No | Yes |
+| Recommended for | Dev only | Production |
