@@ -1,67 +1,46 @@
 ---
-title: MySQL
-description: Use MySQL as your database backend
+title: MySQL / MariaDB
+description: Use MySQL or MariaDB as your database
 ---
 
-## Install the MySQL Extra
+## Install the extra dependency
 
 ```bash
-pip install cinder[mysql]
+pip install "cinder[mysql]"
 # or
-uv add cinder[mysql]
+uv add "cinder[mysql]"
 ```
 
-## Connection String
+This installs [aiomysql](https://github.com/aio-libs/aiomysql), the async MySQL driver.
+
+## Configuration
+
+```dotenv
+DATABASE_URL=mysql://user:password@localhost:3306/mydb
+```
+
+Or pass directly:
 
 ```python
-app = Cinder(database="mysql://user:pass@localhost:3306/mydb")
+app = Cinder(database="mysql://user:password@localhost:3306/mydb")
 ```
 
-Dialect aliases also accepted:
+## Advanced configuration
 
 ```python
-# These all work
-app = Cinder(database="mysql://user:pass@localhost/mydb")
-app = Cinder(database="mysql+aiomysql://user:pass@localhost/mydb")
-app = Cinder(database="mysql+asyncmy://user:pass@localhost/mydb")
+from cinder.db.backends.mysql import MySQLBackend
+
+app.configure_database(
+    MySQLBackend(
+        url="mysql://user:password@localhost:3306/mydb",
+        min_size=2,
+        max_size=10,
+    )
+)
 ```
 
-## Environment Variable
+## Notes
 
-```bash
-export CINDER_DATABASE_URL=mysql://user:pass@localhost:3306/mydb
-```
-
-## Features
-
-- **Connection pool** — Uses `aiomysql.create_pool` with `DictCursor`
-- **Autocommit** — Enabled by default
-- **TEXT PRIMARY KEY** — Automatically rewritten to `VARCHAR(36)` (MySQL requires a length prefix)
-
-## Example
-
-```python
-import os
-from cinder import Cinder, Collection, TextField
-
-app = Cinder(database=os.environ["DATABASE_URL"])
-
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-])
-
-app.register(posts, auth=["read:public", "write:authenticated"])
-app.serve()
-```
-
-## Why MySQL?
-
-- **Widely used** — Popular choice for web applications
-- **Good documentation** — Extensive resources available
-- **Compatible** — Many hosting platforms support it
-
-## Next Steps
-
-- [PostgreSQL](/database/postgresql/) — Alternative SQL database
-- [SQLite](/database/sqlite/) — Development database
-- [Indexes](/database/indexes/) — Optimize queries
+- MariaDB is fully supported — use the same `mysql://` scheme
+- Connection URL should include the database name
+- Ensure the database exists before starting the app (`CREATE DATABASE mydb`)

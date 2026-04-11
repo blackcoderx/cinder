@@ -1,84 +1,79 @@
 ---
 title: Indexes
-description: Optimize database queries with indexes
+description: Speed up queries with field and composite indexes
 ---
 
-Cinder supports database indexes for query optimization.
+Indexes speed up filtering, sorting, and lookups on large collections. Cinder creates indexes automatically when you declare them on fields or on the collection.
 
-## Field-Level Indexing
+## Single-field indexes
 
-Add `indexed=True` to any field to create an index automatically:
+Add `indexed=True` to any field:
 
 ```python
 from cinder import Collection, TextField, IntField
 
-class Posts(Collection):
-    name = TextField(required=True)
-    category = TextField(indexed=True)  # Creates index on category
-    views = IntField(indexed=True)      # Creates index on views
+posts = Collection("posts", fields=[
+    TextField("title", required=True),
+    TextField("author_id", indexed=True),    # single-field index
+    TextField("status", indexed=True),
+    IntField("view_count"),
+])
 ```
 
-The index is created automatically when you call `store.sync_schema()` or run migrations with `--auto`.
+Cinder generates:
 
-## Composite Indexes
+```sql
+CREATE INDEX IF NOT EXISTS idx_posts_author_id ON posts (author_id);
+CREATE INDEX IF NOT EXISTS idx_posts_status ON posts (status);
+```
 
-Define composite indexes for multi-column queries:
+## Unique indexes
+
+Adding `unique=True` creates a `UNIQUE` constraint, which implies an index:
 
 ```python
-class Posts(Collection):
-    name = TextField(required=True)
-    category = TextField()
-    created_at = TextField()
-
-    indexes = [
-        ("category", "created_at"),  # Composite index on (category, created_at)
-    ]
+TextField("slug", unique=True)
+TextField("email", unique=True)
 ```
 
-Index naming follows the pattern `idx_{table}_{column1}_{column2}`.
+## Composite indexes
 
-## Unique Fields
-
-Fields with `unique=True` already have a database-enforced unique constraint, which implicitly creates an index. You don't need to add `indexed=True` for unique fields.
-
-## Index Behavior
-
-- **Auto-sync** — Indexes are created automatically when running `sync_schema()`
-- **Migrations** — Use `cinder migrate --auto` to generate migration files
-- **Non-destructive** — Cinder never drops indexes that exist in the database but are not in your schema
-
-## When to Use Indexes
-
-### Good Candidates for Indexing
-
-- Columns used in `WHERE` clauses frequently
-- Columns used for sorting (`ORDER BY`)
-- Columns used in joins (`RelationField`)
-
-### Avoid Indexing
-
-- Columns with low cardinality (few unique values)
-- Columns rarely queried
-- Large text fields (consider full-text search instead)
-
-## Example: Blog Posts
+Define multi-column indexes at the collection level for queries that filter on combinations of fields:
 
 ```python
-class Post(Collection):
-    title = TextField(required=True)
-    slug = TextField(unique=True)  # Unique constraint = index
-    category = TextField(indexed=True)  # Filter by category
-    author = TextField(indexed=True)  # Filter by author
-    created_at = TextField(indexed=True)  # Sort by date
-    status = TextField()  # No index needed
-
-    indexes = [
-        ("category", "created_at"),  # Common query pattern
-    ]
+posts = Collection(
+    "posts",
+    fields=[
+        TextField("author_id"),
+        TextField("status"),
+        DateTimeField("published_at"),
+    ],
+    indexes=[
+        ("author_id", "status"),          # queries filtering both author_id AND status
+        ("status", "published_at"),       # queries filtering status and sorting by date
+    ],
+)
 ```
 
-## Next Steps
+## When to add indexes
 
-- [SQLite](/database/sqlite/) — Default database
-- [PostgreSQL](/database/postgresql/) — Production database
-- [Migrations](/migrations/overview/) — Version-controlled schema changes
+Add an index when you regularly:
+
+- Filter on that field (`?filter[field]=value`)
+- Sort on that field (`?sort=field`)
+- Use it as a foreign key in a `RelationField`
+
+Indexes improve read performance but have a small cost on write operations. For small collections (under ~10 000 rows), indexes rarely matter.
+
+## Index naming
+
+Cinder names indexes automatically:
+
+- Single field: `idx_{collection}_{field}`
+- Composite: `idx_{collection}_{field1}_{field2}`
+
+These names are stable — if an index already exists with the same name, `CREATE INDEX IF NOT EXISTS` is a no-op.
+
+## Indexes and migrations
+
+Indexes are created by auto-sync on startup (same as columns). If you add an `indexed=True` to an existing field, the index will be created the next time the app starts — no migration needed.

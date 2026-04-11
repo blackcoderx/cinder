@@ -1,100 +1,82 @@
 ---
 title: PostgreSQL
-description: Use PostgreSQL as your database backend
+description: Use PostgreSQL as your production database
 ---
 
-PostgreSQL is recommended for production deployments.
+PostgreSQL is the recommended database for production deployments.
 
-## Install the PostgreSQL Extra
+## Install the extra dependency
 
 ```bash
-pip install cinder[postgres]
+pip install "cinder[postgres]"
 # or
-uv add cinder[postgres]
+uv add "cinder[postgres]"
 ```
 
-## Connection String
+This installs [asyncpg](https://github.com/MagicStack/asyncpg), the high-performance async PostgreSQL driver.
+
+## Configuration
+
+Set the connection URL via an environment variable:
+
+```dotenv
+DATABASE_URL=postgresql://user:password@localhost:5432/mydb
+```
+
+Or pass it directly:
 
 ```python
-app = Cinder(database="postgresql://user:pass@localhost/mydb")
+app = Cinder(database="postgresql://user:password@localhost:5432/mydb")
 ```
 
-## Environment Variable
+## Advanced configuration
 
-```bash
-export CINDER_DATABASE_URL=postgresql://user:pass@localhost/mydb
-```
-
-## Serverless Postgres (NeonDB, Supabase)
-
-```bash
-export DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
-```
-
-No code change — just set the environment variable.
-
-## Connection Pool
-
-Cinder creates a connection pool with configurable settings:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `min_size` | `1` | Minimum pool connections |
-| `max_size` | `10` | Maximum pool connections |
-| `max_inactive_connection_lifetime` | `300` | Seconds before stale connections are removed |
-
-## Environment Variables for Pool
-
-```bash
-export CINDER_DB_POOL_MIN=2
-export CINDER_DB_POOL_MAX=20
-export CINDER_DB_POOL_TIMEOUT=30
-export CINDER_DB_CONNECT_TIMEOUT=10
-```
-
-## Programmatic Configuration
-
-For full control over pool size, SSL, and timeouts:
+For fine-grained control over the connection pool:
 
 ```python
 from cinder.db.backends.postgresql import PostgreSQLBackend
 
 app.configure_database(
     PostgreSQLBackend(
-        url=os.environ["DATABASE_URL"],
+        url="postgresql://user:password@localhost:5432/mydb",
         min_size=2,
         max_size=20,
-        max_inactive_connection_lifetime=60,
         ssl="require",
     )
 )
 ```
 
-## Example
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `url` | `str` | — | Full connection URL |
+| `min_size` | `int` | `2` | Minimum pool connections |
+| `max_size` | `int` | `10` | Maximum pool connections |
+| `ssl` | `str` | `None` | SSL mode: `"disable"`, `"allow"`, `"prefer"`, `"require"`, `"verify-ca"`, `"verify-full"` |
 
-```python
-import os
-from cinder import Cinder, Collection, TextField
+## Connection URL formats
 
-app = Cinder(database=os.environ["DATABASE_URL"])
-
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-])
-
-app.register(posts, auth=["read:public", "write:authenticated"])
-app.serve()
+```
+postgresql://user:password@host:5432/dbname
+postgresql://user:password@host:5432/dbname?sslmode=require
+postgres://user:password@host:5432/dbname   # postgres:// is also accepted
 ```
 
-## Why PostgreSQL?
+## Managed PostgreSQL services
 
-- **Production-ready** — Battle-tested, scales well
-- **JSON support** — Native JSON/JSONB columns
-- **Full-text search** — Built-in search capabilities
-- **Connections** — Handles concurrent requests
+Connection URLs from common providers work directly:
 
-## Next Steps
+- **Supabase:** `postgresql://postgres:[password]@[host]:5432/postgres`
+- **Neon:** `postgresql://[user]:[password]@[host]/[dbname]?sslmode=require`
+- **Railway:** provided in dashboard
+- **Render:** provided in dashboard
+- **AWS RDS / Aurora:** standard PostgreSQL URL
 
-- [MySQL](/database/mysql/) — Alternative database
-- [SQLite](/database/sqlite/) — Development database
-- [Indexes](/database/indexes/) — Optimize queries
+## Running migrations
+
+For production, always run migrations before deploying new code:
+
+```bash
+cinder migrate --app main.py
+```
+
+See [Migrations](/migrations/commands/) for details.

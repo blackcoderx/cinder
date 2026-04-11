@@ -1,66 +1,49 @@
 ---
 title: SQLite
-description: Use SQLite as your database backend
+description: The default development database
 ---
 
-SQLite is the zero-config default. No server required.
+SQLite is the default database for Cinder. No installation or configuration is required — just pass a filename.
 
-## Basic Setup
+## Configuration
 
 ```python
-app = Cinder(database="app.db")        # bare path — SQLite
-app = Cinder(database="sqlite:///app.db")  # explicit scheme, same thing
+app = Cinder(database="app.db")
 ```
 
-## Features
+Or use a full SQLite URL:
 
-- **WAL mode** — Enabled for better concurrent read performance
-- **Foreign key enforcement** — Enabled by default
-- **Zero configuration** — No server to run
-
-## Environment Variable
-
-```bash
-export CINDER_DATABASE_URL=sqlite:///app.db
+```python
+app = Cinder(database="sqlite:///app.db")
+app = Cinder(database="sqlite:////absolute/path/to/app.db")
 ```
 
-Or use the standard `DATABASE_URL`:
+The file is created automatically if it doesn't exist.
 
-```bash
-export DATABASE_URL=sqlite:///app.db
+## Using an in-memory database (testing)
+
+```python
+app = Cinder(database=":memory:")
 ```
 
-## When to Use SQLite
+The in-memory database is destroyed when the connection closes. Useful for isolated tests.
 
-- **Development** — Fastest way to get started
-- **Small projects** — Up to ~100K records
-- **Single-server deployments** — No multi-server sync needed
-- **Prototyping** — Quick iteration
+## When to use SQLite
+
+SQLite is ideal for:
+
+- Local development
+- Prototyping
+- Single-user or low-traffic applications
+- Edge deployments where a file-based database is preferred
 
 ## Limitations
 
-- **Single writer** — Only one write at a time
-- **No network access** — File-based, not client/server
-- **Smaller scale** — Not ideal for high-traffic production
+- No concurrent write support — SQLite uses file-level locking. Under high write concurrency, requests will queue.
+- Not suitable for horizontal scaling (multiple server processes sharing the same SQLite file have race conditions).
 
-## Example
+For production with multiple workers, use [PostgreSQL](/database/postgresql/) or [MySQL](/database/mysql/).
 
-```python
-from cinder import Cinder, Collection, TextField
+## Driver
 
-app = Cinder(database="app.db")
-
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    TextField("content"),
-])
-
-app.register(posts, auth=["read:public", "write:authenticated"])
-app.serve()
-```
-
-## Next Steps
-
-- [PostgreSQL](/database/postgresql/) — For production scale
-- [MySQL](/database/mysql/) — Alternative SQL database
-- [Indexes](/database/indexes/) — Optimize queries
+Cinder uses [aiosqlite](https://github.com/omnilib/aiosqlite), which wraps SQLite's standard library driver with an async interface. No extra install is needed — `aiosqlite` is part of Cinder's core dependencies.
