@@ -11,11 +11,11 @@ All list endpoints (`GET /api/{collection}`) are paginated. The response include
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `page` | `1` | Page number (1-indexed) |
-| `per_page` | `50` | Results per page |
+| `limit` | `20` | Maximum number of records to return |
+| `offset` | `0` | Number of records to skip |
 
 ```
-GET /api/posts?page=2&per_page=20
+GET /api/posts?limit=20&offset=40
 ```
 
 ## Response envelope
@@ -23,40 +23,45 @@ GET /api/posts?page=2&per_page=20
 ```json
 {
   "items": [
-    { "id": "...", "title": "Post 21", ... },
-    { "id": "...", "title": "Post 22", ... }
+    { "id": "...", "title": "Post 41", ... },
+    { "id": "...", "title": "Post 42", ... }
   ],
   "total": 143,
-  "page": 2,
-  "per_page": 20
+  "limit": 20,
+  "offset": 40
 }
 ```
 
 | Field | Description |
 |-------|-------------|
-| `items` | Array of records on the current page |
+| `items` | Array of records in this page |
 | `total` | Total number of records matching the current filters |
-| `page` | Current page number |
-| `per_page` | Records per page |
+| `limit` | The limit applied to this query |
+| `offset` | The offset applied to this query |
 
-## Calculating total pages
+## Calculating pages
 
 ```javascript
-const totalPages = Math.ceil(response.total / response.per_page);
+const totalPages = Math.ceil(response.total / response.limit);
+const currentPage = Math.floor(response.offset / response.limit) + 1;
+
+// Next page offset
+const nextOffset = response.offset + response.limit;
+const hasMore = nextOffset < response.total;
 ```
 
 ## Fetching all records
 
-Set `per_page` to a large value to retrieve everything in one request:
+Set `limit` to a large value to retrieve everything in one request:
 
 ```
-GET /api/posts?per_page=1000
+GET /api/posts?limit=1000
 ```
 
 Note that very large values can put significant load on the database for large collections.
 
-## Combined with filters and sort
+## Combined with filters and ordering
 
 ```
-GET /api/posts?filter[status]=published&sort=-created_at&page=1&per_page=10
+GET /api/posts?order_by=created_at&limit=10&offset=0
 ```
