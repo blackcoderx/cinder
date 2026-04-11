@@ -13,16 +13,18 @@ sidebar:
 from cinder.cache.backends import RedisCacheBackend
 
 app.cache.use(RedisCacheBackend())
+app.cache.use(RedisCacheBackend(prefix="myapp"))  # custom key prefix
 ```
 
 Requires `pip install "cinder[redis]"`. Reads the Redis URL from `CINDER_REDIS_URL` automatically.
 
-Custom URL:
+**Constructor options:**
 
-```python
-app.cache.use(RedisCacheBackend(prefix="myapp"))
-app.configure_redis(url="redis://localhost:6379")
-```
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `prefix` | `str` | `"cinder"` | Namespace prefix for all Redis cache keys. Override when sharing a Redis instance across multiple apps. |
+
+Also configurable via environment variable: `CINDER_CACHE_PREFIX`.
 
 ### In-memory (development / single process)
 
