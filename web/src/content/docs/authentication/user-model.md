@@ -1,226 +1,77 @@
 ---
 title: User Model
-description: The built-in user model and how to extend it
+description: The _users table structure
 ---
 
-## Database Schema
+When you call `app.use_auth(auth)`, Cinder creates a `_users` table in your database. You never define this table yourself — it is managed entirely by Cinder.
 
-The `_users` table is created automatically when you configure auth.
+## Default columns
 
-```sql
-CREATE TABLE _users (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    username TEXT UNIQUE,
-    password TEXT NOT NULL,
-    is_verified INTEGER DEFAULT 0,
-    is_active INTEGER DEFAULT 1,
-    role TEXT DEFAULT 'user',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    -- + extended columns
-);
-```
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `TEXT` (UUID) | Primary key, auto-generated |
+| `email` | `TEXT` | Unique email address |
+| `username` | `TEXT` | Optional unique username |
+| `password` | `TEXT` | bcrypt-hashed password (never returned in API responses) |
+| `role` | `TEXT` | User role; defaults to `"user"` |
+| `is_verified` | `INTEGER` | `1` if email is verified, `0` otherwise |
+| `is_active` | `INTEGER` | `1` if account is active. Inactive accounts cannot log in. |
+| `created_at` | `TEXT` | ISO 8601 timestamp |
+| `updated_at` | `TEXT` | ISO 8601 timestamp |
 
-## Default Fields
+## Extended columns
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | TEXT | UUID4 primary key |
-| `email` | TEXT | Unique email address |
-| `username` | TEXT | Optional unique username |
-| `password` | TEXT | Bcrypt hashed password (never plain text) |
-| `is_verified` | INTEGER | `0` = unverified, `1` = verified |
-| `is_active` | INTEGER | `0` = disabled, `1` = active |
-| `role` | TEXT | User role (`user`, `admin`, etc.) |
-| `created_at` | TEXT | ISO 8601 timestamp |
-| `updated_at` | TEXT | ISO 8601 timestamp |
-
-## Account Status
-
-### is_verified
-
-Indicates email verification status:
-
-- `0` — Email not verified (default on registration)
-- `1` — Email verified
-
-Verification is optional by default. Require it with a hook:
+Pass `extend_user` to `Auth` to add extra columns:
 
 ```python
-@auth.on("auth:before_login")
-async def require_verification(data, ctx):
-    user = await db.fetch_one(
-        "SELECT is_verified FROM _users WHERE email = ?",
-        (data["email"],)
-    )
-    if user and not user["is_verified"]:
-        raise CinderError(403, "Please verify your email first")
-    return data
-```
-
-### is_active
-
-Controls account access:
-
-- `1` — Active (default)
-- `0` — Disabled (login blocked)
-
-Disable an account:
-
-```python
-await db.execute(
-    "UPDATE _users SET is_active = 0 WHERE email = ?",
-    (email,)
+auth = Auth(
+    extend_user=[
+        TextField("display_name"),
+        TextField("bio"),
+    ]
 )
 ```
 
-## Extending the User Model
+Extended fields are accepted in the register request body and stored in `_users`.
 
-Add custom fields using `extend_user`:
+## Reading the current user
 
-```python
-from cinder import Auth, TextField, IntField, BoolField
+`GET /api/auth/me` returns all user fields except `password`:
 
-auth = Auth(extend_user=[
-    TextField("display_name"),
-    TextField("avatar_url"),
-    IntField("age"),
-    BoolField("notifications_enabled"),
-])
+```json
+{
+  "id": "...",
+  "email": "alice@example.com",
+  "username": null,
+  "role": "user",
+  "is_verified": 1,
+  "is_active": 1,
+  "created_at": "2024-01-01T00:00:00+00:00",
+  "updated_at": "2024-01-01T00:00:00+00:00"
+}
 ```
 
-Extended fields are stored in the `_users` table alongside default fields.
+## Roles
 
-### Providing Extended Fields
-
-Extended fields can be included during registration:
+The default role for new users is `"user"`. Promote a user to admin:
 
 ```bash
-curl -X POST http://localhost:8000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "secure123",
-    "display_name": "John Doe",
-    "avatar_url": "https://example.com/avatar.jpg",
-    "age": 25
-  }'
+cinder promote alice@example.com
+cinder promote alice@example.com --role moderator
 ```
 
-### Updating Extended Fields
+Roles are checked by `read:admin` and `write:admin` access control rules. Any string value is accepted — you can define your own role hierarchy.
 
-Update extended fields via hooks or direct database access:
+## The password field
 
-```python
-@app.on("auth:after_register")
-async def set_defaults(user, ctx):
-    await db.execute(
-        "UPDATE _users SET notifications_enabled = 1 WHERE id = ?",
-        (user["id"],)
-    )
-```
+The `password` column stores a bcrypt hash. It is stripped from all API responses by `_user_response()`. Never expose it to clients.
 
-## User Roles
+## Supporting tables
 
-### Default Roles
+In addition to `_users`, Cinder creates two helper tables:
 
-| Role | Description |
-|------|-------------|
-| `user` | Default role for all new registrations |
-| `admin` | Full access to admin-protected resources |
-
-### Promoting Users
-
-**CLI:**
-```bash
-cinder promote user@example.com --role admin
-```
-
-**Programmatically:**
-
-```python
-async def promote_user(email: str, role: str = "admin"):
-    await db.execute(
-        "UPDATE _users SET role = ? WHERE email = ?",
-        (role, email)
-    )
-```
-
-### Role-Based Access Control
-
-Use roles in collection auth rules:
-
-```python
-app.register(admin_panel, auth=["read:admin", "write:admin"])
-```
-
-Only users with `role: admin` can access this collection.
-
-Check roles in hooks:
-
-```python
-@posts.on("before_read")
-async def hook(data, ctx):
-    if ctx.user and ctx.user["role"] == "admin":
-        # Admin can see more
-        data["include_internal"] = True
-    return data
-```
-
-## Checking User in Code
-
-### Via Context
-
-In hooks and custom endpoints:
-
-```python
-@posts.on("before_create")
-async def hook(data, ctx):
-    if ctx.user:
-        user_id = ctx.user["id"]
-        user_email = ctx.user["email"]
-        user_role = ctx.user["role"]
-    return data
-```
-
-### Via Request State
-
-In custom route handlers:
-
-```python
-from starlette.requests import Request
-
-async def my_endpoint(request: Request):
-    user = request.state.user
-    if user:
-        print(f"Logged in as {user['email']}")
-```
-
-## Deleting Users
-
-Cinder doesn't have a built-in delete user endpoint. Implement it manually:
-
-```python
-@app.on("app:startup")
-async def setup_custom_routes(app):
-    @app.router.post("/api/users/me/delete")
-    async def delete_me(request):
-        user = request.state.user
-        if not user:
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
-        
-        # Delete user's data
-        await db.execute("DELETE FROM posts WHERE created_by = ?", (user["id"],))
-        
-        # Delete user
-        await db.execute("DELETE FROM _users WHERE id = ?", (user["id"],))
-        
-        return JSONResponse({"message": "Account deleted"})
-```
-
-## Next Steps
-
-- [Setup](/authentication/setup/) — Configure auth
-- [Endpoints](/authentication/endpoints/) — Auth API reference
-- [Hooks](/authentication/hooks/) — React to user events
+| Table | Purpose |
+|-------|---------|
+| `_email_verifications` | Temporary tokens for email verification (auto-cleaned on startup) |
+| `_password_resets` | Temporary tokens for password reset (1-hour expiry) |
+| `_token_blocklist` | Revoked JWT IDs (auto-cleaned after token expiry) |

@@ -1,278 +1,109 @@
 ---
 title: Troubleshooting
-description: Common authentication issues and solutions
+description: Common authentication errors and how to fix them
 ---
 
-Solutions for frequent authentication problems.
+## "No CINDER_SECRET set — tokens will not survive restarts"
 
-## Common Errors
+This warning means Cinder generated a random secret on startup. All tokens issued before the last restart are now invalid.
 
-### "Invalid email or password"
+**Fix:** Set a stable secret in your `.env` file:
 
-This error occurs when:
-- Email doesn't exist in the database
-- Password doesn't match the hash
-
-**Diagnosis:**
-
-```python
-# Check if user exists
-user = await db.fetch_one(
-    "SELECT * FROM _users WHERE email = ?",
-    (email,)
-)
-print(user)  # None = user doesn't exist
+```dotenv
+CINDER_SECRET=your-long-random-secret
 ```
 
-**Solutions:**
-- Verify the email is correct
-- Check for typos (e.g., `gmal.com` vs `gmail.com`)
-- Try password reset if you can't remember
+Generate one: `cinder generate-secret`
 
-### "Token has expired"
+---
 
-Tokens expire based on `token_expiry` setting (default: 24 hours).
+## 401 "Authentication required"
 
-**Diagnosis:**
+The request is missing the `Authorization` header.
 
-```python
-import jwt
-from datetime import datetime
-
-token = "your-token-here"
-decoded = jwt.decode(token, options={"verify_signature": False})
-print(f"Expires: {datetime.fromtimestamp(decoded['exp'])}")
-```
-
-**Solutions:**
-- Call `/api/auth/refresh` to get a new token
-- Login again for a fresh token
-- Increase `token_expiry` if users complain frequently
-
-### "Account is disabled"
-
-The user's `is_active` field is set to `0`.
-
-**Diagnosis:**
-
-```python
-user = await db.fetch_one(
-    "SELECT is_active FROM _users WHERE email = ?",
-    (email,)
-)
-print(f"Active: {user['is_active']}")  # 0 = disabled
-```
-
-**Solutions:**
-- Admin can re-enable via CLI:
-  ```bash
-  cinder promote user@example.com --role user
-  ```
-- Or update directly:
-  ```python
-  await db.execute(
-      "UPDATE _users SET is_active = 1 WHERE email = ?",
-      (email,)
-  )
-  ```
-
-## Token Issues
-
-### Tokens Don't Survive Restart
-
-**Cause:** No `CINDER_SECRET` set — Cinder generates a random secret each time.
-
-**Solution:** Set the environment variable:
+**Fix:** Include the token:
 
 ```bash
-# Generate a secret
-cinder generate-secret
-
-# Set it (add to .env or environment)
-export CINDER_SECRET="your-secret-here"
+curl -H "Authorization: Bearer eyJ..." http://localhost:8000/api/posts
 ```
 
-### Tokens Work in One Instance But Not Another
+---
 
-**Cause:** Different secrets across instances.
+## 401 "Token has been revoked"
 
-**Solution:** Ensure all instances use the same `CINDER_SECRET`.
+The token was explicitly revoked via `POST /api/auth/logout`.
 
-### Logout Doesn't Work (Token Still Valid)
+**Fix:** Log in again to get a new token.
 
-**Cause:** Blocklist not being checked, or using a different secret.
+---
 
-**Solution:**
+## 401 "Token expired" or "Signature has expired"
+
+The token's `exp` claim is in the past.
+
+**Fix:**
+- Use `POST /api/auth/refresh` before the token expires to get a new one
+- Or log in again
+- Increase `token_expiry` if the default (24 hours) is too short for your use case
+
+---
+
+## 403 "Registration is disabled"
+
+`Auth(allow_registration=False)` is set.
+
+**Fix:** Re-enable registration or create users via the database directly.
+
+---
+
+## 400 "Email already registered"
+
+A user with that email exists.
+
+**Fix:** Log in instead, or use a different email.
+
+---
+
+## 400 "Invalid or expired reset token"
+
+The password reset token was already used, expired, or is incorrect.
+
+**Fix:** Request a new reset link via `POST /api/auth/forgot-password`.
+
+---
+
+## Users don't receive verification or reset emails
+
+An email backend is not configured. Without one, Cinder falls back to logging the token to the console.
+
+**Fix:** Configure an email backend:
 
 ```python
-# Check if token's jti is in blocklist
-jti = decode_token(token)["jti"]
-blocked = await db.fetch_one(
-    "SELECT * FROM _token_blocklist WHERE jti = ?",
-    (jti,)
+from cinder.email import SMTPBackend
+
+app.email.use(SMTPBackend.sendgrid(api_key="..."))
+app.email.configure(
+    from_address="no-reply@myapp.com",
+    base_url="https://myapp.com",
 )
-print(f"Blocked: {blocked is not None}")
 ```
 
-## Registration Problems
+See [Email Providers](/email/providers/) for all options.
 
-### Registration Returns 403
+---
 
-**Cause:** `allow_registration=False` in Auth config.
+## 403 "Account is disabled"
 
-**Solution:**
+The user's `is_active` column is `0`.
 
-```python
-auth = Auth(allow_registration=True)  # Enable registration
+**Fix:** Update the user in the database:
+
+```sql
+UPDATE _users SET is_active = 1 WHERE email = 'user@example.com';
 ```
 
-### Duplicate Email/Username Error
+---
 
-**Cause:** Email or username already exists.
+## Token claims look wrong (role, user ID)
 
-**Solution:** Use a different email/username, or delete the existing account.
-
-### Extended Fields Not Saving
-
-**Cause:** Field name mismatch or wrong type.
-
-**Solution:** Ensure extended fields match exactly:
-
-```python
-# Register with same fields
-auth = Auth(extend_user=[
-    TextField("display_name"),  # Must match exactly
-])
-
-# When registering
-{
-    "email": "...",
-    "password": "...",
-    "display_name": "John Doe"  # This field
-}
-```
-
-## Login Problems
-
-### Login Always Fails
-
-**Checklist:**
-
-1. Is the database accessible?
-2. Is the password correct?
-3. Is the account active?
-
-```python
-# Debug login flow
-async def debug_login(email, password):
-    from cinder.auth import passwords
-    
-    user = await db.fetch_one(
-        "SELECT * FROM _users WHERE email = ?",
-        (email,)
-    )
-    
-    if not user:
-        return "User not found"
-    
-    if not user["is_active"]:
-        return "Account disabled"
-    
-    if not passwords.verify_password(password, user["password"]):
-        return "Wrong password"
-    
-    return "OK"
-```
-
-### Token Returns None for User
-
-**Cause:** Auth middleware not running, or token not in request.
-
-**Solution:** Ensure `Authorization: Bearer <token>` header is present:
-
-```python
-# In your request
-headers = {
-    "Authorization": f"Bearer {token}"
-}
-```
-
-## Debug Mode
-
-### Print Auth Context
-
-```python
-@auth.on("auth:before_login")
-async def debug_login(data, ctx):
-    print(f"Request from: {ctx.request.client.host}")
-    print(f"Headers: {dict(ctx.request.headers)}")
-    return data
-```
-
-### Check Middleware Order
-
-Auth middleware must be before your routes:
-
-```python
-# In pipeline.py, middleware order should be:
-# 1. ErrorHandler
-# 2. RequestID
-# 3. CORS
-# 4. RateLimit
-# 5. Cache
-# 6. Auth  ← This one
-```
-
-### Verify Token Decoding
-
-```python
-from cinder.auth.tokens import decode_token
-
-try:
-    payload = decode_token(token, secret)
-    print(f"User: {payload['sub']}")
-    print(f"Role: {payload['role']}")
-except Exception as e:
-    print(f"Error: {e}")
-```
-
-## Database Issues
-
-### Missing Auth Tables
-
-Tables are created on first `app.build()`:
-
-```python
-# This creates auth tables
-app = Cinder(database="app.db")
-auth = Auth()
-app.use_auth(auth)
-app.build()  # Tables created here
-```
-
-### Database Locked (SQLite)
-
-With multiple workers, SQLite can have locking issues:
-
-```python
-# Production: Use PostgreSQL or MySQL
-app = Cinder(database="postgresql://user:pass@host/db")
-
-# Development: Add wait time
-app = Cinder(database="app.db?timeout=10")
-```
-
-## Getting Help
-
-If you're still stuck:
-
-1. Check server logs for error messages
-2. Verify environment variables are set correctly
-3. Ensure database is accessible and writable
-4. Try with a fresh database to rule out schema issues
-
-## Related
-
-- [Setup](/authentication/setup/) — Auth configuration
-- [Security](/authentication/security/) — How auth works
-- [Endpoints](/authentication/endpoints/) — API reference
+The token encodes the role at login time. If you promote a user after they logged in, they need to log in again to get a token with the updated role.

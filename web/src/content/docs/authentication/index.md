@@ -1,74 +1,46 @@
 ---
 title: Authentication
-description: Complete authentication system for Cinder apps
+description: Built-in JWT authentication for Cinder apps
 ---
 
-Cinder provides a full-featured authentication system out of the box. No third-party libraries needed.
+Cinder ships with a complete authentication system: user registration and login, JWT access tokens, email verification, and password reset — all wired up with a single call.
 
-## Features
+## How it works
 
-| Feature | Description |
-|---------|-------------|
-| User registration & login | Email/password authentication |
-| JWT tokens | Stateless, self-contained tokens |
-| Token refresh | Rotate tokens without re-login |
-| Token revocation | Logout invalidates tokens immediately |
-| Email verification | Verify user emails with one-click links |
-| Password reset | Secure reset flow via email |
-| Role-based access | User/admin roles for permissions |
-| Extendable user model | Add custom fields to users |
+1. A user registers or logs in and receives a **JWT access token**
+2. The client sends the token in the `Authorization: Bearer <token>` header on subsequent requests
+3. Cinder's middleware validates the token and attaches the user to `request.state.user`
+4. [Access control rules](/core-concepts/access-control/) use the authenticated user to decide whether to allow the request
 
-## Quick Setup
+## Enabling auth
 
 ```python
-from cinder import Cinder, Auth
+from cinder import Auth
 
-app = Cinder(database="app.db")
-auth = Auth()
+auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)
-app.serve()
 ```
 
-This gives you registration, login, logout, token refresh, password reset, and email verification — no additional configuration required.
+`use_auth()` mounts all `/api/auth/*` endpoints and activates the JWT middleware for every request.
 
-## What's Included
+## Auth endpoints
 
-### Auth Endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Log in and get a token |
+| `GET` | `/api/auth/me` | Get the current user |
+| `POST` | `/api/auth/logout` | Revoke the current token |
+| `POST` | `/api/auth/refresh` | Issue a new token |
+| `POST` | `/api/auth/forgot-password` | Request a password reset link |
+| `POST` | `/api/auth/reset-password` | Apply a password reset |
+| `GET` | `/api/auth/verify-email` | Verify email address via link |
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/register` | POST | Create a new user |
-| `/api/auth/login` | POST | Authenticate and get token |
-| `/api/auth/me` | GET | Get current user info |
-| `/api/auth/logout` | POST | Revoke current token |
-| `/api/auth/refresh` | POST | Get a new token |
-| `/api/auth/forgot-password` | POST | Request password reset |
-| `/api/auth/reset-password` | POST | Complete password reset |
-| `/api/auth/verify-email` | GET | Verify email address |
+## In this section
 
-### Auth Hooks
-
-Trigger custom logic on auth events:
-
-```python
-@app.on("auth:after_register")
-async def welcome_email(user, ctx):
-    await app.email.send(EmailMessage(...))
-```
-
-See [Auth Hooks](/authentication/hooks/) for all available events.
-
-## Sections
-
-- [Setup](/authentication/setup/) — Configure auth for your app
-- [User Model](/authentication/user-model/) — Extend the user schema
-- [Endpoints](/authentication/endpoints/) — API reference
-- [Hooks](/authentication/hooks/) — React to auth events
-- [Security](/authentication/security/) — How auth protects your users
-- [Troubleshooting](/authentication/troubleshooting/) — Common issues and solutions
-
-## Related
-
-- [Access Control](/core-concepts/access-control/) — Use auth with collections
-- [Hooks](/core-concepts/lifecycle-hooks/) — Hook system for all events
-- [Email](/email/setup/) — Configure email for verification and password reset
+- [Setup](/authentication/setup/) — `Auth` constructor options and configuration
+- [User Model](/authentication/user-model/) — the `_users` table structure
+- [Endpoints](/authentication/endpoints/) — request/response shapes for each auth route
+- [Hooks](/authentication/hooks/) — auth lifecycle events
+- [Security](/authentication/security/) — JWT expiry, bcrypt, email verification
+- [Troubleshooting](/authentication/troubleshooting/) — common errors and fixes

@@ -1,284 +1,174 @@
 ---
 title: Endpoints
-description: Authentication API reference
+description: Request and response shapes for every auth route
 ---
 
-All auth endpoints are prefixed with `/api/auth/`.
+## POST /api/auth/register
 
-## Endpoints Overview
-
-| Endpoint | Method | Auth Required | Description |
-|----------|--------|---------------|-------------|
-| `/api/auth/register` | POST | No | Create a new user |
-| `/api/auth/login` | POST | No | Authenticate and get token |
-| `/api/auth/me` | GET | Yes | Get current user info |
-| `/api/auth/logout` | POST | Yes | Revoke current token |
-| `/api/auth/refresh` | POST | Yes | Get a new token |
-| `/api/auth/forgot-password` | POST | No | Request password reset |
-| `/api/auth/reset-password` | POST | No | Complete password reset |
-| `/api/auth/verify-email` | GET | No | Verify email address |
-
-## Register
-
-**`POST /api/auth/register`**
-
-Create a new user account.
+Register a new user.
 
 **Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "secure123",
-    "username": "john"
-  }'
-```
-
-**Response (201):**
 ```json
 {
-  "token": "eyJhbGciOi...",
+  "email": "alice@example.com",
+  "password": "secret123",
+  "username": "alice"
+}
+```
+
+`username` is optional. Any extended user fields (from `Auth(extend_user=[...])`) are also accepted.
+
+**Response `201`:**
+```json
+{
+  "token": "eyJ...",
   "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "user@example.com",
-    "username": "john",
+    "id": "...",
+    "email": "alice@example.com",
+    "username": "alice",
     "role": "user",
     "is_verified": 0,
     "is_active": 1,
-    "created_at": "2026-04-10T12:00:00+00:00",
-    "updated_at": "2026-04-10T12:00:00+00:00"
+    "created_at": "..."
   }
 }
 ```
 
-**Hooks fired:** `auth:before_register` → `auth:after_register`
+**Errors:**
+- `400` — email or password missing
+- `400` — email already registered
+- `400` — username already taken
+- `403` — registration is disabled (`allow_registration=False`)
 
-**Error responses:**
-| Status | Condition |
-|--------|-----------|
-| 400 | Email already exists |
-| 400 | Username already exists |
-| 403 | Registration disabled |
+---
 
-## Login
+## POST /api/auth/login
 
-**`POST /api/auth/login`**
-
-Authenticate and receive a token.
+Log in with email and password.
 
 **Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "secure123"
-  }'
-```
-
-**Response (200):**
 ```json
 {
-  "token": "eyJhbGciOi...",
+  "email": "alice@example.com",
+  "password": "secret123"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "token": "eyJ...",
   "user": { ... }
 }
 ```
 
-**Hooks fired:** `auth:before_login` → `auth:after_login`
+**Errors:**
+- `400` — email or password missing
+- `401` — invalid email or password
+- `403` — account is disabled
 
-**Error responses:**
-| Status | Condition |
-|--------|-----------|
-| 401 | Invalid email or password |
-| 403 | Account disabled |
+---
 
-## Get Current User
+## GET /api/auth/me
 
-**`GET /api/auth/me`**
+Get the currently authenticated user. Requires `Authorization: Bearer <token>`.
 
-Get the authenticated user's profile.
-
-**Request:**
-```bash
-curl http://localhost:8000/api/auth/me \
-  -H "Authorization: Bearer eyJhbGciOi..."
-```
-
-**Response (200):**
+**Response `200`:**
 ```json
 {
-  "id": "550e8400-...",
-  "email": "user@example.com",
-  "username": "john",
+  "id": "...",
+  "email": "alice@example.com",
   "role": "user",
-  "is_verified": 0,
-  "is_active": 1,
-  "created_at": "2026-04-10T12:00:00+00:00",
-  "updated_at": "2026-04-10T12:00:00+00:00"
+  "is_verified": 1,
+  ...
 }
 ```
 
-**Error responses:**
-| Status | Condition |
-|--------|-----------|
-| 401 | No token or invalid token |
+**Errors:**
+- `401` — no token or invalid token
 
-## Logout
+---
 
-**`POST /api/auth/logout`**
+## POST /api/auth/logout
 
-Revoke the current token. The token cannot be used after this.
+Revoke the current token. Requires `Authorization: Bearer <token>`.
 
-**Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/logout \
-  -H "Authorization: Bearer eyJhbGciOi..."
-```
+The token's JTI is added to a blocklist. Any subsequent request with the same token is rejected.
 
-**Response (200):**
+**Response `200`:**
 ```json
-{
-  "message": "Logged out"
-}
+{ "message": "Logged out" }
 ```
 
-**Hooks fired:** `auth:before_logout` → `auth:after_logout`
+---
 
-## Refresh Token
+## POST /api/auth/refresh
 
-**`POST /api/auth/refresh`**
+Revoke the current token and issue a new one with a fresh expiry. Requires `Authorization: Bearer <token>`.
 
-Get a new token. The old token is automatically revoked.
-
-**Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/refresh \
-  -H "Authorization: Bearer eyJhbGciOi..."
-```
-
-**Response (200):**
+**Response `200`:**
 ```json
-{
-  "token": "eyJhbGciOi..."  // New token
-}
+{ "token": "eyJ..." }
 ```
 
-**Security:** Old token is added to blocklist.
+---
 
-## Forgot Password
+## POST /api/auth/forgot-password
 
-**`POST /api/auth/forgot-password`**
-
-Request a password reset email.
+Request a password reset link. Always returns 200 regardless of whether the email exists (to prevent user enumeration).
 
 **Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/forgot-password \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com"}'
+```json
+{ "email": "alice@example.com" }
 ```
 
-**Response (200):**
+**Response `200`:**
 ```json
 {
   "message": "If the email exists, a reset link has been generated"
 }
 ```
 
-**Hooks fired:** `auth:before_password_reset` → `auth:after_password_reset`
+If an email backend is configured, a reset link is sent. Otherwise, the token is logged to the console.
 
-**Note:** Always returns the same message to prevent email enumeration.
+---
 
-**Without email configured:** The reset token is logged to the console.
+## POST /api/auth/reset-password
 
-## Reset Password
-
-**`POST /api/auth/reset-password`**
-
-Complete the password reset with a token.
+Apply a password reset using the token from the email.
 
 **Request:**
-```bash
-curl -X POST http://localhost:8000/api/auth/reset-password \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token": "reset-token",
-    "new_password": "newsecure123"
-  }'
-```
-
-**Response (200):**
 ```json
 {
-  "message": "Password updated"
+  "token": "the-reset-token",
+  "new_password": "newpassword123"
 }
 ```
 
-**Error responses:**
-| Status | Condition |
-|--------|-----------|
-| 400 | Invalid or expired token |
-
-## Verify Email
-
-**`GET /api/auth/verify-email?token=<token>`**
-
-Verify a user's email address.
-
-**Request:**
-```bash
-curl "http://localhost:8000/api/auth/verify-email?token=verification-token"
-```
-
-**Response (200):**
+**Response `200`:**
 ```json
-{
-  "message": "Email verified successfully"
-}
+{ "message": "Password updated" }
 ```
 
-**Hooks fired:** `auth:after_verify_email`
+**Errors:**
+- `400` — token or new_password missing
+- `400` — invalid or expired token
 
-**Error responses:**
-| Status | Condition |
-|--------|-----------|
-| 400 | Invalid, expired, or already-used token |
+---
 
-## Using Tokens
+## GET /api/auth/verify-email
 
-Include the token in the `Authorization` header:
+Verify a user's email address using the token from the verification email.
 
-```bash
-curl -X POST http://localhost:8000/api/posts \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOi..." \
-  -d '{"title": "My Post"}'
+```
+GET /api/auth/verify-email?token=the-verification-token
 ```
 
-**Token format:** `Bearer <token>`
-
-## Error Response Format
-
-All auth endpoints return errors in this format:
-
+**Response `200`:**
 ```json
-{
-  "error": "Error message here"
-}
+{ "message": "Email verified successfully" }
 ```
 
-## Security Notes
-
-- Tokens expire after `token_expiry` seconds (default: 24 hours)
-- Logout revokes the token immediately via blocklist
-- Invalid tokens return 401
-- Passwords are never stored or logged in plain text
-- Same error message for wrong email vs wrong password (prevents enumeration)
-
-## Next Steps
-
-- [Setup](/authentication/setup/) — Configure auth
-- [User Model](/authentication/user-model/) — Extend user fields
-- [Hooks](/authentication/hooks/) — React to auth events
-- [Security](/authentication/security/) — How auth protects your users
+**Errors:**
+- `400` — token missing or invalid
+- `400` — token expired

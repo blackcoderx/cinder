@@ -1,164 +1,70 @@
 ---
 title: Security
-description: How Cinder protects your users
+description: How Cinder handles passwords, tokens, and email verification
 ---
 
-Understanding the security mechanisms behind Cinder's authentication system.
+## Passwords
 
-## Password Hashing
+Passwords are hashed using **bcrypt** via `passlib`. The hash is stored in the `_users` table and never returned in any API response.
 
-Cinder uses [bcrypt](https://en.wikipedia.org/wiki/Bcrypt) for password storage.
+- Work factor is the `passlib` default (12 rounds)
+- Plaintext passwords are never logged or stored
+- The `password` column is excluded from all user responses
 
-### How It Works
+## JWT tokens
 
-```python
-# Cinder never stores plain passwords
-password_hash = bcrypt_hash(plain_password)
-# Stored in database: "$2b$12$..."
-```
+Cinder uses **python-jose** with HS256 signing.
 
-### Security Features
+**Token payload:**
+- `sub` — user ID
+- `role` — user role
+- `jti` — unique token identifier (used for revocation)
+- `exp` — expiry timestamp
 
-| Feature | Benefit |
-|---------|---------|
-| Automatic salt | Same password produces different hashes |
-| Cost factor | Configurable work factor (default: 12) |
-| Constant-time comparison | Resistant to timing attacks |
+**Revocation:**
+When a user logs out, the token's `jti` is stored in `_token_blocklist` with its expiry time. Expired blocklist entries are cleaned up on startup. Any request using a revoked token receives a `401 Token has been revoked` error.
 
-### Why Bcrypt?
-
-- **Purpose-built** for password hashing
-- **Adaptive** — cost factor can increase over time
-- **Battle-tested** — used by millions of applications
-- **Easy to use** — handles salt generation automatically
-
-## JWT Tokens
-
-Cinder uses [JSON Web Tokens (JWT)](https://jwt.io/) with the HS256 algorithm.
-
-### Token Structure
-
-A JWT has three parts: header, payload, signature.
-
-```javascript
-// Header
-{ "alg": "HS256", "typ": "JWT" }
-
-// Payload (what you decode)
-{
-  "sub": "user-uuid",           // Subject (user ID)
-  "role": "user",               // User's role
-  "jti": "unique-token-id",     // JWT ID (for revocation)
-  "iat": 1712736000,            // Issued at (Unix timestamp)
-  "exp": 1712822400             // Expires at (default: 24h)
-}
-
-// Signature
-HMACSHA256(header.payload, secret)
-```
-
-### What the Token Contains
-
-| Claim | Description |
-|-------|-------------|
-| `sub` | User's UUID |
-| `role` | User's role (`user`, `admin`, etc.) |
-| `jti` | Unique identifier — used for blocklist |
-| `iat` | When the token was created |
-| `exp` | When the token expires |
-
-### What the Token Does NOT Contain
-
-- Password hash
-- Sensitive user data
-- Any data that changes frequently (roles are embedded at issue time)
-
-## Token Blocklist
-
-When a user logs out, their token is added to a blocklist. Every request checks this list.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Token Validation                       │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  1. Decode JWT ──────────→ Invalid? ───→ Reject (401)  │
-│         │                                                  │
-│         ↓                                                  │
-│  2. Check expiration ──→ Expired? ───→ Reject (401)    │
-│         │                                                  │
-│         ↓                                                  │
-│  3. Check blocklist ───→ Blocked? ───→ Reject (401)    │
-│         │                                                  │
-│         ↓                                                  │
-│  4. Valid token ────────────────→ Allow request          │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-The blocklist stores only:
-- Token ID (`jti`)
-- Expiration timestamp
-
-Expired blocklist entries are automatically cleaned up on startup.
-
-## Secret Key
-
-The secret key signs all tokens. It's critical for security.
-
-### Configuration Priority
-
-| Priority | Source | Notes |
-|----------|--------|-------|
-| 1 (highest) | `CINDER_SECRET` env var | Recommended for production |
-| 2 (fallback) | Auto-generated | Works but tokens won't survive restarts |
-
-### Best Practice
+**Secret key:**
+Set `CINDER_SECRET` to a long random string. Generate one with:
 
 ```bash
-# Generate a secret
 cinder generate-secret
-
-# Set as environment variable
-export CINDER_SECRET="your-secret-here"
 ```
 
-### Same Secret Required
+Without a secret, Cinder auto-generates one at startup — this means all tokens are invalidated on every restart.
 
-All instances sharing a database must use the same `CINDER_SECRET`:
-- Same secret = tokens are valid
-- Different secret = tokens are rejected
+## Email verification
 
-## What Cinder Protects Against
+After registration, Cinder generates a time-limited verification token and stores it in `_email_verifications`. If an email backend is configured, it sends the link to the user.
 
-| Threat | Protection |
-|--------|------------|
-| Password storage | Bcrypt hashing (not reversible) |
-| Token replay | Token blocklist on logout |
-| Expired token reuse | Expiration check in validation |
-| Forged tokens | Signature verification with secret |
-| Password enumeration | Same error message for wrong email/password |
-| Email enumeration | Same response for existing/non-existent email |
+- Verification tokens expire (checked at use time)
+- The `GET /api/auth/verify-email?token=...` endpoint sets `is_verified = 1`
+- Expired tokens are cleaned up on startup
 
-## Security Best Practices
+**Requiring verified email:**
+Cinder does not block unverified users by default. To enforce this, add a hook:
 
-### DO
+```python
+@auth.on("before_login")
+async def require_verified(body, ctx):
+    # This runs before the password check; use after_login if you need the user object
+    return body
 
-- Set `CINDER_SECRET` in production
-- Use HTTPS in production
-- Keep `token_expiry` reasonable (24h is default)
-- Enable email verification for sensitive apps
-- Use strong password policies (via hooks)
+@auth.on("after_login")
+async def check_verified(user, ctx):
+    from cinder.errors import CinderError
+    if not user.get("is_verified"):
+        raise CinderError(403, "Please verify your email before logging in")
+```
 
-### DON'T
+## Password reset
 
-- Share `CINDER_SECRET` across different apps
-- Set very long token expiry without risk assessment
-- Skip HTTPS in production
-- Disable email verification for untrusted registrations
+Password reset tokens are UUIDs stored in `_password_resets` with a 1-hour expiry. The token is consumed (deleted) after a successful reset. If the email doesn't exist, the endpoint returns 200 without revealing that fact (to prevent user enumeration).
 
-## Related
+## HTTPS
 
-- [Setup](/authentication/setup/) — Configure auth
-- [Endpoints](/authentication/endpoints/) — Auth API reference
-- [Troubleshooting](/authentication/troubleshooting/) — Debug auth issues
+Cinder does not enforce HTTPS internally. In production, always deploy behind a reverse proxy (nginx, Caddy, Cloudflare) that terminates TLS.
+
+## Token storage (client side)
+
+Store JWT tokens in memory or `localStorage` on the client. If you use `localStorage`, be aware of XSS risks. `HttpOnly` cookies are a more secure alternative — implement this with a custom middleware if needed.
