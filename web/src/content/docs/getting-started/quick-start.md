@@ -109,8 +109,8 @@ curl http://localhost:8000/api/posts
     { "id": "...", "title": "Hello Cinder", "body": "My first post", "views": 0, "created_at": "...", "updated_at": "..." }
   ],
   "total": 1,
-  "page": 1,
-  "per_page": 50
+  "limit": 20,
+  "offset": 0
 }
 ```
 
