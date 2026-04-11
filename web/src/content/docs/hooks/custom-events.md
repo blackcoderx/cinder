@@ -1,123 +1,79 @@
 ---
 title: Custom Events
-description: Define and fire your own custom events
+description: Fire and listen to your own events
 ---
 
-Any string is a valid event name. You don't register event names upfront — just fire them.
+The hook system is not limited to built-in lifecycle events. You can fire any event string and register handlers for it — useful for cross-collection observers, background workflows, and custom event buses.
 
-## Defining Custom Events
+## Firing a custom event
 
 ```python
-async def trigger_shipping(record, ctx):
-    await create_shipment(record)
-
-async def send_receipt(record, ctx):
-    await email_receipt(record)
-
-orders.on("payment_confirmed", trigger_shipping)
-orders.on("payment_confirmed", send_receipt)
+await app.hooks.fire("order:shipped", order_data, ctx)
 ```
 
-## Firing Custom Events
-
-Fire custom events from within built-in hooks:
+Or from within a hook:
 
 ```python
-async def on_payment_updated(payload, ctx):
-    record, prev = payload
-    if record["status"] == "paid" and prev["status"] == "pending":
-        await orders.fire("payment_confirmed", record, ctx)
-
-orders.on("after_update", on_payment_updated)
-```
-
-## Cross-Collection Events
-
-Publish events across collections using the app-level bus:
-
-```python
-async def suspend_account(data, ctx): ...
-async def notify_security(data, ctx): ...
-
-app.on("fraud:detected", suspend_account)
-app.on("fraud:detected", notify_security)
-
-# Fire from anywhere
-await app.hooks.fire("fraud:detected", {"user_id": "..."}, ctx)
-```
-
-## Firing from Hooks
-
-The `fire()` method is available on collections:
-
-```python
-posts.on("after_create", async def notify_followers(post, ctx):
-    await posts.fire("new_post", post, ctx)
-)
-```
-
-## Firing from App
-
-Fire events at the app level:
-
-```python
-await app.hooks.fire("custom_event", payload, ctx)
-```
-
-## No-Op Behavior
-
-Firing an event with zero registered handlers is a no-op — no error raised:
-
-```python
-# No handlers registered for "my_event" - this does nothing
-await app.hooks.fire("my_event", {"data": "test"}, ctx)
-```
-
-## Event Naming Convention
-
-Use namespaced events for organization:
-
-```python
-# Payment events
-payments.on("payment:pending", handler)
-payments.on("payment:completed", handler)
-payments.on("payment:failed", handler)
-
-# Webhook events
-webhooks.on("webhook:triggered", handler)
-```
-
-## Example: Order Processing Pipeline
-
-```python
-# Define handlers for order lifecycle
-@orders.on("order:created")
-async def on_order_created(order, ctx):
-    await send_order_confirmation(order)
-
-@orders.on("order:paid")
-async def on_order_paid(order, ctx):
-    await initiate_shipping(order)
-    await orders.fire("order:fulfilling", order, ctx)
-
-@orders.on("order:shipped")
-async def on_order_shipped(order, ctx):
-    await notify_customer(order, "Your order has shipped!")
-
-# Fire events at appropriate moments
-@orders.on("after_create")
-async def trigger_order_created(order, ctx):
-    await orders.fire("order:created", order, ctx)
-
 @orders.on("after_update")
-async def check_payment_status(payload, ctx):
-    order, prev = payload
-    if order["status"] == "paid" and prev["status"] != "paid":
-        await orders.fire("order:paid", order, ctx)
+async def check_shipped(order, ctx):
+    if order["status"] == "shipped":
+        await app.hooks.fire("order:shipped", order, ctx)
 ```
 
-## Next Steps
+## Listening to a custom event
 
-- [Lifecycle Events](/hooks/lifecycle-events/) — Built-in events
-- [Realtime](/realtime/overview/) — Emit events to connected clients
-- [Email](/email/setup/) — Send notifications via email
+```python
+@app.on("order:shipped")
+async def send_tracking_email(order, ctx):
+    await app.email.send(EmailMessage(
+        to=order["customer_email"],
+        subject="Your order has shipped!",
+        html_body=f"<p>Track your order: {order['tracking_number']}</p>",
+        text_body=f"Track your order: {order['tracking_number']}",
+    ))
+```
+
+## Event naming
+
+Any string is a valid event name. By convention:
+
+- Built-in events use `{collection}:{verb}` — e.g. `"posts:before_create"`
+- Custom events should follow the same pattern for clarity — e.g. `"order:shipped"`, `"payment:failed"`, `"fraud:detected"`
+
+## Passing data between hooks
+
+The `ctx.extra` dict is a free-form scratchpad you can use to pass data between handlers in the same request:
+
+```python
+@posts.on("before_create")
+async def compute_score(data, ctx):
+    ctx.extra["quality_score"] = expensive_computation(data)
+    return data
+
+@posts.on("after_create")
+async def log_score(record, ctx):
+    score = ctx.extra.get("quality_score")
+    print(f"Post created with score: {score}")
+```
+
+## App-level vs collection-level
+
+`app.on(event)` and `collection.on(event)` share the same underlying registry after `app.register(collection)` is called. The only difference is namespacing:
+
+```python
+# These are equivalent:
+posts.on("before_create", handler)
+app.on("posts:before_create", handler)
+```
+
+## Firing events from outside hooks
+
+You can fire events from anywhere — not just inside hooks:
+
+```python
+# In a scheduled job, a background task, etc.
+ctx = CinderContext.system(extra={"source": "scheduler"})
+await app.hooks.fire("daily:digest", None, ctx)
+```
+
+`CinderContext.system()` creates a context with no user or request — suitable for system-initiated events.

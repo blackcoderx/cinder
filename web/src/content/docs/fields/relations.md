@@ -1,137 +1,111 @@
 ---
 title: Relations
-description: Connect collections with foreign keys and expand related data
+description: Foreign key references between collections
 ---
 
-Use `RelationField` to create foreign key references between collections.
+`RelationField` creates a typed reference from one collection to another. Relations are stored as the referenced record's UUID and can be expanded on demand.
 
-## Defining Relations
+## Quick example
 
 ```python
-categories = Collection("categories", fields=[
+from cinder import Collection, TextField, RelationField
+
+users = Collection("users", fields=[
     TextField("name", required=True),
 ])
 
-products = Collection("products", fields=[
-    TextField("name", required=True),
-    FloatField("price", required=True),
-    RelationField("category", collection="categories"),
+comments = Collection("comments", fields=[
+    TextField("body", required=True),
+    RelationField("author", collection="users"),
+    RelationField("post", collection="posts", required=True),
 ])
-
-app.register(categories, auth=["read:public", "write:authenticated"])
-app.register(products, auth=["read:public", "write:authenticated"])
 ```
 
-## Creating Records with Relations
+## RelationField options
 
-When creating a product, pass the related record's ID:
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `name` | `str` | — | Column name in the database |
+| `collection` | `str` | — | Name of the target collection |
+| `required` | `bool` | `False` | Field cannot be null |
+| `unique` | `bool` | `False` | Enforce a UNIQUE constraint |
+| `indexed` | `bool` | `False` | Create a database index (recommended for FK columns) |
+
+## Storing a relation
+
+Send the ID of the referenced record:
 
 ```bash
-curl -X POST http://localhost:8000/api/products \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ..." \
-  -d '{"name": "Phone", "price": 999.99, "category": "category-uuid-here"}'
-```
-
-## Expanding Relations
-
-By default, relation fields return just the ID. Use `?expand=` to inline the full related record:
-
-```bash
-GET /api/products/product-uuid?expand=category
-```
-
-Response:
-```json
+POST /api/comments
 {
-  "id": "product-uuid",
-  "name": "Phone",
-  "price": 999.99,
-  "category": "category-uuid",
-  "expand": {
-    "category": {
-      "id": "category-uuid",
-      "name": "Electronics",
-      "created_at": "...",
-      "updated_at": "..."
-    }
-  }
+  "body": "Great post!",
+  "author": "user-uuid",
+  "post": "post-uuid"
 }
 ```
 
-## Expanding Multiple Relations
+## Expanding a relation
 
-Expand multiple relations with comma-separated field names:
+By default the API returns the raw ID:
 
-```bash
-GET /api/products/product-uuid?expand=category,brand
+```json
+{ "id": "...", "body": "Great post!", "author": "user-uuid" }
 ```
 
-## Expand on List Endpoints
+Add `?expand=field` to inline the full related record:
 
-Expand also works on list endpoints:
-
-```bash
-GET /api/products?expand=category
+```
+GET /api/comments?expand=author
 ```
 
-Response:
 ```json
 {
   "items": [
     {
       "id": "...",
-      "name": "Phone",
-      "category": "cat-uuid",
-      "expand": {
-        "category": {
-          "id": "cat-uuid",
-          "name": "Electronics"
-        }
+      "body": "Great post!",
+      "author": {
+        "id": "user-uuid",
+        "name": "Alice"
       }
     }
-  ],
-  "total": 1,
-  "limit": 20,
-  "offset": 0
+  ]
 }
 ```
 
-## Self-Referential Relations
+Expand multiple fields:
 
-Create hierarchical data structures:
-
-```python
-comments = Collection("comments", fields=[
-    TextField("content", required=True),
-    RelationField("parent", collection="comments"),  # Self-reference
-])
-
-app.register(comments, auth=["read:public", "write:authenticated"])
+```
+GET /api/comments?expand=author,post
 ```
 
-## Example: Blog with Categories and Tags
+Expand on a single record:
 
-```python
-# Categories
-categories = Collection("categories", fields=[
-    TextField("name", required=True),
-    TextField("slug", unique=True),
-])
-app.register(categories)
-
-# Posts with relations
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    TextField("content"),
-    RelationField("category", collection="categories"),
-    JSONField("tags", default=[]),
-])
-app.register(posts, auth=["read:public", "write:authenticated"])
+```
+GET /api/comments/some-id?expand=author
 ```
 
-## Next Steps
+## Indexing relation fields
 
-- [API Endpoints](/api/endpoints/) — REST operations
-- [Filtering](/api/filtering/) — Filter by relation fields
-- [Hooks](/hooks/lifecycle-events/) — React to relation changes
+For collections with many records, add `indexed=True` to relation fields you filter or sort on:
+
+```python
+RelationField("author", collection="users", indexed=True)
+```
+
+This creates a `CREATE INDEX` on the column, making queries like `?filter[author]=user-id` significantly faster.
+
+## Many-to-many relations
+
+Cinder does not have a built-in many-to-many field. Model these with a junction collection:
+
+```python
+post_tags = Collection("post_tags", fields=[
+    RelationField("post", collection="posts", required=True, indexed=True),
+    RelationField("tag", collection="tags", required=True, indexed=True),
+])
+```
+
+## Orphaned references
+
+There is no database-level referential integrity enforced by default. Deleting a referenced record leaves orphaned IDs in child records. Handle this with [Lifecycle Hooks](/core-concepts/lifecycle-hooks/) on the parent collection's `after_delete` event if you need cascade-style cleanup.

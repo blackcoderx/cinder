@@ -1,142 +1,115 @@
 ---
 title: Lifecycle Events
-description: Execute custom logic before and after CRUD operations
+description: Built-in events fired for every CRUD operation
 ---
 
-Cinder provides a flexible hook system that lets you run custom logic around every CRUD operation.
+Cinder fires events before and after every database operation. Register handlers to run custom logic at each point.
 
-## Registering Hooks
+## Collection events
 
-Define your handler function, then pass it into `.on()`:
+For each collection named `{name}`:
 
-```python
-async def add_slug(data, ctx):
-    data["slug"] = data["title"].lower().replace(" ", "-")
-    return data
+| Event | Fires | Handler signature |
+|-------|-------|-------------------|
+| `{name}:before_create` | Before INSERT | `async def handler(data: dict, ctx: CinderContext) -> dict` |
+| `{name}:after_create` | After INSERT | `async def handler(record: dict, ctx: CinderContext)` |
+| `{name}:before_update` | Before UPDATE | `async def handler(data: dict, ctx: CinderContext) -> dict` |
+| `{name}:after_update` | After UPDATE | `async def handler(record: dict, ctx: CinderContext)` |
+| `{name}:before_delete` | Before DELETE | `async def handler(record: dict, ctx: CinderContext)` |
+| `{name}:after_delete` | After DELETE | `async def handler(record: dict, ctx: CinderContext)` |
 
-posts.on("before_create", add_slug)
-```
+`before_*` handlers can modify and return data. `after_*` handlers are fire-and-forget.
 
-A decorator form is also available:
+## App lifecycle events
+
+| Event | Fires | Payload |
+|-------|-------|---------|
+| `app:startup` | ASGI lifespan start | `None` |
+| `app:shutdown` | ASGI lifespan stop | `None` |
+
+## Auth events
+
+See [Auth Hooks](/authentication/hooks/) for the full list of auth-specific events.
+
+## Registering handlers
+
+**On the collection** (namespacing is automatic):
 
 ```python
 @posts.on("before_create")
-async def add_slug(data, ctx):
-    data["slug"] = data["title"].lower().replace(" ", "-")
+async def set_defaults(data, ctx):
+    data["status"] = "draft"
     return data
+
+@posts.on("after_create")
+async def notify(record, ctx):
+    print(f"Created: {record['id']}")
 ```
 
-## Handler Signature
-
-Every handler receives `(payload, ctx)`:
-
-- `payload` — The data being operated on. Type depends on the event.
-- `ctx` — A `CinderContext` with `user`, `request_id`, `collection`, `operation`, `request`, and `extra`.
-
-Handlers may be **sync or async** — Cinder awaits both transparently.
-
-## Mutation Rule
-
-- `before_*` handlers mutate the payload by **returning it**. Returning `None` leaves the payload unchanged.
-- `after_*` handlers can return `None` — their return value is ignored.
-
-## Built-in Events
-
-### CRUD Events
-
-| Event | Payload | Mutable? |
-|-------|---------|----------|
-| `{collection}:before_create` | incoming data dict | yes (return mutated dict) |
-| `{collection}:after_create` | saved record dict | no |
-| `{collection}:before_read` | record id (string) | yes |
-| `{collection}:after_read` | fetched record dict | yes |
-| `{collection}:before_list` | `{filters, order_by, limit, offset}` dict | yes |
-| `{collection}:after_list` | list of records | yes |
-| `{collection}:before_update` | incoming update dict | yes |
-| `{collection}:after_update` | `(new_record, previous_record)` tuple | no |
-| `{collection}:before_delete` | record about to be deleted | no |
-| `{collection}:after_delete` | deleted record | no |
-
-### Auth Events
-
-```
-auth:before_register    auth:after_register
-auth:before_login       auth:after_login
-auth:before_logout      auth:after_logout
-auth:before_password_reset    auth:after_password_reset
-auth:after_verify_email
-```
-
-### App Events
-
-```
-app:startup     app:shutdown     app:error
-```
-
-## Examples
-
-### Slugify on Create
+**On the app** (use the full event name):
 
 ```python
-async def add_slug(data, ctx):
-    data["slug"] = data["title"].lower().replace(" ", "-")
+@app.on("posts:before_create")
+async def set_defaults(data, ctx):
+    data["status"] = "draft"
     return data
-
-posts.on("before_create", add_slug)
 ```
 
-### Aborting an Operation
+Both forms are equivalent.
 
-Raise `CinderError` from any hook to stop the chain:
+## The `CinderContext` object
+
+```python
+from cinder.hooks.context import CinderContext
+
+async def my_handler(data, ctx: CinderContext):
+    ctx.user        # authenticated user dict, or None
+    ctx.collection  # collection name (e.g. "posts")
+    ctx.operation   # "create", "update", "delete"
+    ctx.request_id  # correlation ID
+    ctx.request     # Starlette Request object
+    ctx.extra       # dict for passing data between hooks
+```
+
+## Modifying data in `before_*` hooks
+
+Return the modified dict:
+
+```python
+@posts.on("before_create")
+async def add_metadata(data, ctx):
+    data["created_by"] = ctx.user["id"] if ctx.user else None
+    data["ip_address"] = ctx.request.client.host
+    return data
+```
+
+If you don't return anything, the original `data` is used unchanged.
+
+## Aborting an operation
+
+Raise `CinderError` from any hook to stop the operation and return an error response:
 
 ```python
 from cinder.errors import CinderError
 
-async def protect_pinned(record, ctx):
-    if record.get("pinned"):
-        raise CinderError(403, "Pinned posts cannot be deleted")
-
-posts.on("before_delete", protect_pinned)
+@posts.on("before_delete")
+async def prevent_published_delete(record, ctx):
+    if record.get("status") == "published":
+        raise CinderError(403, "Cannot delete a published post")
 ```
 
-### Soft Delete
+## Multiple handlers
 
-Use `CinderError.cancel_delete()` to skip the actual DB delete:
+Multiple handlers on the same event run in registration order. Each receives the data returned by the previous:
 
 ```python
-async def soft_delete(record, ctx):
-    await db.execute(
-        "UPDATE messages SET is_deleted = 1 WHERE id = ?", (record["id"],)
-    )
-    raise CinderError.cancel_delete()
+@posts.on("before_create")
+async def step_one(data, ctx):
+    data["step"] = 1
+    return data
 
-messages.on("before_delete", soft_delete)
+@posts.on("before_create")
+async def step_two(data, ctx):
+    data["step"] += 1  # receives data from step_one
+    return data
 ```
-
-`DELETE /api/messages/{id}` still returns `200 OK` and the record stays in the database.
-
-## App Lifecycle
-
-```python
-async def seed(_, ctx):
-    # Called once when the server starts
-    await seed_database()
-
-async def cleanup(_, ctx):
-    # Called when the server shuts down
-    await flush_queues()
-
-async def log_error(exc, ctx):
-    # Fired on any unhandled 500
-    await sentry.capture(exc, request_id=ctx.request_id)
-
-app.on("app:startup", seed)
-app.on("app:shutdown", cleanup)
-app.on("app:error", log_error)
-```
-
-## Next Steps
-
-- [Custom Events](/hooks/custom-events/) — Define your own events
-- [File Storage](/file-storage/setup/) — Hook into file operations
-- [Email](/email/setup/) — Send emails from hooks
