@@ -1,95 +1,116 @@
 ---
 title: Providers
-description: Configure email delivery with SMTP providers
+description: SMTP backend presets for popular email services
+sidebar:
+  order: 2
 ---
 
-Cinder supports various SMTP providers with preset configurations.
+`SMTPBackend` provides preset factory methods for the most popular email delivery services. All use SMTP under the hood via [aiosmtplib](https://github.com/cole/aiosmtplib).
 
-## Provider Presets
+Install the email extra:
 
-| Preset | Host | Port | TLS Mode |
-|--------|------|------|----------|
-| `SMTPBackend.gmail(username, app_password)` | smtp.gmail.com | 587 | STARTTLS |
-| `SMTPBackend.sendgrid(api_key)` | smtp.sendgrid.net | 587 | STARTTLS |
-| `SMTPBackend.ses(region, key_id, secret)` | email-smtp.{region}.amazonaws.com | 587 | STARTTLS |
-| `SMTPBackend.mailgun(username, password, eu=False)` | smtp.mailgun.org | 587 | STARTTLS |
-| `SMTPBackend.mailtrap(api_token)` | live.smtp.mailtrap.io | 587 | STARTTLS |
-| `SMTPBackend.postmark(api_token)` | smtp.postmarkapp.com | 587 | STARTTLS |
-| `SMTPBackend.resend(api_key)` | smtp.resend.com | 465 | Implicit TLS |
-
-## Gmail
-
-Requires an App Password (not your account password):
-
-```python
-app.email.use(SMTPBackend.gmail(
-    username="me@gmail.com",
-    app_password="xxxx xxxx xxxx xxxx",
-))
+```bash
+pip install "cinder[email]"
+uv add "cinder[email]"
 ```
+
+---
 
 ## SendGrid
 
 ```python
-app.email.use(SMTPBackend.sendgrid(api_key=os.getenv("SENDGRID_API_KEY")))
+from cinder.email import SMTPBackend
+
+app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 ```
 
-## Amazon SES
-
-Use SMTP-specific credentials, not IAM keys:
-
-```python
-app.email.use(SMTPBackend.ses(
-    region="us-east-1",
-    key_id=os.getenv("SES_SMTP_USER"),
-    secret=os.getenv("SES_SMTP_PASSWORD"),
-))
-```
+---
 
 ## Mailgun
 
 ```python
 app.email.use(SMTPBackend.mailgun(
-    username="postmaster@mg.myapp.com",
-    password=os.getenv("MAILGUN_SMTP_PASSWORD"),
+    domain="mg.myapp.com",
+    api_key="key-xxx",
 ))
 ```
 
-## Resend
+---
 
-Uses port 465 implicit TLS:
+## Postmark
 
 ```python
-app.email.use(SMTPBackend.resend(api_key=os.getenv("RESEND_API_KEY")))
+app.email.use(SMTPBackend.postmark(server_token="xxx"))
 ```
 
-## Custom SMTP Server
+---
+
+## Amazon SES
+
+```python
+app.email.use(SMTPBackend.ses(
+    username="AKIA...",
+    password="xxx",
+    region="us-east-1",
+))
+```
+
+---
+
+## Resend
+
+```python
+app.email.use(SMTPBackend.resend(api_key="re_xxx"))
+```
+
+---
+
+## Mailtrap (testing)
+
+```python
+app.email.use(SMTPBackend.mailtrap(
+    username="your-username",
+    password="your-password",
+))
+```
+
+---
+
+## Gmail
+
+Not recommended for production (rate limits, less reliable), but useful for personal projects:
+
+```python
+app.email.use(SMTPBackend.gmail(
+    username="you@gmail.com",
+    password="your-app-password",  # use an App Password, not your account password
+))
+```
+
+---
+
+## Custom SMTP server
 
 ```python
 from cinder.email import SMTPBackend
 
 app.email.use(SMTPBackend(
-    hostname="smtp.myhost.com",
+    host="smtp.myserver.com",
     port=587,
-    username="user@myhost.com",
-    password="smtp-password",
-    start_tls=True,
+    username="user",
+    password="pass",
+    use_tls=True,
 ))
 ```
 
-## Retry Behavior
+---
 
-`SMTPBackend` retries transient failures:
+## ConsoleEmailBackend (development)
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `max_retries` | `3` | Maximum send attempts |
-| `retry_base_delay` | `1.0` | Initial retry delay in seconds (doubles each attempt) |
-| `timeout` | `30` | Connection and command timeout in seconds |
+Prints emails to stdout instead of sending them. This is the default when no backend is configured:
 
-Permanent failures (authentication errors, rejected recipients) raise immediately without retrying.
+```python
+from cinder.email.backends import ConsoleEmailBackend
 
-## Next Steps
-
-- [Templates](/email/templates/) — Customize email content
-- [Setup](/email/setup/) — Email configuration
+app.email.use(ConsoleEmailBackend())
+```

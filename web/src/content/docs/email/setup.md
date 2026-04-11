@@ -1,37 +1,27 @@
 ---
 title: Setup
-description: Configure email delivery for your Cinder app
+description: Configure transactional email delivery
+sidebar:
+  order: 1
 ---
 
-Cinder has a built-in email delivery layer that powers password-reset links and email verification.
+Cinder can send transactional emails for account verification, password reset, and welcome messages. Configure a backend to activate email sending.
 
-## Install the Email Extra
+## Without a backend (development)
 
-```bash
-pip install cinder[email]
-# or
-uv add cinder[email]
-```
-
-## Zero-Config (Console Fallback)
-
-No configuration is needed in development. Cinder falls back to `ConsoleEmailBackend` automatically when no backend is configured:
+Without configuration, Cinder uses `ConsoleEmailBackend`, which prints emails to the console instead of sending them. Useful for development.
 
 ```python
-app = Cinder("app.db")
-app.use_auth(Auth())   # email verification + password-reset emails → console log
+app = Cinder(database="app.db")
+# No email configuration needed — emails print to stdout
 ```
 
-All outbound emails are printed to the server log so you can inspect links and content.
-
-## Connecting an SMTP Provider
-
-Use `app.email.use(backend)` to plug in a real delivery backend:
+## With a backend
 
 ```python
 from cinder.email import SMTPBackend
 
-app.email.use(SMTPBackend.sendgrid(api_key=os.getenv("SENDGRID_API_KEY")))
+app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 app.email.configure(
     from_address="no-reply@myapp.com",
     app_name="MyApp",
@@ -39,46 +29,44 @@ app.email.configure(
 )
 ```
 
-## Environment Variables
+### `.use(backend)`
 
-These can be set in your `.env` file:
+Set the email backend. Must be called before `app.build()`.
 
-```sh
+### `.configure(from_address, app_name, base_url)`
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `from_address` | `CINDER_EMAIL_FROM` or `"noreply@localhost"` | Sender address on all emails |
+| `app_name` | `CINDER_APP_NAME` or `"Your App"` | App name used in email templates |
+| `base_url` | `CINDER_BASE_URL` or `"http://localhost:8000"` | Base URL for links in emails (verify, reset) |
+
+Also configurable via environment variables:
+
+```dotenv
 CINDER_EMAIL_FROM=no-reply@myapp.com
 CINDER_APP_NAME=MyApp
 CINDER_BASE_URL=https://myapp.com
 ```
 
-Or configured programmatically:
-
-```python
-app.email.configure(
-    from_address="no-reply@myapp.com",
-    app_name="MyApp",
-    base_url="https://myapp.com",
-)
-```
-
-## Sending Custom Emails
-
-`app.email.send()` can be called from hooks or anywhere in your code:
+## Sending custom emails from hooks
 
 ```python
 from cinder.email import EmailMessage
 
-@app.on("orders:after_create")
-async def send_order_confirmation(order, ctx):
+@orders.on("after_create")
+async def send_confirmation(order, ctx):
     await app.email.send(EmailMessage(
         to=order["customer_email"],
-        subject=f"Order #{order['id']} confirmed",
-        html_body=f"<p>Your order <b>#{order['id']}</b> is confirmed.</p>",
-        text_body=f"Your order #{order['id']} is confirmed.",
+        subject="Order Confirmed",
+        html_body=f"<p>Your order #{order['id']} has been confirmed.</p>",
+        text_body=f"Your order #{order['id']} has been confirmed.",
     ))
 ```
 
-All emails are dispatched via `asyncio.create_task` — they never block the HTTP response.
+`app.email.send()` is non-blocking — it dispatches the email as a background task and returns immediately.
 
-## Next Steps
+## See also
 
-- [Providers](/email/providers/) — SMTP provider presets
-- [Templates](/email/templates/) — Custom email templates
+- [Email Providers](/email/providers/) — all SMTP backend presets
+- [Email Templates](/email/templates/) — customise the built-in templates

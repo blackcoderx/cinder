@@ -1,113 +1,112 @@
 ---
-title: Templates
-description: Customize email templates for password reset, verification, and more
+title: Email Templates
+description: Customise the built-in transactional email templates
+sidebar:
+  order: 3
 ---
 
-Cinder ships with built-in email templates. Override any of them with your own callable.
+Cinder includes built-in HTML and plain-text templates for three system emails. You can override each one with a custom function.
 
-## Built-in Templates
+## Built-in templates
 
-Cinder provides three built-in templates:
+| Template | Sent when |
+|----------|-----------|
+| Verification | User registers (if email backend is configured) |
+| Password reset | `POST /api/auth/forgot-password` is called |
+| Welcome | After registration (disabled by default — override to enable) |
 
-1. **Password Reset** — Sent when user requests password reset
-2. **Email Verification** — Sent on registration
-3. **Welcome Email** — Sent manually from hooks
+## Overriding a template
 
-All templates are inline-styled HTML with plain-text alternatives.
+Pass a callable to the appropriate method on `app.email`. The callable receives a context dict and must return a `(subject, html_body, text_body)` tuple.
 
-## Override a Template
-
-Override any template with a callable that returns `(subject, html_body, text_body)`:
-
-### Plain Function Override
+### Password reset
 
 ```python
-def my_reset_template(ctx):
+def my_reset_email(ctx):
     url = ctx["reset_url"]
+    app_name = ctx["app_name"]
+    expiry = ctx["expiry_minutes"]
+    return (
+        f"Reset your {app_name} password",
+        f"""
+        <h1>Password Reset</h1>
+        <p>Click the link below to reset your password. It expires in {expiry} minutes.</p>
+        <p><a href="{url}">Reset Password</a></p>
+        """,
+        f"Reset your password: {url}\n\nThis link expires in {expiry} minutes.",
+    )
+
+app.email.on_password_reset(my_reset_email)
+```
+
+Context keys: `reset_url`, `app_name`, `expiry_minutes`
+
+### Email verification
+
+```python
+def my_verify_email(ctx):
+    url = ctx["verify_url"]
+    app_name = ctx["app_name"]
+    return (
+        f"Verify your {app_name} email",
+        f'<p>Click to verify: <a href="{url}">Verify Email</a></p>',
+        f"Verify your email: {url}",
+    )
+
+app.email.on_verification(my_verify_email)
+```
+
+Context keys: `verify_url`, `app_name`
+
+### Welcome email
+
+```python
+def my_welcome_email(ctx):
+    email = ctx["user_email"]
+    app_name = ctx["app_name"]
+    return (
+        f"Welcome to {app_name}!",
+        f"<h1>Welcome, {email}!</h1><p>Thanks for joining.</p>",
+        f"Welcome to {app_name}, {email}! Thanks for joining.",
+    )
+
+app.email.on_welcome(my_welcome_email)
+```
+
+Context keys: `user_email`, `app_name`
+
+Note: The welcome email is not sent automatically. Override and then call it from an auth hook if you want to send it:
+
+```python
+@auth.on("after_register")
+async def send_welcome(user, ctx):
+    # Welcome email will be triggered via the template system
+    pass
+```
+
+## Using a template engine
+
+You can use any template engine (Jinja2, etc.) inside the template function:
+
+```python
+from jinja2 import Template
+
+reset_template = Template("""
+<html>
+<body>
+  <h1>Reset your password</h1>
+  <p><a href="{{ reset_url }}">Click here</a> — expires in {{ expiry_minutes }} minutes.</p>
+</body>
+</html>
+""")
+
+def my_reset_email(ctx):
+    html = reset_template.render(**ctx)
     return (
         "Reset your password",
-        f"<h1>Reset link</h1><a href='{url}'>Click here</a>",
-        f"Reset link: {url}",
+        html,
+        f"Reset link: {ctx['reset_url']}",
     )
 
-app.email.on_password_reset(my_reset_template)
+app.email.on_password_reset(my_reset_email)
 ```
-
-### Jinja2 Override
-
-Install Jinja2 separately:
-
-```bash
-pip install jinja2
-```
-
-```python
-from jinja2 import Environment, FileSystemLoader
-
-jinja = Environment(loader=FileSystemLoader("templates/email"))
-
-def jinja_reset(ctx):
-    html = jinja.get_template("reset.html").render(**ctx)
-    text = jinja.get_template("reset.txt").render(**ctx)
-    return "Reset your password", html, text
-
-app.email.on_password_reset(jinja_reset)
-```
-
-## Template Context Keys
-
-| Override Method | Context Keys |
-|-----------------|---------------|
-| `app.email.on_password_reset(fn)` | `reset_url`, `app_name`, `expiry_minutes` |
-| `app.email.on_verification(fn)` | `verify_url`, `app_name` |
-| `app.email.on_welcome(fn)` | `user_email`, `app_name` |
-
-## Full Example
-
-```python
-from cinder import Cinder, Auth
-
-app = Cinder(database="app.db")
-auth = Auth()
-app.use_auth(auth)
-
-# Configure email
-from cinder.email import SMTPBackend
-
-app.email.use(SMTPBackend.sendgrid(api_key=os.getenv("SENDGRID_API_KEY")))
-app.email.configure(
-    from_address="no-reply@myapp.com",
-    app_name="MyApp",
-    base_url="https://myapp.com",
-)
-
-# Custom templates
-def custom_welcome(ctx):
-    return (
-        f"Welcome to {ctx['app_name']}!",
-        f"<h1>Welcome!</h1><p>Thanks for joining {ctx['app_name']}.</p>",
-        f"Welcome! Thanks for joining {ctx['app_name']}.",
-    )
-
-app.email.on_welcome(custom_welcome)
-
-app.serve()
-```
-
-## Sending Welcome Email from Hook
-
-```python
-@app.on("auth:after_register")
-async def send_welcome(user, ctx):
-    await app.email.send(EmailMessage(
-        to=user["email"],
-        subject="Welcome!",
-        html_body="<h1>Welcome!</h1>",
-        text_body="Welcome!",
-    ))
-```
-
-## Next Steps
-
-- [Setup](/email/setup/) — Configure email
-- [Providers](/email/providers/) — SMTP configuration
