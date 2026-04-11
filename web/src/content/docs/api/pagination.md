@@ -1,74 +1,62 @@
 ---
 title: Pagination
-description: Control page size and navigate through results
+description: Page through collection results
+sidebar:
+  order: 3
 ---
 
-## Pagination Parameters
+All list endpoints (`GET /api/{collection}`) are paginated. The response includes metadata to navigate through pages.
 
-Control pagination with `limit` and `offset`:
+## Query parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `limit` | `20` | Number of items per page |
-| `offset` | `0` | Number of items to skip |
+| `page` | `1` | Page number (1-indexed) |
+| `per_page` | `50` | Results per page |
 
-## Examples
-
-### First Page (10 items)
-
-```bash
-GET /api/products?limit=10&offset=0
+```
+GET /api/posts?page=2&per_page=20
 ```
 
-### Second Page
-
-```bash
-GET /api/products?limit=10&offset=10
-```
-
-### Third Page
-
-```bash
-GET /api/products?limit=10&offset=20
-```
-
-## Response Format
-
-Every list response includes pagination metadata:
+## Response envelope
 
 ```json
 {
   "items": [
-    { "id": "...", "name": "Phone", ... }
+    { "id": "...", "title": "Post 21", ... },
+    { "id": "...", "title": "Post 22", ... }
   ],
-  "total": 42,
-  "limit": 20,
-  "offset": 0
+  "total": 143,
+  "page": 2,
+  "per_page": 20
 }
 ```
 
 | Field | Description |
 |-------|-------------|
-| `items` | Array of records for the current page |
-| `total` | Total number of matching records |
-| `limit` | Items per page |
-| `offset` | Current offset position |
+| `items` | Array of records on the current page |
+| `total` | Total number of records matching the current filters |
+| `page` | Current page number |
+| `per_page` | Records per page |
 
-## Calculating Pagination
-
-Use `total` to calculate pages:
+## Calculating total pages
 
 ```javascript
-const totalPages = Math.ceil(response.total / response.limit);
-const currentPage = Math.floor(response.offset / response.limit) + 1;
+const totalPages = Math.ceil(response.total / response.per_page);
 ```
 
-## Maximum Limit
+## Fetching all records
 
-The maximum allowed `limit` is `100`. Requests with `limit > 100` are capped.
+Set `per_page` to a large value to retrieve everything in one request:
 
-## Next Steps
+```
+GET /api/posts?per_page=1000
+```
 
-- [Filtering](/api/filtering/) — Filter results
-- [Endpoints](/api/endpoints/) — Full API reference
-- [OpenAPI](/api/openapi/) — Auto-generated docs
+Note that very large values can put significant load on the database for large collections.
+
+## Combined with filters and sort
+
+```
+GET /api/posts?filter[status]=published&sort=-created_at&page=1&per_page=10
+```

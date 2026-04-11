@@ -1,92 +1,64 @@
 ---
-title: OpenAPI / Swagger
-description: Auto-generated OpenAPI documentation and interactive API explorer
+title: OpenAPI
+description: Auto-generated OpenAPI 3.1 schema and Swagger UI
+sidebar:
+  order: 4
 ---
 
-Cinder auto-generates a full OpenAPI 3.1 schema and provides an interactive Swagger UI.
+Cinder auto-generates an OpenAPI 3.1 specification for your entire API — including all collections, auth endpoints, and file routes.
 
 ## Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /openapi.json` | OpenAPI 3.1 schema |
-| `GET /docs` | Interactive Swagger UI |
+| Path | Description |
+|------|-------------|
+| `GET /openapi.json` | OpenAPI 3.1 schema (JSON) |
+| `GET /docs` | Swagger UI |
 
-## Accessing the Docs
+## Swagger UI
 
-Visit `http://localhost:8000/docs` in your browser for the interactive Swagger UI.
+Navigate to `http://localhost:8000/docs` in your browser to explore and test all endpoints interactively.
 
-:::note
-Swagger UI requires internet to load assets from CDN.
-:::
+The Swagger UI includes:
+- All collection CRUD endpoints
+- Auth endpoints (if auth is enabled)
+- Request/response schemas
+- Authentication (click "Authorize" and enter your JWT token)
 
-## Schema
+## Using the schema
 
-Get the raw OpenAPI schema:
+### With code generation tools
+
+Feed the schema to a client generator:
 
 ```bash
-curl http://localhost:8000/openapi.json | jq .
+# openapi-generator-cli
+openapi-generator-cli generate \
+  -i http://localhost:8000/openapi.json \
+  -g typescript-fetch \
+  -o ./src/api-client
 ```
 
-## What's Documented
+### With Postman
 
-The schema automatically includes:
+1. Open Postman → Import
+2. Paste `http://localhost:8000/openapi.json` as the URL
+3. Click Import
 
-- **Auth endpoints** — register, login, logout, refresh, password reset, email verification
-- **Collection CRUD** — list, get, create, update, delete
-- **Query parameters** — `limit`, `offset`, `order_by`, `expand`
-- **Auth requirements** — Bearer token security on protected endpoints
-- **Field constraints** — min/max values, required fields, field types
+### With Insomnia
 
-## Customization
+1. Create → Import
+2. URL: `http://localhost:8000/openapi.json`
 
-Customize the API title and version when initializing Cinder:
+## API title and version
+
+Set the title and version when creating the `Cinder` instance:
 
 ```python
 app = Cinder(
-    title="My API",
-    version="1.0.0",
-    database="app.db"
+    database="app.db",
+    title="My Blog API",
+    version="2.1.0",
 )
 ```
 
-## Example Schema Output
-
-```json
-{
-  "openapi": "3.1.0",
-  "info": {
-    "title": "My API",
-    "version": "1.0.0"
-  },
-  "paths": {
-    "/api/posts": {
-      "get": {
-        "tags": ["posts"],
-        "summary": "List posts",
-        "parameters": [
-          {"name": "limit", "in": "query", "schema": {"type": "integer"}},
-          {"name": "offset", "in": "query", "schema": {"type": "integer"}},
-          {"name": "order_by", "in": "query", "schema": {"type": "string"}}
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Post" }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## Next Steps
-
-- [Endpoints](/api/endpoints/) — REST API reference
-- [Filtering](/api/filtering/) — Query parameters
-- [Configuration](/configuration/env-variables/) — App settings
+These appear in the OpenAPI schema and Swagger UI.

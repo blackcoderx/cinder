@@ -1,82 +1,86 @@
 ---
-title: Filtering & Sorting
-description: Filter and sort your API results
+title: Filtering
+description: Filter collection results with query parameters
+sidebar:
+  order: 2
 ---
 
-## Filtering
+Use `filter` query parameters to narrow down list results. Filters work on any field in the collection.
 
-Filter records by passing field values as query parameters:
+## Basic filtering
 
-### Exact Match
-
-```bash
-GET /api/products?is_published=true
+```
+GET /api/posts?filter[status]=published
+GET /api/posts?filter[author_id]=user-uuid
 ```
 
-### Multiple Filters (AND)
+Multiple filters are combined with AND:
 
-```bash
-GET /api/products?stock=50&is_published=true
+```
+GET /api/posts?filter[status]=published&filter[author_id]=user-uuid
 ```
 
-### Filter by Any Field
+## Filter operators
 
-```bash
-GET /api/products?name=Phone
+Append an operator after the field name with double underscores:
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| _(none)_ | Exact match | `filter[status]=published` |
+| `__gt` | Greater than | `filter[views__gt]=100` |
+| `__gte` | Greater than or equal | `filter[views__gte]=100` |
+| `__lt` | Less than | `filter[price__lt]=50` |
+| `__lte` | Less than or equal | `filter[price__lte]=50` |
+| `__contains` | Case-insensitive substring | `filter[title__contains]=hello` |
+| `__startswith` | Starts with (case-insensitive) | `filter[title__startswith]=hello` |
+| `__null` | Is null (`true`/`false`) | `filter[avatar__null]=true` |
+
+## Examples
+
+Posts with more than 1000 views:
+
+```
+GET /api/posts?filter[views__gt]=1000
+```
+
+Products under $50:
+
+```
+GET /api/products?filter[price__lt]=50
+```
+
+Search by title:
+
+```
+GET /api/posts?filter[title__contains]=cinder
+```
+
+Records without an avatar:
+
+```
+GET /api/users?filter[avatar__null]=true
+```
+
+## Filtering on relation fields
+
+Filter by the ID of a related record:
+
+```
+GET /api/posts?filter[author_id]=user-uuid
 ```
 
 ## Sorting
 
-Sort by any field using `order_by`:
+Use the `sort` parameter:
 
-### Ascending Order
-
-```bash
-GET /api/products?order_by=price
+```
+GET /api/posts?sort=created_at          # ascending
+GET /api/posts?sort=-created_at         # descending (prefix with -)
+GET /api/posts?sort=author_id,-views    # multiple fields
 ```
 
-### Descending Order
+## Combining filters and sort
 
-Prefix with `-` for descending:
-
-```bash
-GET /api/products?order_by=-created_at
 ```
-
-### Default Sort
-
-Default sort is by `created_at` (descending - newest first).
-
-## Combined Example
-
-```bash
-GET /api/products?is_published=true&order_by=price&limit=5&offset=0
+GET /api/posts?filter[status]=published&sort=-created_at&page=2&per_page=20
 ```
-
-This returns:
-- Only published products
-- Sorted by price (ascending)
-- First 5 results
-- Starting from offset 0
-
-## Filtering by Relations
-
-Filter by related collection IDs:
-
-```bash
-GET /api/products?category=category-uuid
-```
-
-## Filtering by JSON Fields
-
-Filter JSON fields using dot notation:
-
-```bash
-GET /api/posts?metadata.author=john
-```
-
-## Next Steps
-
-- [Pagination](/api/pagination/) — Control page size and offset
-- [Endpoints](/api/endpoints/) — Full API reference
-- [Relations](/fields/relations/) — Working with related data

@@ -1,174 +1,103 @@
 ---
-title: Endpoints
-description: Auto-generated REST API endpoints for collections
+title: API Endpoints
+description: Complete reference for all auto-generated REST endpoints
+sidebar:
+  order: 1
 ---
 
-For every registered collection, Cinder generates these endpoints automatically.
+Cinder generates a standard set of REST endpoints for each registered collection and optional auth system.
 
-## CRUD Endpoints
+## Collection endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/{collection}` | GET | List all records |
-| `/api/{collection}` | POST | Create a new record |
-| `/api/{collection}/{id}` | GET | Get a single record |
-| `/api/{collection}/{id}` | PATCH | Update a record |
-| `/api/{collection}/{id}` | DELETE | Delete a record |
+For a collection named `{name}`:
 
-## List Records
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/{name}` | Depends on `read` rule | List records |
+| `POST` | `/api/{name}` | Depends on `write` rule | Create a record |
+| `GET` | `/api/{name}/{id}` | Depends on `read` rule | Get a single record |
+| `PATCH` | `/api/{name}/{id}` | Depends on `write` rule | Partial update |
+| `DELETE` | `/api/{name}/{id}` | Depends on `write` rule | Delete a record |
 
-**`GET /api/{collection}`**
+## File endpoints
 
-```bash
-curl http://localhost:8000/api/products
-```
+Generated for each `FileField` on a collection:
 
-Response (`200`):
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/{name}/{id}/files/{field}` | Upload a file |
+| `GET` | `/api/{name}/{id}/files/{field}` | Download a file |
+| `DELETE` | `/api/{name}/{id}/files/{field}` | Delete a file |
+
+## Auth endpoints
+
+Available when `app.use_auth(auth)` is called:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Log in and get a token |
+| `GET` | `/api/auth/me` | Get the current user |
+| `POST` | `/api/auth/logout` | Revoke the current token |
+| `POST` | `/api/auth/refresh` | Issue a new token |
+| `POST` | `/api/auth/forgot-password` | Request a password reset |
+| `POST` | `/api/auth/reset-password` | Apply a password reset |
+| `GET` | `/api/auth/verify-email` | Verify email address |
+
+## Realtime endpoints
+
+| Protocol | Path | Description |
+|----------|------|-------------|
+| WS | `/api/realtime` | WebSocket connection |
+| `GET` | `/api/realtime/sse` | Server-Sent Events stream |
+
+## System endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/health` | Health check — returns `{"status": "ok"}` |
+| `GET` | `/openapi.json` | OpenAPI 3.1 schema |
+| `GET` | `/docs` | Swagger UI |
+| `GET` | `/` | Default landing page |
+
+## Response format
+
+**Single record:**
 ```json
 {
-  "items": [
-    {
-      "id": "...",
-      "name": "Phone",
-      "price": 999.99,
-      "stock": 50,
-      "is_published": true,
-      "created_at": "2026-04-09T12:00:00",
-      "updated_at": "2026-04-09T12:00:00"
-    }
-  ],
-  "total": 1,
-  "limit": 20,
-  "offset": 0
+  "id": "abc123",
+  "title": "My Post",
+  "created_at": "2024-01-01T00:00:00+00:00",
+  "updated_at": "2024-01-01T00:00:00+00:00"
 }
 ```
 
-## Get Record
-
-**`GET /api/{collection}/{id}`**
-
-```bash
-curl http://localhost:8000/api/products/550e8400-e29b-41d4-a716-446655440000
-```
-
-Response (`200`):
+**List:**
 ```json
 {
-  "id": "550e8400-...",
-  "name": "Phone",
-  "price": 999.99,
-  "stock": 50,
-  "is_published": true,
-  "created_at": "...",
-  "updated_at": "..."
+  "items": [ ... ],
+  "total": 42,
+  "page": 1,
+  "per_page": 50
 }
 ```
 
-Returns `404` if the record does not exist.
-
-## Create Record
-
-**`POST /api/{collection}`**
-
-```bash
-curl -X POST http://localhost:8000/api/products \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOi..." \
-  -d '{"name": "Phone", "price": 999.99, "stock": 50, "is_published": true}'
-```
-
-Response (`201`):
+**Error:**
 ```json
-{
-  "id": "newly-generated-uuid",
-  "name": "Phone",
-  "price": 999.99,
-  "stock": 50,
-  "is_published": true,
-  "created_at": "...",
-  "updated_at": "..."
-}
+{ "detail": "Not found" }
 ```
 
-Returns `400` if validation fails (missing required fields, type mismatch, constraint violations).
+## HTTP status codes
 
-## Update Record
-
-**`PATCH /api/{collection}/{id}`**
-
-Uses PATCH semantics — only send the fields you want to update:
-
-```bash
-curl -X PATCH http://localhost:8000/api/products/550e8400-... \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOi..." \
-  -d '{"stock": 49}'
-```
-
-Response (`200`):
-```json
-{
-  "id": "550e8400-...",
-  "name": "Phone",
-  "price": 999.99,
-  "stock": 49,
-  "is_published": true,
-  "created_at": "...",
-  "updated_at": "2026-04-09T13:00:00"
-}
-```
-
-## Delete Record
-
-**`DELETE /api/{collection}/{id}`**
-
-```bash
-curl -X DELETE http://localhost:8000/api/products/550e8400-... \
-  -H "Authorization: Bearer eyJhbGciOi..."
-```
-
-Response (`200`):
-```json
-{ "message": "Record deleted" }
-```
-
-## System Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check |
-
-### Health Check
-
-**`GET /api/health`**
-
-```bash
-curl http://localhost:8000/api/health
-```
-
-Response (`200`):
-```json
-{ "status": "ok" }
-```
-
-## Error Responses
-
-| Status | Description |
-|--------|-------------|
-| `400` | Bad request (validation failed) |
-| `401` | Unauthorized (invalid/missing token) |
-| `403` | Forbidden (insufficient permissions) |
-| `404` | Not found |
-| `429` | Too many requests (rate limited) |
-| `500` | Internal server error |
-
-Error format:
-```json
-{ "status": 400, "error": "Email and password are required" }
-```
-
-## Next Steps
-
-- [Filtering & Sorting](/api/filtering/) — Filter and sort results
-- [Pagination](/api/pagination/) — Control page size
-- [OpenAPI](/api/openapi/) — Auto-generated API docs
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `201` | Created (POST) |
+| `400` | Bad request (validation error) |
+| `401` | Authentication required or token invalid |
+| `403` | Forbidden (access control) |
+| `404` | Record not found |
+| `413` | File too large |
+| `422` | Unprocessable entity (schema validation) |
+| `429` | Rate limit exceeded |
+| `500` | Server error |
