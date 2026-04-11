@@ -1,11 +1,11 @@
 ---
 title: The Cinder App
-description: The central registry that wires everything together
+description: The central application object that wires everything together
 ---
 
-The `Cinder` class is the entry point for every Cinder application. It acts as a **central registry** that connects your data schemas, authentication, and other subsystems into a unified REST API.
+The `Cinder` class is the entry point for every application. It owns the database connection, registered collections, authentication config, and all optional subsystems.
 
-## Creating an App
+## Creating an app
 
 ```python
 from cinder import Cinder
@@ -13,154 +13,127 @@ from cinder import Cinder
 app = Cinder(database="app.db")
 ```
 
-### Configuration Options
+### Constructor options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `database` | `"app.db"` | Database connection. Accepts SQLite path, `postgresql://...`, or `mysql://...` |
-| `title` | `"Cinder API"` | Title shown in OpenAPI docs and Swagger UI |
-| `version` | `"1.0.0"` | API version shown in OpenAPI docs |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `database` | `str` | `"app.db"` | Database URL or SQLite filename |
+| `title` | `str` | `"Cinder API"` | API title shown in OpenAPI docs |
+| `version` | `str` | `"1.0.0"` | API version shown in OpenAPI docs |
 
-## The Build Pattern
-
-Cinder uses a two-phase initialization pattern:
+For PostgreSQL or MySQL, pass a full connection URL:
 
 ```python
-app = Cinder(database="app.db")
-
-# Phase 1: Configure your app
-# - Register collections
-# - Set up auth
-# - Configure subsystems (optional)
-
-app.register(my_collection, auth=["read:public"])
-app.use_auth(Auth())
-
-# Phase 2: Build and serve
-app.serve()  # Development: starts uvicorn
+app = Cinder(database="postgresql://user:pass@localhost/mydb")
 ```
 
-### build() vs serve()
+Or use an environment variable — Cinder reads `CINDER_DATABASE_URL` then `DATABASE_URL` automatically.
 
-| Method | Use Case | Under the Hood |
-|--------|----------|---------------|
-| `app.serve(host, port, reload)` | Development | Calls `build()`, then runs with Uvicorn |
-| `app.build()` | Production | Returns a Starlette ASGI app for gunicorn/hypercorn |
-
-For production deployment:
+## Registering collections
 
 ```python
-# main.py
-app = Cinder(database="app.db")
-app.register(posts)
-app.use_auth(Auth())
-
-# gunicorn main:app.build() --factory -w 4 -k uvicorn.workers.UvicornWorker
+app.register(posts, auth=["read:public", "write:authenticated"])
 ```
 
-## Registering Collections
+`register()` takes a `Collection` and an optional list of [access control rules](/core-concepts/access-control/). Each call creates the database table (if it doesn't exist) and wires up CRUD routes.
 
-Collections connect your data schemas to the API:
-
-```python
-from cinder import Cinder, Collection, TextField
-
-app = Cinder(database="app.db")
-
-# Define a collection
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    TextField("content"),
-])
-
-# Register it - this creates the table and API endpoints
-app.register(posts)
-```
-
-After `register()`, Cinder automatically:
-1. Creates the database table if it doesn't exist
-2. Generates CRUD endpoints at `/api/posts`
-
-## Subsystem Configuration
-
-Cinder exposes several subsystems through a fluent configuration API:
+## Enabling authentication
 
 ```python
-# Database
-app.configure_database(PostgreSQLBackend(url="postgresql://..."))
-app.configure_redis(url="redis://localhost:6379")  # Configures all Redis subsystems at once
+from cinder import Auth
 
-# Cache
-app.cache.configure(default_ttl=300, per_user=True)
-
-# Rate Limiting
-app.rate_limit.rule("/api/write", limit=10, window=60)
-
-# Email
-app.email.use(SMTPBackend.sendgrid(api_key="..."))
-app.email.configure(from_address="noreply@example.com", app_name="MyApp")
-```
-
-Each subsystem attribute returns a configuration object that you chain methods on.
-
-## Authentication Setup
-
-Authentication is configured separately from collections:
-
-```python
-from cinder import Cinder, Auth
-
-app = Cinder(database="app.db")
-auth = Auth(allow_registration=True, token_expiry=86400)
-
+auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)
 ```
 
-This enables auth endpoints: `/api/auth/register`, `/api/auth/login`, `/api/auth/me`, etc.
+`use_auth()` mounts all `/api/auth/*` endpoints and enables JWT middleware. See [Authentication](/authentication/) for full details.
 
-## Typical Application Flow
+## Configuring optional subsystems
+
+Each subsystem has a fluent configuration facade on the `app` object:
 
 ```python
-from cinder import Cinder, Collection, TextField, Auth
+# File storage
+from cinder.storage import LocalFileBackend
+app.configure_storage(LocalFileBackend("./uploads"))
 
-# 1. Create the app
-app = Cinder(database="app.db", title="My Blog API")
+# Email
+from cinder.email import SMTPBackend
+app.email.use(SMTPBackend.sendgrid(api_key="..."))
+app.email.configure(from_address="no-reply@myapp.com", app_name="MyApp")
 
-# 2. Define and register collections
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    TextField("content"),
-])
+# Caching
+app.cache.use(RedisCacheBackend())
+app.cache.configure(default_ttl=300)
 
-app.register(posts, auth=["read:public", "write:authenticated"])
+# Rate limiting
+app.rate_limit.rule("/api/posts", limit=50, window=60)
 
-# 3. Configure auth
-app.use_auth(Auth(allow_registration=True))
+# Redis (all subsystems at once)
+app.configure_redis(url="redis://localhost:6379")
 
-# 4. Add hooks (optional)
-@app.on("posts:before_create")
-async def validate(data, ctx):
-    if len(data.get("title", "")) < 3:
-        raise CinderError(400, "Title too short")
-    return data
-
-# 5. Serve
-app.serve()
+# Custom database backend
+from cinder.db.backends.postgresql import PostgreSQLBackend
+app.configure_database(PostgreSQLBackend(url="...", min_size=2, max_size=20, ssl="require"))
 ```
 
-## App Lifecycle
+## Registering hooks
 
-When you call `app.build()`, Cinder:
+Use `app.on()` to respond to any lifecycle event across all collections:
 
-1. **Resolves backends** — Connects to database, Redis (if configured), etc.
-2. **Syncs schemas** — Creates/updates database tables for all collections
-3. **Creates auth tables** — Sets up user storage if auth is enabled
-4. **Builds routes** — Generates all HTTP endpoints
-5. **Wires middleware** — Attaches auth, cache, rate-limiting middleware
-6. **Returns ASGI app** — Ready to serve requests
+```python
+@app.on("posts:after_create")
+async def notify(post, ctx):
+    print(f"New post: {post['title']}")
 
-## Next Steps
+# Or pass the handler directly
+app.on("orders:after_create", send_confirmation_email)
+```
 
-- [Collections](/core-concepts/collections/) — Define your data schemas
-- [Access Control](/core-concepts/access-control/) — Control who can do what
-- [Authentication](/authentication/setup/) — User registration and login
+## Starting the server
+
+### Via the CLI (recommended)
+
+```bash
+cinder serve main.py
+cinder serve main.py --reload  # development auto-reload
+cinder serve main.py --host 0.0.0.0 --port 8080
+```
+
+### Programmatically
+
+```python
+app.serve()                          # default host/port
+app.serve(host="0.0.0.0", port=8080)
+```
+
+### As an ASGI app
+
+`app.build()` returns a plain ASGI app you can deploy with any ASGI server:
+
+```python
+# main.py
+from cinder import Cinder, ...
+app = Cinder(...)
+# ... configure ...
+asgi_app = app.build()
+```
+
+```bash
+uvicorn main:asgi_app
+gunicorn main:asgi_app -k uvicorn.workers.UvicornWorker
+```
+
+## Lifecycle events
+
+Cinder fires `app:startup` and `app:shutdown` during the ASGI lifespan:
+
+```python
+@app.on("app:startup")
+async def on_start(_, ctx):
+    print("Server started")
+
+@app.on("app:shutdown")
+async def on_stop(_, ctx):
+    print("Server stopping")
+```

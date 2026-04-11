@@ -1,213 +1,90 @@
 ---
 title: Realtime
-description: Push updates to connected clients in real-time
+description: Live updates via WebSocket and Server-Sent Events
 ---
 
-Realtime in Cinder enables you to push updates to connected clients whenever data changes. Instead of clients polling for updates, the server notifies them instantly.
+Cinder automatically broadcasts events for every CRUD operation. Clients connect over WebSocket or SSE and receive filtered updates in real time.
 
-## How It Works
+## How it works
 
-Cinder uses a **channel-based pub/sub system**:
+When a record is created, updated, or deleted, Cinder fires an event through the realtime broker. Connected clients receive the event if they pass the access control check for that collection.
+
+## Connecting
+
+### WebSocket
 
 ```
-┌─────────────────┐                      ┌─────────────────┐
-│   Your App      │                      │   Client         │
-│                 │  ┌────────────────┐  │                 │
-│  Record created │→ │   Broker       │→ │  Receives       │
-│  Record updated │  │  (in-memory or │  │  notification   │
-│  Record deleted │  │   Redis)       │  │                 │
-└─────────────────┘  └────────────────┘  └─────────────────┘
-                              ↑
-                    ┌─────────────────┐
-                    │  Other clients  │
-                    │  (also subs.)   │
-                    └─────────────────┘
+ws://localhost:8000/api/realtime
 ```
 
-## Channels
+Authenticate by sending the JWT token in the first message after connecting:
 
-Everything in Cinder's realtime system revolves around **channels** — named event streams.
-
-| Channel | Description | Auto-Emitted? |
-|---------|-------------|---------------|
-| `collection:{name}` | CRUD events for a collection | Yes — on every create/update/delete |
-| Any custom string | Your own events | No — you fire them manually |
-
-### Collection Channels
-
-When you register a collection, Cinder automatically emits events to a channel named `collection:{name}`:
-
-```python
-app.register(posts)
+```json
+{ "type": "auth", "token": "eyJ..." }
 ```
 
-This enables automatic events on `collection:posts`:
+### Server-Sent Events
 
-| Event | Trigger |
-|-------|---------|
-| `create` | A new record is created |
-| `update` | A record is modified |
-| `delete` | A record is deleted |
-
-### Custom Channels
-
-You can also publish to any channel name:
-
-```python
-await app.realtime.publish("notifications:user-123", {"message": "Hello!"})
-await app.realtime.publish("system:alerts", {"level": "warning", "msg": "..."})
+```
+GET /api/realtime/sse
 ```
 
-## Event Envelope
+Pass the token as a query parameter:
 
-Every message follows this structure:
+```
+GET /api/realtime/sse?token=eyJ...
+```
+
+## Event format
+
+All events follow this envelope structure:
 
 ```json
 {
   "channel": "collection:posts",
   "event": "create",
+  "collection": "posts",
   "record": {
-    "id": "abc123",
+    "id": "...",
     "title": "New Post",
-    "created_at": "2026-04-10T12:00:00Z"
+    "created_at": "..."
   },
-  "previous": null
+  "id": "...",
+  "ts": "2024-01-01T00:00:00+00:00"
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `channel` | The channel this event was published to |
-| `event` | `create`, `update`, or `delete` |
-| `record` | The current state of the record |
-| `previous` | Previous state (only on `update`) |
+For `update` events, a `previous` field contains the record's state before the change.
 
-## Transport Options
+The `event` field is one of `create`, `update`, or `delete`. Channels follow the pattern `collection:{name}`.
 
-Cinder supports two transport protocols:
+## Access control filtering
 
-| Transport | Best For | Browser Support |
-|----------|----------|---------------|
-| **WebSocket** | Bidirectional communication, low latency | All modern browsers |
-| **Server-Sent Events (SSE)** | One-way streaming, simplicity | All modern browsers |
+Events are filtered per-client based on the same access control rules used for the REST endpoints. A client only receives events for records they are allowed to read:
 
-### Choosing a Transport
+- `read:public` — broadcast to all connected clients
+- `read:authenticated` — only authenticated clients
+- `read:owner` — only the client who owns the record
+- `read:admin` — only admin clients
 
-**Use WebSocket when you need:**
-- Bidirectional communication (client can also send messages)
-- The lowest possible latency
-- Complex messaging patterns
+## Scaling with Redis
 
-**Use SSE when you need:**
-- Simple one-way streaming
-- Automatic reconnection (built into EventSource)
-- Works through proxies that block WebSocket
-
-## Connecting with WebSocket
-
-```javascript
-const ws = new WebSocket("ws://localhost:8000/api/realtime/ws");
-
-ws.onopen = () => {
-  // Authenticate (optional)
-  ws.send(JSON.stringify({ 
-    action: "auth", 
-    token: localStorage.getItem("token") 
-  }));
-  
-  // Subscribe to a channel
-  ws.send(JSON.stringify({ 
-    action: "subscribe", 
-    channel: "collection:posts" 
-  }));
-};
-
-ws.onmessage = ({ data }) => {
-  const msg = JSON.parse(data);
-  
-  if (msg.channel === "collection:posts") {
-    console.log(`Post ${msg.event}d:`, msg.record);
-  }
-};
-```
-
-### WebSocket Messages
-
-**Subscribe:**
-```json
-{ "action": "subscribe", "channel": "collection:posts" }
-```
-
-**Unsubscribe:**
-```json
-{ "action": "unsubscribe", "channel": "collection:posts" }
-```
-
-**Authenticate:**
-```json
-{ "action": "auth", "token": "eyJhbGci..." }
-```
-
-## Connecting with SSE
-
-```javascript
-const token = localStorage.getItem("token");
-const url = `/api/realtime/sse?channel=collection:posts&token=${token}`;
-const source = new EventSource(url);
-
-source.addEventListener("create", (e) => {
-  const data = JSON.parse(e.data);
-  console.log("New post:", data.record);
-});
-
-source.addEventListener("update", (e) => {
-  const data = JSON.parse(e.data);
-  console.log("Post updated:", data.record);
-});
-```
-
-Subscribe to multiple channels:
-
-```
-/api/realtime/sse?channel=collection:posts&channel=collection:comments
-```
-
-## Auth Filtering
-
-Realtime respects access control rules:
-
-- **Public collections**: No auth required to subscribe
-- **Protected collections**: Authenticate with a token to receive events
-- **Owner rules**: Users only receive events for records they own
-
-```javascript
-// Authenticate mid-session
-ws.send(JSON.stringify({ action: "auth", token: "..." }));
-```
-
-## Pubishing Custom Events
-
-Emit events from your application code:
+The default in-process broker works for a single server process. For multi-process deployments (multiple workers, horizontal scaling), switch to the Redis broker:
 
 ```python
-# Publish to a custom channel
-await app.realtime.publish("notifications:user-123", {"message": "Hello!"})
-
-# Fire from a hook
-@orders.on("after_update")
-async def notify_status_change(payload, ctx):
-    new_record, old_record = payload
-    await app.realtime.publish(
-        f"orders:{new_record['customer_id']}",
-        {
-            "event": "status_update",
-            "record": new_record
-        }
-    )
+app.configure_redis(url="redis://localhost:6379")
 ```
 
-## Next Steps
+Or set the environment variable:
 
-- [Realtime Reference](/realtime/overview/) — Detailed API documentation
-- [Hooks](/core-concepts/lifecycle-hooks/) — Trigger realtime events from hooks
-- [Authentication](/authentication/setup/) — Secure your realtime connections
+```
+CINDER_REDIS_URL=redis://localhost:6379
+```
+
+See [Realtime with Redis](/realtime/redis/) for details.
+
+## Full documentation
+
+- [WebSocket](/realtime/websocket/) — connection lifecycle, message protocol
+- [Server-Sent Events](/realtime/sse/) — streaming events over HTTP
+- [Redis Broker](/realtime/redis/) — scaling realtime to multiple workers

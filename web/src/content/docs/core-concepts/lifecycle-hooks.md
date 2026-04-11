@@ -1,27 +1,39 @@
 ---
 title: Lifecycle Hooks
-description: Execute custom logic around CRUD operations
+description: Run custom logic before or after any database operation
 ---
 
-Hooks let you inject custom code at specific points during request processing. Think of them as middleware that's specific to a collection or event.
+Hooks let you intercept every CRUD operation — validate data, enrich records, send notifications, or modify the payload before it hits the database.
 
-## The Pipeline Concept
+## Hook events
 
-Every API request flows through a pipeline of hooks:
+For each collection named `{name}`, Cinder fires these events:
 
+| Event | When | Can modify payload |
+|-------|------|--------------------|
+| `{name}:before_create` | Before INSERT | Yes |
+| `{name}:after_create` | After INSERT | No |
+| `{name}:before_update` | Before UPDATE | Yes |
+| `{name}:after_update` | After UPDATE (receives tuple of updated, previous) | No |
+| `{name}:before_delete` | Before DELETE | No |
+| `{name}:after_delete` | After DELETE | No |
+| `{name}:before_read` | Before single-record GET | Yes (receives record ID) |
+| `{name}:after_read` | After single-record GET | Yes |
+| `{name}:before_list` | Before list GET | Yes (receives query descriptor) |
+| `{name}:after_list` | After list GET | Yes (receives list of records) |
+
+## Registering a hook
+
+Use the decorator form on the collection:
+
+```python
+@posts.on("before_create")
+async def add_slug(data, ctx):
+    data["slug"] = data["title"].lower().replace(" ", "-")
+    return data
 ```
-┌─────────────┐    ┌─────────────────┐    ┌──────────────┐    ┌───────────┐
-│   Request   │ → │ before_* hooks  │ → │  DB Operation │ → │ after_*  │
-│   arrives   │    │ (can mutate)    │    │               │    │ (observe) │
-└─────────────┘    └─────────────────┘    └──────────────┘    └───────────┘
-```
 
-- **before_* hooks** run before the database operation and can modify data or abort the request
-- **after_* hooks** run after the operation and can react to results (return values are ignored)
-
-## Registering Hooks
-
-### Method 1: Direct Call
+Or register directly:
 
 ```python
 async def add_slug(data, ctx):
@@ -31,222 +43,87 @@ async def add_slug(data, ctx):
 posts.on("before_create", add_slug)
 ```
 
-### Method 2: Decorator
+Or register at the app level (useful when observing multiple collections):
+
+```python
+@app.on("posts:after_create")
+async def notify_subscribers(post, ctx):
+    await send_notification(post["id"])
+```
+
+## The `CinderContext` object
+
+Every hook receives a `CinderContext` as its second argument:
+
+```python
+from cinder.hooks.context import CinderContext
+
+async def my_hook(data, ctx: CinderContext):
+    print(ctx.user)        # dict of the current user, or None if unauthenticated
+    print(ctx.collection)  # "posts"
+    print(ctx.operation)   # "create", "update", "delete"
+    print(ctx.request_id)  # correlation ID for logging
+    print(ctx.extra)       # arbitrary dict for passing data between hooks
+```
+
+## Modifying data in `before_` hooks
+
+Return the modified `data` dict from a `before_create` or `before_update` hook to persist your changes:
 
 ```python
 @posts.on("before_create")
-async def add_slug(data, ctx):
-    data["slug"] = data["title"].lower().replace(" ", "-")
+async def set_author(data, ctx):
+    if ctx.user:
+        data["author_id"] = ctx.user["id"]
     return data
 ```
 
-Both forms call the same underlying code — use whichever reads better.
+If you don't return anything (or return `None`), the original `data` is used unchanged.
 
-## Handler Signature
+## Raising errors from hooks
 
-Every hook receives two arguments:
-
-```python
-async def handler(payload, ctx):
-    # payload - varies by event (see table below)
-    # ctx     - CinderContext with request metadata
-    
-    return payload  # for before_* hooks
-```
-
-### The Context Object
-
-```python
-class CinderContext:
-    user: dict | None      # Authenticated user (or None)
-    request_id: str        # Unique request ID for tracing
-    collection: str        # Collection name
-    operation: str          # "create", "read", "update", "delete", "list"
-    request: Request       # Starlette request object
-    extra: dict            # Ad-hoc data storage
-```
-
-## Collection Events
-
-### Create Events
-
-| Event | Payload | Mutable? | Description |
-|-------|---------|---------|-------------|
-| `before_create` | `dict` of input data | Yes — return modified dict | Runs before INSERT |
-| `after_create` | `dict` of saved record | No | Runs after INSERT |
-
-### Read Events
-
-| Event | Payload | Mutable? | Description |
-|-------|---------|---------|-------------|
-| `before_read` | record `id` (string) | Yes — modify ID to fetch | Runs before SELECT |
-| `after_read` | `dict` of record | Yes — return modified dict | Runs after SELECT |
-
-### List Events
-
-| Event | Payload | Mutable? | Description |
-|-------|---------|---------|-------------|
-| `before_list` | `{"filters": {}, "order_by": "...", "limit": 20, "offset": 0}` | Yes | Runs before SELECT |
-| `after_list` | `list[dict]` of records | Yes — return modified list | Runs after SELECT |
-
-### Update Events
-
-| Event | Payload | Mutable? | Description |
-|-------|---------|---------|-------------|
-| `before_update` | `dict` of input data | Yes | Runs before UPDATE |
-| `after_update` | `(new_record, old_record)` tuple | No | Runs after UPDATE |
-
-### Delete Events
-
-| Event | Payload | Mutable? | Description |
-|-------|---------|---------|-------------|
-| `before_delete` | `dict` of record being deleted | Can cancel | Runs before DELETE |
-| `after_delete` | `dict` of deleted record | No | Runs after DELETE |
-
-## Aborting Operations
-
-### Return an Error
-
-Raise `CinderError` to stop the request and return an error response:
+Raise a `CinderError` to abort the operation and return an HTTP error response:
 
 ```python
 from cinder.errors import CinderError
 
 @posts.on("before_create")
-async def validate_title(data, ctx):
-    if len(data.get("title", "")) < 3:
-        raise CinderError(400, "Title must be at least 3 characters")
+async def check_quota(data, ctx):
+    count = await get_post_count(ctx.user["id"])
+    if count >= 10:
+        raise CinderError(403, "Post limit reached")
     return data
 ```
 
-### Cancel Delete (Soft Delete)
+## Multiple hooks on the same event
 
-Use `CinderError.cancel_delete()` to stop deletion without returning an error:
-
-```python
-@messages.on("before_delete")
-async def soft_delete(record, ctx):
-    # Mark as deleted instead of actually deleting
-    await ctx.request.app.db.execute(
-        "UPDATE messages SET is_deleted = 1 WHERE id = ?",
-        (record["id"],)
-    )
-    raise CinderError.cancel_delete()
-```
-
-The DELETE request returns `200 OK` but the record stays in the database.
-
-## Common Patterns
-
-### Pattern 1: Data Transformation
-
-Transform data before saving:
+Multiple handlers on the same event run in registration order. Each handler receives the data returned by the previous one:
 
 ```python
 @posts.on("before_create")
-async def slugify(data, ctx):
-    data["slug"] = data.get("title", "").lower().replace(" ", "-")
+async def add_slug(data, ctx):
+    data["slug"] = slugify(data["title"])
+    return data
+
+@posts.on("before_create")
+async def add_author(data, ctx):
+    data["author_id"] = ctx.user["id"]
     return data
 ```
 
-### Pattern 2: Validation
+## Async handlers
 
-Validate data and reject invalid input:
+All hook handlers must be `async def`. Synchronous functions are not supported.
 
-```python
-@products.on("before_create")
-async def validate_price(data, ctx):
-    price = data.get("price", 0)
-    if price < 0:
-        raise CinderError(400, "Price cannot be negative")
-    if price > 1000000:
-        raise CinderError(400, "Price exceeds maximum allowed")
-    return data
-```
+## Firing custom events
 
-### Pattern 3: Audit Logging
-
-Log changes for audit trails:
+You can fire your own events anywhere in your hooks:
 
 ```python
-@orders.on("after_update")
-async def log_status_change(payload, ctx):
-    new_record, old_record = payload
-    if new_record["status"] != old_record["status"]:
-        await audit_log.insert({
-            "user_id": ctx.user["id"],
-            "order_id": new_record["id"],
-            "old_status": old_record["status"],
-            "new_status": new_record["status"],
-        })
+@orders.on("after_create")
+async def process_order(order, ctx):
+    # do work ...
+    await app.hooks.fire("order:processed", order, ctx)
 ```
 
-### Pattern 4: Owner Tracking
-
-Manually set the `created_by` field (or augment Cinder's automatic tracking):
-
-```python
-@documents.on("before_create")
-async def set_owner(data, ctx):
-    if ctx.user:
-        data["owner_id"] = ctx.user["id"]
-        data["owner_name"] = ctx.user.get("name", "Unknown")
-    return data
-```
-
-### Pattern 5: Conditional Expansion
-
-Modify list queries based on user context:
-
-```python
-@posts.on("before_list")
-async def filter_by_user(payload, ctx):
-    if ctx.user and ctx.user.get("role") != "admin":
-        # Non-admins only see their own posts
-        payload["filters"]["author"] = ctx.user["id"]
-    return payload
-```
-
-## App-Level Hooks
-
-Register hooks at the app level for cross-cutting concerns:
-
-```python
-@app.on("app:startup")
-async def seed_data(_, ctx):
-    await create_default_categories()
-
-@app.on("app:shutdown")
-async def cleanup(_, ctx):
-    await close_connections()
-
-@app.on("app:error")
-async def log_errors(exc, ctx):
-    await sentry.capture(exc, request_id=ctx.request_id)
-```
-
-## Auth Events
-
-Auth has its own events, prefixed with `auth:`:
-
-| Event | Description |
-|-------|-------------|
-| `auth:before_register` | Before user registration |
-| `auth:after_register` | After user registration |
-| `auth:before_login` | Before login (can reject) |
-| `auth:after_login` | After successful login |
-| `auth:before_logout` | Before token revocation |
-| `auth:after_logout` | After token revocation |
-
-## Rules of Thumb
-
-1. **Mutate by returning** — `before_*` hooks modify data by returning it
-2. **Return `None` for unchanged** — returning `None` keeps the original data
-3. **Hooks run in registration order** — order matters for dependent operations
-4. **After hooks can't abort** — their return values are ignored
-5. **Use guard clauses** — prevent infinite loops with conditions like `if record.get("processed"): return`
-
-## Next Steps
-
-- [Access Control](/core-concepts/access-control/) — Combine hooks with permissions
-- [Schema Auto-Sync](/core-concepts/schema-autosync/) — Database schema management
+See [Custom Events](/hooks/custom-events/) for more.

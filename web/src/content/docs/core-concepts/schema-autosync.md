@@ -1,172 +1,44 @@
 ---
 title: Schema Auto-Sync
-description: Cinder automatically syncs your schema changes to the database
+description: How Cinder keeps your database schema in sync with your code
 ---
 
-On every startup, Cinder compares your collection definitions to the database and automatically applies safe schema changes.
+Every time you start a Cinder app, it compares each registered `Collection` against the live database schema and applies any safe, non-destructive changes automatically.
 
-## How Auto-Sync Works
+## What auto-sync does
 
-When your app starts, Cinder:
+On startup, for each collection Cinder will:
 
-1. Reads the existing database schema
-2. Compares it against your Collection definitions
-3. Applies only **additive changes** (never destructive)
+1. **Create the table** if it doesn't exist yet
+2. **Add new columns** for any fields in your `Collection` that are not in the database
+3. **Add new indexes** for fields with `indexed=True` or entries in `Collection.indexes`
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     App Startup                                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Your Code                    Database                            │
-│  ┌──────────────┐           ┌──────────────┐                    │
-│  │ Collection:  │           │ Table exists │ No ─────────┐      │
-│  │ products    │───────────→│ with 5 cols  │────────────→│ CREATE│
-│  └──────────────┘           └──────────────┘              │ TABLE│
-│        │                         │                        │      │
-│        │                     Yes │                        │      │
-│        │                         ↓                        │      │
-│        │                   Check cols ◄─────────────────┘      │
-│        │                         │                              │
-│        │          ┌──────────────┼──────────────┐              │
-│        │          ↓              ↓              ↓              │
-│        │      Missing       All match      Extra cols          │
-│        │      cols?           ?              in DB?           │
-│        │          ↓              ↓              ↓              │
-│        └──────────┴──────────────┴──────────────┴──────────────┘
-│              │                                                   │
-│              ↓                                                   │
-│     ALTER TABLE ──── ADD COLUMN                                  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+## What auto-sync does NOT do
 
-## What Auto-Sync Handles
+Auto-sync is intentionally conservative:
 
-| Change | Auto-Sync Action |
-|--------|-----------------|
-| New collection | Creates the table |
-| New field added | Adds the column via `ALTER TABLE` |
-| Field removed from code | Logs a warning, **does not drop** the column |
+- **Columns are never dropped** — removing a field from your `Collection` leaves the column in the database
+- **Columns are never renamed** — if you rename a field, auto-sync adds a new column; the old one stays
+- **Column types are not changed** — altering a column type requires a migration
 
-## What Auto-Sync Does NOT Handle
+This ensures you never accidentally lose production data due to a code change.
 
-| Change | Action Required |
-|--------|-----------------|
-| Removing columns | Use [Migrations](/migrations/overview/) |
-| Renaming columns | Use Migrations (rename + data transform) |
-| Adding indexes | Use Migrations or `indexed=True` on field |
-| Dropping indexes | Use Migrations |
-| Changing field constraints | Use Migrations |
+## When to use migrations instead
 
-## Examples
+Use [Migrations](/migrations/commands/) when you need to:
 
-### Adding a New Field
+- Rename a column
+- Drop a column
+- Change a column type
+- Apply a custom SQL transformation to existing data
+- Coordinate a schema change with a specific deployment
 
-```python
-# Before restart - no tags field
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-])
+## Schema drift in production
 
-# After restart - tags field is added automatically
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    JSONField("tags", default=[]),  # New field!
-])
-```
+For production deployments, the recommended approach is to use explicit migrations (run `cinder migrate`) and rely on auto-sync only for convenience during local development.
 
-On startup, Cinder detects the new `tags` field and runs:
+You can still use auto-sync in production for additive changes — new fields are always safe. But any destructive or transformative schema change must go through a migration.
 
-```sql
-ALTER TABLE posts ADD COLUMN tags TEXT
-```
+## Disabling auto-sync
 
-### Removing a Field
-
-```python
-# Remove deprecated field from code
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    # old_field removed
-])
-```
-
-Cinder logs a warning:
-
-```
-WARNING: Column 'old_field' exists in database but not in Collection schema
-```
-
-The column and its data remain in the database. This prevents accidental data loss during development.
-
-## Indexes
-
-Indexes are **not** auto-synced. Use the `indexed=True` parameter on fields:
-
-```python
-products = Collection("products", fields=[
-    TextField("name", required=True),
-    TextField("category", indexed=True),  # Creates index
-    IntField("views", indexed=True),     # Creates index
-])
-```
-
-This generates on startup:
-
-```sql
-CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
-CREATE INDEX IF NOT EXISTS idx_products_views ON products (views);
-```
-
-## Decision Matrix: Auto-Sync vs Migrations
-
-| Task | Auto-Sync | Migrations |
-|------|-----------|------------|
-| Add new table | ✅ Yes | ✅ Yes |
-| Add new column | ✅ Yes | ✅ Yes |
-| Remove column | ❌ No (logs warning) | ✅ Yes |
-| Rename column | ❌ No | ✅ Yes |
-| Add index | ✅ Yes (`indexed=True`) | ✅ Yes |
-| Remove index | ❌ No | ✅ Yes |
-| Transform existing data | ❌ No | ✅ Yes |
-| Change column type | ❌ No | ✅ Yes |
-
-Both systems work together:
-- **Auto-sync** handles additive changes automatically on every startup
-- **Migrations** handle complex changes that need version control
-
-## Safe Development Workflow
-
-```python
-# Step 1: Add field to code
-posts = Collection("posts", fields=[
-    TextField("title", required=True),
-    TextField("summary"),  # Just added
-])
-
-# Step 2: Restart server
-# Cinder auto-adds the column
-
-# Step 3: Verify in database
-# SELECT * FROM posts; -- now includes summary column
-
-# Step 4: (Later) Remove field from code
-# Data is preserved in DB, just not accessible via API
-```
-
-## Migrations for Complex Changes
-
-When auto-sync isn't enough:
-
-```bash
-# Generate a migration for a complex change
-cinder migrate create rename_author_to_writer
-```
-
-See [Migrations](/migrations/overview/) for detailed documentation.
-
-## Next Steps
-
-- [Migrations](/migrations/overview/) — Version-controlled schema changes
-- [Database Indexes](/database/indexes/) — Optimize query performance
+Auto-sync is not currently configurable — it always runs on startup. For strict migration-only workflows, ensure your collections don't introduce new columns outside of migration files.

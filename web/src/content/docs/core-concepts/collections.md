@@ -1,211 +1,94 @@
 ---
 title: Collections
-description: Define your data schema and auto-generate REST APIs
+description: Define schemas that Cinder turns into full CRUD APIs
 ---
 
-A **Collection** is the core building block in Cinder. It defines a data schema that Cinder transforms into both a database table and a full REST API.
+A `Collection` maps a Python schema to a database table and a complete set of REST endpoints. You define the shape of your data; Cinder handles the rest.
 
-## The Mental Model
-
-Think of a collection like a spreadsheet:
-
-```
-Collection "users"
-┌──────────┬────────────────────┬──────────┬─────────────────────────┐
-│    id    │        email        │   name   │       created_at        │
-├──────────┼────────────────────┼──────────┼─────────────────────────┤
-│  uuid-1  │  alice@example.com  │   Alice  │   2026-04-10T10:00:00Z  │
-│  uuid-2  │    bob@example.com  │    Bob   │   2026-04-10T11:00:00Z  │
-└──────────┴────────────────────┴──────────┴─────────────────────────┘
-       ↑              ↑                 ↑                ↑
-   SYSTEM         YOUR FIELDS         YOUR FIELDS       SYSTEM
-   FIELD          (you define)         (you define)      FIELD
-```
-
-You define the columns (fields), Cinder handles everything else.
-
-## Basic Syntax
+## Defining a collection
 
 ```python
-from cinder import Collection, TextField, IntField, FloatField, BoolField
+from cinder import Collection, TextField, IntField, BoolField
 
-products = Collection("products", fields=[
-    TextField("name", required=True, max_length=200),
-    TextField("description"),
-    FloatField("price", required=True, min_value=0),
-    IntField("stock", default=0),
-    BoolField("is_published", default=False),
-])
-```
-
-Then register it with your app:
-
-```python
-app = Cinder(database="app.db")
-app.register(products, auth=["read:public", "write:authenticated"])
-```
-
-Cinder automatically creates:
-- A database table with your fields
-- CRUD API endpoints at `/api/products`
-- Input validation based on field constraints
-
-## System Fields
-
-Every collection automatically includes three system fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID v4 string | Unique identifier, auto-generated on create |
-| `created_at` | ISO 8601 timestamp | Set automatically when the record is created |
-| `updated_at` | ISO 8601 timestamp | Updated automatically on every PATCH request |
-
-Example response:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "My Post",
-  "created_at": "2026-04-10T12:00:00Z",
-  "updated_at": "2026-04-10T12:00:00Z"
-}
-```
-
-## Alternative Syntax: Class-Based
-
-For more complex collections, use the class-based syntax:
-
-```python
-from cinder import Collection, TextField, IntField, DateTimeField, BoolField
-
-class Article(Collection):
-    title = TextField(required=True, max_length=200)
-    slug = TextField(unique=True)  # URL-friendly identifier
-    content = TextField()
-    published_at = DateTimeField()  # Nullable - set manually
-    views = IntField(default=0)
-    is_draft = BoolField(default=True)
-
-app.register(Article, auth=["read:public", "write:authenticated"])
-```
-
-This syntax allows you to reference fields by name (`Article.title`) and add class-level configuration like indexes.
-
-## Indexes
-
-Indexes improve query performance on frequently filtered columns.
-
-### Single-Column Index
-
-Add `indexed=True` to any field:
-
-```python
-class Posts(Collection):
-    title = TextField(required=True)
-    category = TextField(indexed=True)  # Faster filtering by category
-    status = TextField(indexed=True)    # Faster filtering by status
-    created_at = TextField()            # No index
-```
-
-### Composite Index
-
-For queries that filter on multiple columns together:
-
-```python
-class Posts(Collection):
-    title = TextField(required=True)
-    category = TextField()
-    status = TextField()
-    created_at = TextField()
-
-    indexes = [
-        ("category", "status"),           # Filter by category AND status
-        ("category", "created_at"),       # Filter by category AND date
-    ]
-```
-
-### When to Index
-
-| Scenario | Index? | Reason |
-|----------|--------|--------|
-| Primary lookups (by ID) | Built-in | System field, always indexed |
-| Frequently filtered columns | Yes | Faster WHERE clause queries |
-| Unique constraints | Built-in | `unique=True` creates a constraint |
-| Columns with low cardinality (e.g., boolean) | Usually no | Index overhead > scan cost |
-| Sorted columns | Yes | Faster ORDER BY |
-
-## Auth Rules
-
-The `auth` parameter controls access to your collection's endpoints:
-
-```python
-app.register(posts, auth=["read:public", "write:authenticated"])
-```
-
-| Rule | Meaning |
-|------|---------|
-| `read:public` | Anyone can read (no auth required) |
-| `read:authenticated` | Only logged-in users can read |
-| `read:owner` | Users can only read records they created |
-| `read:admin` | Only admins can read |
-| `write:public` | Anyone can create/update/delete |
-| `write:authenticated` | Only logged-in users can write |
-| `write:owner` | Users can only modify their own records |
-| `write:admin` | Only admins can write |
-
-See [Access Control](/core-concepts/access-control/) for detailed examples.
-
-## Multiple Auth Rules
-
-Combine rules for flexible access:
-
-```python
-app.register(posts, auth=[
-    "read:public",            # Everyone can read
-    "write:authenticated",    # Logged-in users can write
-    "read:admin",             # Admins can also see hidden data
-])
-```
-
-Access is granted if **any** rule permits it (OR logic).
-
-## Common Patterns
-
-### Public Content with Protected Writes
-
-```python
 articles = Collection("articles", fields=[
     TextField("title", required=True),
-    TextField("content"),
+    TextField("body"),
+    IntField("view_count", default=0),
+    BoolField("published", default=False),
 ])
+```
+
+## Naming rules
+
+The collection name becomes both the table name and the URL segment:
+
+- `Collection("articles")` → table `articles`, endpoints at `/api/articles`
+- Use lowercase letters, numbers, and underscores
+- Must be unique across all registered collections
+
+## Auto-generated columns
+
+Every collection automatically gets three extra columns you do not need to declare:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `TEXT` (UUID) | Auto-generated UUID primary key |
+| `created_at` | `TEXT` (ISO 8601) | Set on insert, never changed |
+| `updated_at` | `TEXT` (ISO 8601) | Updated on every `PATCH` |
+
+## Auto-generated endpoints
+
+Registering a collection wires up five routes:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/{name}` | List records with filtering, pagination, sorting |
+| `POST` | `/api/{name}` | Create a new record |
+| `GET` | `/api/{name}/{id}` | Get a single record by ID |
+| `PATCH` | `/api/{name}/{id}` | Partial update (only provided fields change) |
+| `DELETE` | `/api/{name}/{id}` | Delete a record |
+
+## Registering a collection
+
+```python
+app.register(articles)
+
+# With access control
 app.register(articles, auth=["read:public", "write:authenticated"])
 ```
 
-### Private Content
+See [Access Control](/core-concepts/access-control/) for all available rules.
+
+## Composite indexes
+
+Declare multi-column indexes for queries that filter or sort on combinations of fields:
 
 ```python
-notes = Collection("notes", fields=[
-    TextField("title", required=True),
-    TextField("content"),
-])
-app.register(notes, auth=["read:owner", "write:owner"])
-# Users can only see/edit their own notes
+posts = Collection(
+    "posts",
+    fields=[
+        TextField("author_id"),
+        TextField("status"),
+        DateTimeField("published_at"),
+    ],
+    indexes=[
+        ("author_id", "status"),         # index on (author_id, status)
+        ("status", "published_at"),      # index on (status, published_at)
+    ],
+)
 ```
 
-### Admin-Only Content
+## Registering hooks on a collection
 
 ```python
-config = Collection("config", fields=[
-    TextField("key", required=True),
-    TextField("value"),
-])
-app.register(config, auth=["read:admin", "write:admin"])
-# Only users with role="admin" can access
+@articles.on("before_create")
+async def add_slug(data, ctx):
+    data["slug"] = data["title"].lower().replace(" ", "-")
+    return data
 ```
 
-## Next Steps
+See [Lifecycle Hooks](/core-concepts/lifecycle-hooks/) for all available events.
 
-- [Field Types](/fields/field-types/) — All available field definitions
-- [Relations](/core-concepts/relations/) — Link collections together
-- [Access Control](/core-concepts/access-control/) — Fine-grained permissions
-- [Schema Auto-Sync](/core-concepts/schema-autosync/) — How Cinder handles schema changes
+## Schema auto-sync
+
+When you start your app, Cinder compares the `Collection` definition against the live database schema and adds any missing columns. Removed columns are left in place (non-destructive). For larger structural changes, use [Migrations](/migrations/commands/).
