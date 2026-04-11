@@ -1,219 +1,84 @@
 ---
-title: Rate Limiting Configuration
-description: Customize rate limits for your API
+title: Configuration
+description: Configure rate limiting backends, global defaults, and per-route rules
+sidebar:
+  order: 2
 ---
 
-## Per-Route Rules
+## Backends
 
-Override default limits for specific paths:
+### In-memory (default)
 
-```python
-from cinder import Cinder
-
-app = Cinder(database="app.db")
-
-# Stricter limit for auth endpoints
-app.rate_limit.rule("/api/auth/login", limit=10, window=60)
-
-# Stricter limit for write operations
-app.rate_limit.rule("/api/posts", limit=50, window=60)
-
-# Generous limit for read-heavy endpoints
-app.rate_limit.rule("/api/public", limit=500, window=60)
-```
-
-### Rule Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `path_prefix` | `str` | Yes | Path to apply rule to (uses `startswith`) |
-| `limit` | `int` | Yes | Maximum requests in window |
-| `window` | `int` | No | Window in seconds (default: 60) |
-| `scope` | `str` | No | `ip`, `user`, or `both` (default: `ip`) |
-
-### Path Matching
-
-Rules match by prefix:
+Works out of the box, no extra dependencies. Not shared across processes.
 
 ```python
-app.rate_limit.rule("/api/auth", limit=10, window=60)
+from cinder.ratelimit.backends import MemoryRateLimitBackend
 
-# Matches:
-#   /api/auth/login    ✓
-#   /api/auth/register ✓
-#   /api/auth/logout   ✓
-
-# Does not match:
-#   /api/posts         ✗
-#   /api/users         ✗
+app.rate_limit.use(MemoryRateLimitBackend())
 ```
 
-### Rule Priority
-
-First matching rule wins:
+### Redis (multi-process / multi-server)
 
 ```python
-# Specific rule first
-app.rate_limit.rule("/api/auth/login", limit=5, window=60)
-# Generic rule second
-app.rate_limit.rule("/api/auth", limit=10, window=60)
+from cinder.ratelimit.backends import RedisRateLimitBackend
+
+app.rate_limit.use(RedisRateLimitBackend())
 ```
 
-## Scope Options
+Requires `pip install "cinder[redis]"`. Uses `CINDER_REDIS_URL` automatically.
 
-Control what identifies the client:
+When `CINDER_REDIS_URL` is set, the Redis backend is selected automatically — you don't need to call `.use()`.
 
-### `ip` — By IP Address
+## Global defaults
 
 ```python
-app.rate_limit.rule("/api/public", limit=100, window=60, scope="ip")
+app.rate_limit.configure()  # no method for this — use env vars
 ```
 
-Rate limit applies per IP address. Good for anonymous endpoints.
+Set via environment variables:
 
-### `user` — By User ID
-
-```python
-app.rate_limit.rule("/api/write", limit=50, window=60, scope="user")
-```
-
-Rate limit applies per authenticated user. Falls back to IP if not authenticated.
-
-### `both` — User or IP
-
-```python
-app.rate_limit.rule("/api/data", limit=100, window=60, scope="both")
-```
-
-Authenticated users are limited by user ID. Anonymous users are limited by IP.
-
-## Default Limits
-
-### Anonymous (No Token)
-
-```python
-app.rate_limit.rule("/", limit=100, window=60, scope="ip")
-```
-
-### Authenticated
-
-```python
-app.rate_limit.rule("/", limit=1000, window=60, scope="user")
-```
-
-Higher limits for authenticated users who are trusted.
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CINDER_RATE_LIMIT_ENABLED` | `true` | Enable/disable rate limiting |
-| `CINDER_RATE_LIMIT_ANON` | `100/60` | Anonymous limit |
-| `CINDER_RATE_LIMIT_USER` | `1000/60` | User limit |
-
-### Format
-
-```
-CINDER_RATE_LIMIT_ANON=100/60
+```dotenv
+CINDER_RATE_LIMIT_ANON=100/60    # format: {requests}/{window_seconds}
 CINDER_RATE_LIMIT_USER=1000/60
 ```
 
-Format: `{limit}/{window_seconds}`
-
-## Custom Backend
+## Per-route rules
 
 ```python
-from cinder.ratelimit import RateLimitBackend, RateLimitResult
-
-class MyRateLimitBackend(RateLimitBackend):
-    async def check(self, key: str, limit: int, window: int) -> RateLimitResult:
-        # Your implementation
-        return RateLimitResult(allowed=True, remaining=limit-1, reset_at=time.time() + window)
-    
-    async def close(self) -> None:
-        pass
-
-app.rate_limit.use(MyRateLimitBackend())
+app.rate_limit.rule(
+    "/api/auth/register",
+    limit=5,
+    window=60,        # seconds
+    scope="ip",       # "ip" or "user"
+)
 ```
 
-## Complete Example
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `path_prefix` | `str` | — | Rule applies to all paths starting with this prefix |
+| `limit` | `int` | — | Maximum requests in the window |
+| `window` | `int` | `60` | Window duration in seconds |
+| `scope` | `str` | `"ip"` | Rate limit by `"ip"` or `"user"` |
 
-```python
-from cinder import Cinder
+Multiple rules can be registered. The first matching rule (by path prefix) wins.
 
-app = Cinder(database="app.db")
-app.configure_redis(url="redis://localhost:6379/0")
+## 429 response
 
-# Strict limits for auth endpoints
-app.rate_limit.rule("/api/auth/login", limit=5, window=60, scope="ip")
-app.rate_limit.rule("/api/auth/register", limit=10, window=60, scope="ip")
+When a client exceeds the limit:
 
-# Write limits for authenticated users
-app.rate_limit.rule("/api/posts", limit=50, window=60, scope="user")
-app.rate_limit.rule("/api/comments", limit=50, window=60, scope="user")
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 45
 
-# Generous limits for public read endpoints
-app.rate_limit.rule("/api/public", limit=500, window=60, scope="ip")
-
-# All other endpoints use defaults
-# (100/60 for anonymous, 1000/60 for authenticated)
-
-app.serve()
+{"detail": "Rate limit exceeded"}
 ```
 
-## Disable Rate Limiting
+## Chaining configuration
 
 ```python
-# Via code
-app.rate_limit.enable(False)
-
-# Via environment
-# CINDER_RATE_LIMIT_ENABLED=false
-```
-
-## Chaining Rules
-
-```python
-app = Cinder(database="app.db")
-
-# Chain multiple rules
 app.rate_limit \
-    .rule("/api/auth/login", limit=5, window=60) \
-    .rule("/api/auth/register", limit=10, window=60) \
-    .rule("/api/write", limit=100, window=60, scope="user")
+    .use(RedisRateLimitBackend()) \
+    .rule("/api/auth", limit=10, window=60) \
+    .rule("/api/posts", limit=100, window=60) \
+    .enable(True)
 ```
-
-## Common Patterns
-
-### Pattern 1: Auth Protection
-
-```python
-# Prevent brute force on login
-app.rate_limit.rule("/api/auth/login", limit=5, window=60, scope="ip")
-
-# Limit registration spam
-app.rate_limit.rule("/api/auth/register", limit=3, window=3600, scope="ip")
-```
-
-### Pattern 2: Tiered Access
-
-```python
-# Free tier: strict limits
-app.rate_limit.rule("/api/", limit=100, window=60, scope="user")
-
-# Premium tier: generous limits
-app.rate_limit.rule("/api/", limit=10000, window=60, scope="user")
-# (Enforced by checking user's plan in custom backend)
-```
-
-### Pattern 3: Write Protection
-
-```python
-# Limit write operations
-app.rate_limit.rule("/api/", limit=10, window=60, scope="user")
-```
-
-## Next Steps
-
-- [Algorithm](/rate-limiting/algorithm/) — How rate limiting works
-- [Headers](/rate-limiting/headers/) — Response header reference

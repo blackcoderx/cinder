@@ -1,83 +1,57 @@
 ---
 title: Rate Limiting
-description: Protect your API from abuse with request throttling
+description: Protect your API from abuse with token-bucket rate limiting
+sidebar:
+  order: 1
 ---
 
-Rate limiting controls how many requests clients can make in a given time window.
+Cinder includes a rate limiting middleware that uses the **token-bucket algorithm** to limit how many requests a client can make in a given time window. It is enabled by default.
 
-## Quick Start
+## How it works
 
-### Automatic with Redis
+Each client gets a "bucket" of tokens. Every request consumes one token. Tokens refill at a steady rate. When the bucket is empty, the request receives `429 Too Many Requests`.
+
+Clients are identified by:
+- **Unauthenticated requests** — IP address
+- **Authenticated requests** — user ID (from the JWT token)
+
+## Default limits
+
+| Client type | Default | Environment variable |
+|-------------|---------|----------------------|
+| Unauthenticated | 100 requests / 60 seconds | `CINDER_RATE_LIMIT_ANON` |
+| Authenticated | 1000 requests / 60 seconds | `CINDER_RATE_LIMIT_USER` |
+
+Override via environment variables:
+
+```dotenv
+CINDER_RATE_LIMIT_ANON=50/60     # 50 requests per minute for anonymous
+CINDER_RATE_LIMIT_USER=500/60    # 500 per minute for authenticated users
+```
+
+## Per-route rules
+
+Override limits for specific path prefixes:
 
 ```python
-from cinder import Cinder
-
-app = Cinder(database="app.db")
-app.configure_redis(url="redis://localhost:6379/0")
-# Rate limiting auto-enables
+app.rate_limit.rule("/api/posts", limit=50, window=60)
+app.rate_limit.rule("/api/auth/register", limit=5, window=60)
 ```
 
-### In-Memory (No Setup)
+Per-route rules take precedence over the global defaults.
+
+## Disabling rate limiting
+
+```dotenv
+CINDER_RATE_LIMIT_ENABLED=false
+```
+
+Or in code:
 
 ```python
-from cinder import Cinder
-
-app = Cinder(database="app.db")
-# Rate limiting enabled by default with memory backend
+app.rate_limit.enable(False)
 ```
 
-## Default Limits
+## In this section
 
-| Client Type | Limit | Window | Key |
-|-------------|-------|--------|-----|
-| Anonymous (no token) | 100 requests | 60 seconds | By IP |
-| Authenticated | 1000 requests | 60 seconds | By user ID |
-
-## On Limit Exceeded
-
-When a client exceeds the limit, they receive:
-
-```http
-HTTP/1.1 429 Too Many Requests
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 0
-X-RateLimit-Reset: 1744300800
-Retry-After: 42
-Content-Type: application/json
-
-{"status": 429, "error": "Rate limit exceeded"}
-```
-
-See [Headers](/rate-limiting/headers/) for all response headers.
-
-## Middleware Order
-
-Rate limiting runs early in the middleware stack:
-
-```
-1. ErrorHandler  (outermost)
-2. RequestID
-3. CORS
-4. RateLimit    ← Blocks abuse BEFORE cache
-5. Cache
-6. Auth
-7. Routes       (innermost)
-```
-
-This ensures abusive requests are rejected before they hit the cache or database.
-
-## Fail-Open Design
-
-If the rate limit backend fails, requests are allowed through:
-
-```
-Rate Limit Error → Log → Allow request → Continue
-```
-
-Your API never blocks legitimate users because of rate limiting issues.
-
-## Next Steps
-
-- [Algorithm](/rate-limiting/algorithm/) — How rate limiting works
-- [Configuration](/rate-limiting/configuration/) — Customize limits and rules
-- [Headers](/rate-limiting/headers/) — Response header reference
+- [Configuration](/rate-limiting/configuration/) — backend setup, global defaults, and per-route rules
