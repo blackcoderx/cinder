@@ -113,6 +113,27 @@ async def prevent_published_delete(record, ctx):
         raise CinderError(403, "Cannot delete a published post")
 ```
 
+## Soft deletes
+
+Use `CinderError.cancel_delete()` in a `before_delete` hook to intercept a `DELETE` request, do your own cleanup (e.g. set a `deleted_at` timestamp), and **prevent the hard delete** from happening. Cinder reports 200 to the caller as if the delete succeeded.
+
+```python
+from cinder.errors import CinderError
+from datetime import datetime, timezone
+
+@posts.on("before_delete")
+async def soft_delete(record, ctx):
+    now = datetime.now(timezone.utc).isoformat()
+    # Mark as deleted instead of removing the row
+    await app_db.execute(
+        "UPDATE posts SET deleted_at = ? WHERE id = ?",
+        (now, record["id"]),
+    )
+    raise CinderError.cancel_delete()  # stops the hard DELETE, returns 200
+```
+
+`CinderError.cancel_delete()` is a sentinel — it is caught specifically by the store and treated as a successful (soft) delete. Any other `CinderError` (e.g. status 403) propagates normally as an error response.
+
 ## Multiple handlers
 
 Multiple handlers on the same event run in registration order. Each receives the data returned by the previous:
