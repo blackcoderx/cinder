@@ -5,7 +5,7 @@ import starlight from "@astrojs/starlight";
 export default defineConfig({
   integrations: [
     starlight({
-      title: "Cinder",
+      title: "CinderAPI",
       customCss: ["@fontsource/jetbrains-mono", "./src/styles/custom.css"],
       components: {
         SocialIcons: "./src/components/GitHubLink.astro",
