@@ -70,6 +70,7 @@ export default defineConfig({
         },
         { label: "File Storage", autogenerate: { directory: "file-storage" } },
         { label: "Email", autogenerate: { directory: "email" } },
+        { label: "Deployment", autogenerate: { directory: "deployment" } },
         { label: "CLI", autogenerate: { directory: "cli" } },
         { label: "API Reference", autogenerate: { directory: "api" } },
       ],
