@@ -1,4 +1,4 @@
-"""Tests for the cinder deploy command and deployment generators."""
+"""Tests for the cinderapi deploy command and deployment generators."""
 
 import os
 from pathlib import Path
@@ -110,7 +110,7 @@ class TestDockerGenerator:
     def test_dockerfile_has_migrate(self, basic_profile, tmp_path):
         gen = DockerGenerator(basic_profile, tmp_path)
         files = {f.path: f.content for f in gen.generate()}
-        assert "cinder migrate run" in files["Dockerfile"]
+        assert "cinderapi migrate run" in files["Dockerfile"]
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ class TestRailwayGenerator:
     def test_start_command_includes_migrate(self, basic_profile, tmp_path):
         gen = RailwayGenerator(basic_profile, tmp_path)
         content = gen.generate()[0].content
-        assert "cinder migrate run" in content
+        assert "cinderapi migrate run" in content
 
     def test_post_instructions_mention_postgres(self, basic_profile, tmp_path):
         gen = RailwayGenerator(basic_profile, tmp_path)
@@ -215,7 +215,7 @@ class TestFlyGenerator:
         gen = FlyGenerator(basic_profile, tmp_path)
         files = {f.path: f.content for f in gen.generate()}
         assert "release_command" in files["fly.toml"]
-        assert "cinder migrate run" in files["fly.toml"]
+        assert "cinderapi migrate run" in files["fly.toml"]
 
     def test_fly_toml_force_https(self, basic_profile, tmp_path):
         gen = FlyGenerator(basic_profile, tmp_path)
