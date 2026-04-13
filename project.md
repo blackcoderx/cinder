@@ -15,7 +15,7 @@ The following graph maps the entire repository, showcasing how the command-line 
 ```mermaid
 graph TD
     %% Core Initialization Layer
-    CLI["cinder/cli.py CLI Entrypoint"] -. "cinder serve" .-> APP["cinder/app.py App Builder"]
+    CLI["cinder/cli.py CLI Entrypoint"] -. "cinderapi serve" .-> APP["cinder/app.py App Builder"]
 
     %% Main Application Layer
     APP --> PIPE["cinder/pipeline.py ASGI App / Middleware"]
@@ -115,7 +115,7 @@ graph TD
     CACHE_INV -. "registers after_* hooks" .-> HREG
 
     %% Migrations Subsystem (Feature 3)
-    CLI -. "cinder migrate / doctor / routes / info / generate-secret" .-> MIG["cinder/migrations/ Migration Engine"]
+    CLI -. "cinderapi migrate / doctor / routes / info / generate-secret" .-> MIG["cinder/migrations/ Migration Engine"]
     MIG --> MIG_ENG["cinder/migrations/engine.py MigrationEngine + _schema_migrations"]
     MIG --> MIG_DIFF["cinder/migrations/diff.py SchemaComparator (AddTable/AddColumn/DropColumn)"]
     MIG --> MIG_GEN["cinder/migrations/generator.py Migration File Generator"]
