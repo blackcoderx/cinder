@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = typer.Typer(
-    name="cinder", help="Cinder — A lightweight backend framework for Python."
+    name="cinderapi", help="Cinder — A lightweight backend framework for Python."
 )
 
 migrate_app = typer.Typer(help="Manage database schema migrations.")
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     typer.echo(f"Project created at {project_path.resolve()}")
     typer.echo(f"  cd {project_name}")
-    typer.echo("cinder serve main.py")
+    typer.echo("cinderapi serve main.py")
 
 
 @app.command()

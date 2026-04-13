@@ -39,7 +39,7 @@ class PlatformGenerator(ABC):
         )
 
     def _migrate_command(self) -> str:
-        return f"cinder migrate run --app {self.profile.app_module}.py"
+        return f"cinderapi migrate run --app {self.profile.app_module}.py"
 
     def _start_with_migrate(self, *, use_port_env: bool = False) -> str:
         return f"{self._migrate_command()} && {self._start_command(use_port_env=use_port_env)}"

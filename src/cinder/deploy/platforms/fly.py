@@ -66,7 +66,7 @@ class FlyGenerator(PlatformGenerator):
             "1. Install the Fly CLI: https://fly.io/docs/flyctl/install/",
             "2. Run: fly launch --no-deploy  (to create the app)",
             "3. Set secrets:",
-            "   fly secrets set CINDER_SECRET=$(cinder generate-secret)",
+            "   fly secrets set CINDER_SECRET=$(cinderapi generate-secret)",
         ]
         if p.needs_postgres:
             lines += [
