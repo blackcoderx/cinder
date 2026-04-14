@@ -90,7 +90,7 @@ You now have:
 
 ## Documentation
 
-Full documentation at **[zeno.vercel.app](https://zeno.vercel.app)**
+Full documentation at **[zenoapi.vercel.app](https://zenoapi.vercel.app)**
 
 ## License
 
