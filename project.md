@@ -15,96 +15,96 @@ The following graph maps the entire repository, showcasing how the command-line 
 ```mermaid
 graph TD
     %% Core Initialization Layer
-    CLI["cinder/cli.py CLI Entrypoint"] -. "cinderapi serve" .-> APP["cinder/app.py App Builder"]
+    CLI["zeno/cli.py CLI Entrypoint"] -. "zeno serve" .-> APP["zeno/app.py App Builder"]
 
     %% Main Application Layer
-    APP --> PIPE["cinder/pipeline.py ASGI App / Middleware"]
-    PIPE -. "Yields Errors" .-> ERR["cinder/errors.py Exception Handling"]
-    APP --> DB["cinder/db/connection.py Multi-DB Manager (shim)"]
+    APP --> PIPE["zeno/pipeline.py ASGI App / Middleware"]
+    PIPE -. "Yields Errors" .-> ERR["zeno/errors.py Exception Handling"]
+    APP --> DB["zeno/db/connection.py Multi-DB Manager (shim)"]
 
     %% Hook System Layer
-    APP --> HREG["cinder/hooks/registry.py Hook Storage"]
-    HREG -. "Provides Hooks" .-> HRUN["cinder/hooks/runner.py Hook Executor"]
-    HRUN --> HCTX["cinder/hooks/context.py Execution Context"]
+    APP --> HREG["zeno/hooks/registry.py Hook Storage"]
+    HREG -. "Provides Hooks" .-> HRUN["zeno/hooks/runner.py Hook Executor"]
+    HRUN --> HCTX["zeno/hooks/context.py Execution Context"]
 
     %% Dynamic Collections Layer (Data Schema and API)
-    APP --> SCHEMA["cinder/collections/schema.py Collection + FileField Defs"]
-    APP --> CROUTER["cinder/collections/router.py CRUD + File API Endpoints"]
+    APP --> SCHEMA["zeno/collections/schema.py Collection + FileField Defs"]
+    APP --> CROUTER["zeno/collections/router.py CRUD + File API Endpoints"]
 
     %% API Operations
     PIPE --> CROUTER
     CROUTER -. "Executes Hooks" .-> HRUN
-    CROUTER --> STORE["cinder/collections/store.py Query Builder & Executor"]
+    CROUTER --> STORE["zeno/collections/store.py Query Builder & Executor"]
     SCHEMA -. "Validates Data" .-> STORE
     STORE --> DB
-    DB --> DB_BE["cinder/db/backends/ DatabaseBackend ABC + SQLite/PG/MySQL"]
+    DB --> DB_BE["zeno/db/backends/ DatabaseBackend ABC + SQLite/PG/MySQL"]
 
     %% File Storage Subsystem (Phase 4)
-    APP --> STORAGE["cinder/storage/ File Storage Subsystem"]
-    STORAGE --> STOR_BE["cinder/storage/backends.py FileStorageBackend ABC + LocalFileBackend"]
-    STORAGE --> STOR_S3["cinder/storage/s3.py S3CompatibleBackend + 7 provider presets"]
-    STORAGE --> STOR_KEYS["cinder/storage/keys.py Key Generation & Filename Sanitization"]
-    STORAGE --> STOR_ROUTES["cinder/storage/routes.py Upload / Download / Delete Handlers"]
-    STORAGE --> STOR_CLEAN["cinder/storage/cleanup.py Orphan File Cleanup (after_delete hooks)"]
+    APP --> STORAGE["zeno/storage/ File Storage Subsystem"]
+    STORAGE --> STOR_BE["zeno/storage/backends.py FileStorageBackend ABC + LocalFileBackend"]
+    STORAGE --> STOR_S3["zeno/storage/s3.py S3CompatibleBackend + 7 provider presets"]
+    STORAGE --> STOR_KEYS["zeno/storage/keys.py Key Generation & Filename Sanitization"]
+    STORAGE --> STOR_ROUTES["zeno/storage/routes.py Upload / Download / Delete Handlers"]
+    STORAGE --> STOR_CLEAN["zeno/storage/cleanup.py Orphan File Cleanup (after_delete hooks)"]
     CROUTER -. "Mounts file routes" .-> STOR_ROUTES
     STOR_ROUTES --> STOR_BE
     STOR_CLEAN -. "registers after_delete hooks" .-> HREG
 
     %% Email Subsystem (Phase 5)
-    APP --> EMAIL["cinder/email/ Email Subsystem"]
-    EMAIL --> EMAIL_BE["cinder/email/backends.py EmailBackend ABC + ConsoleEmailBackend"]
-    EMAIL --> EMAIL_SMTP["cinder/email/smtp.py SMTPBackend + 7 provider presets"]
-    EMAIL --> EMAIL_TPL["cinder/email/templates.py Built-in HTML/text email templates"]
+    APP --> EMAIL["zeno/email/ Email Subsystem"]
+    EMAIL --> EMAIL_BE["zeno/email/backends.py EmailBackend ABC + ConsoleEmailBackend"]
+    EMAIL --> EMAIL_SMTP["zeno/email/smtp.py SMTPBackend + 7 provider presets"]
+    EMAIL --> EMAIL_TPL["zeno/email/templates.py Built-in HTML/text email templates"]
     APP -. "app.email facade" .-> EMAIL_BE
     APP -. "app.email facade" .-> EMAIL_SMTP
 
     %% Authentication Layer
-    APP --> AUTH_MOD["cinder/auth/models.py User Schema + Email Verification Tokens"]
-    APP --> AROUTER["cinder/auth/routes.py Login / Register / Verify-Email APIs"]
+    APP --> AUTH_MOD["zeno/auth/models.py User Schema + Email Verification Tokens"]
+    APP --> AROUTER["zeno/auth/routes.py Login / Register / Verify-Email APIs"]
 
     PIPE --> AROUTER
-    AROUTER --> TOKENS["cinder/auth/tokens.py JWT Encode/Decode"]
-    AROUTER --> PASS["cinder/auth/passwords.py Hashing"]
+    AROUTER --> TOKENS["zeno/auth/tokens.py JWT Encode/Decode"]
+    AROUTER --> PASS["zeno/auth/passwords.py Hashing"]
     AROUTER --> DB
     AROUTER -. "dispatches emails" .-> EMAIL
 
     %% Realtime Subsystem
-    APP --> R_BROKER["cinder/realtime/broker.py Pub/Sub Broker"]
-    PIPE --> R_WS["cinder/realtime/websocket.py WebSocket Handler"]
-    PIPE --> R_SSE["cinder/realtime/sse.py SSE Handler"]
+    APP --> R_BROKER["zeno/realtime/broker.py Pub/Sub Broker"]
+    PIPE --> R_WS["zeno/realtime/websocket.py WebSocket Handler"]
+    PIPE --> R_SSE["zeno/realtime/sse.py SSE Handler"]
 
     R_WS --> R_BROKER
     R_SSE --> R_BROKER
 
-    R_WS -. "Validates Token" .-> R_AUTH["cinder/realtime/auth.py RT Auth Helpers"]
+    R_WS -. "Validates Token" .-> R_AUTH["zeno/realtime/auth.py RT Auth Helpers"]
     R_SSE -. "Validates Token" .-> R_AUTH
     R_AUTH -. "Decodes" .-> TOKENS
 
-    R_BROKER --> R_FILTER["cinder/realtime/auth_filter.py RT RBAC Filtering"]
+    R_BROKER --> R_FILTER["zeno/realtime/auth_filter.py RT RBAC Filtering"]
 
     %% The Bridge between Collections and Realtime
-    APP --> R_BRIDGE["cinder/realtime/bridge.py Collections to Broker Bridge"]
+    APP --> R_BRIDGE["zeno/realtime/bridge.py Collections to Broker Bridge"]
     CROUTER -. "Triggers Events" .-> R_BRIDGE
     R_BRIDGE --> R_BROKER
 
     %% Redis Broker
-    R_REDIS["cinder/realtime/redis_broker.py Redis Pub/Sub Broker"] -. "implements BrokerProtocol" .-> R_BROKER
+    R_REDIS["zeno/realtime/redis_broker.py Redis Pub/Sub Broker"] -. "implements BrokerProtocol" .-> R_BROKER
 
     %% Shared Redis Client
-    REDIS_CLIENT["cinder/cache/redis_client.py Shared Redis Client"]
+    REDIS_CLIENT["zeno/cache/redis_client.py Shared Redis Client"]
 
     %% Cache Subsystem (Phase 8)
-    APP --> CACHE_CFG["cinder/cache/ Cache Subsystem"]
-    CACHE_CFG --> CACHE_BE["cinder/cache/backends.py CacheBackend ABC + Implementations"]
-    CACHE_CFG --> CACHE_MW["cinder/cache/middleware.py CacheMiddleware (cache-aside)"]
-    CACHE_CFG --> CACHE_INV["cinder/cache/invalidation.py Tag-based Invalidation"]
+    APP --> CACHE_CFG["zeno/cache/ Cache Subsystem"]
+    CACHE_CFG --> CACHE_BE["zeno/cache/backends.py CacheBackend ABC + Implementations"]
+    CACHE_CFG --> CACHE_MW["zeno/cache/middleware.py CacheMiddleware (cache-aside)"]
+    CACHE_CFG --> CACHE_INV["zeno/cache/invalidation.py Tag-based Invalidation"]
     CACHE_BE --> REDIS_CLIENT
     R_REDIS --> REDIS_CLIENT
 
     %% Rate-Limit Subsystem (Phase 8)
-    APP --> RL_CFG["cinder/ratelimit/ Rate-Limit Subsystem"]
-    RL_CFG --> RL_BE["cinder/ratelimit/backends.py RateLimitBackend ABC + Implementations"]
-    RL_CFG --> RL_MW["cinder/ratelimit/middleware.py RateLimitMiddleware"]
+    APP --> RL_CFG["zeno/ratelimit/ Rate-Limit Subsystem"]
+    RL_CFG --> RL_BE["zeno/ratelimit/backends.py RateLimitBackend ABC + Implementations"]
+    RL_CFG --> RL_MW["zeno/ratelimit/middleware.py RateLimitMiddleware"]
     RL_BE --> REDIS_CLIENT
 
     %% Pipeline wiring
@@ -115,10 +115,10 @@ graph TD
     CACHE_INV -. "registers after_* hooks" .-> HREG
 
     %% Migrations Subsystem (Feature 3)
-    CLI -. "cinderapi migrate / doctor / routes / info / generate-secret" .-> MIG["cinder/migrations/ Migration Engine"]
-    MIG --> MIG_ENG["cinder/migrations/engine.py MigrationEngine + _schema_migrations"]
-    MIG --> MIG_DIFF["cinder/migrations/diff.py SchemaComparator (AddTable/AddColumn/DropColumn)"]
-    MIG --> MIG_GEN["cinder/migrations/generator.py Migration File Generator"]
+    CLI -. "zeno migrate / doctor / routes / info / generate-secret" .-> MIG["zeno/migrations/ Migration Engine"]
+    MIG --> MIG_ENG["zeno/migrations/engine.py MigrationEngine + _schema_migrations"]
+    MIG --> MIG_DIFF["zeno/migrations/diff.py SchemaComparator (AddTable/AddColumn/DropColumn)"]
+    MIG --> MIG_GEN["zeno/migrations/generator.py Migration File Generator"]
     MIG_ENG --> DB
     MIG_DIFF --> DB
     MIG_DIFF --> SCHEMA
@@ -128,7 +128,7 @@ graph TD
 
 ## Detailed Subsystem Breakdown and File Manifest
 
-### 1. The Application Core (`src/cinder/`)
+### 1. The Application Core (`src/zeno/`)
 
 * **`app.py`** — Defines the `Cinder` class. Central registry where developers register schemas, configure auth, email, storage, database, caching, and rate-limiting, and initialize the realtime broker. Exposes five fluent configuration entry-points:
   - `app.cache` → `_CacheConfig` — cache backend, TTL, per-user segmentation, excluded paths.
@@ -140,23 +140,23 @@ graph TD
 * **`cli.py`** — Handles terminal commands (via Typer). Commands: `serve`, `init`, `promote`, `generate-secret`, `doctor`, `routes`, `info`, and the `migrate` sub-app (`run`, `status`, `rollback`, `create`). See [Migrations Subsystem](#11-migrations-subsystem-srccindermigrations) below.
 * **`errors.py`** — A unified set of exceptions allowing standard error responses across all modules.
 
-### 2. The Database Layer (`src/cinder/db/`)
+### 2. The Database Layer (`src/zeno/db/`)
 
 Cinder's database layer is fully pluggable, mirroring the same backend-ABC pattern used by storage, email, cache, and rate-limit subsystems. All callers write SQL using `?` as the universal placeholder; each backend converts it internally to the native style.
 
-* **`connection.py`** — Thin shim (`Database` class) that delegates all operations to the active `DatabaseBackend`. Constructor accepts a bare path, a `sqlite:///` URL, `postgresql://`, or `mysql://`. Two additional methods beyond the original five: `table_exists(name)` and `get_columns(name)` — used by `store.py` for database-agnostic schema introspection. Environment variables override the programmatic URL: `CINDER_DATABASE_URL` (highest) → `DATABASE_URL` (standard PaaS) → constructor arg → `"app.db"` (default SQLite).
+* **`connection.py`** — Thin shim (`Database` class) that delegates all operations to the active `DatabaseBackend`. Constructor accepts a bare path, a `sqlite:///` URL, `postgresql://`, or `mysql://`. Two additional methods beyond the original five: `table_exists(name)` and `get_columns(name)` — used by `store.py` for database-agnostic schema introspection. Environment variables override the programmatic URL: `ZENO_DATABASE_URL` (highest) → `DATABASE_URL` (standard PaaS) → constructor arg → `"app.db"` (default SQLite).
 
 * **`backends/base.py`** — `DatabaseBackend` ABC defines the seven-method contract all backends must satisfy: `connect`, `disconnect`, `execute`, `fetch_one`, `fetch_all`, `table_exists`, `get_columns`. `DatabaseIntegrityError` — a driver-agnostic exception raised by all backends on UNIQUE / NOT NULL constraint violations; replaces `sqlite3.IntegrityError` throughout the codebase so callers never import driver-specific types.
 
 * **`backends/sqlite.py`** — `SQLiteBackend`. Extracts the original `aiosqlite` logic. WAL mode, foreign-key enforcement, lazy auto-connect. `table_exists` uses `sqlite_master`; `get_columns` uses `PRAGMA table_info`. Wraps `IntegrityError` (detected by class name, for aiosqlite portability) as `DatabaseIntegrityError`.
 
-* **`backends/postgresql.py`** — `PostgreSQLBackend`. Uses `asyncpg` (optional extra: `cinder[postgres]`). Creates an `asyncpg.create_pool` with configurable `min_size` / `max_size` / `max_inactive_connection_lifetime` (default 300 s — prevents stale connections on NeonDB/Supabase serverless). Converts `?` → `$1, $2, ...`. `table_exists` / `get_columns` query `information_schema`. Catches `asyncpg.UniqueViolationError` and `asyncpg.IntegrityConstraintViolationError` → `DatabaseIntegrityError`. Retries transient connection errors once. Pool size configurable via `CINDER_DB_POOL_MIN/MAX/TIMEOUT/CONNECT_TIMEOUT` env vars.
+* **`backends/postgresql.py`** — `PostgreSQLBackend`. Uses `asyncpg` (optional extra: `zeno[postgres]`). Creates an `asyncpg.create_pool` with configurable `min_size` / `max_size` / `max_inactive_connection_lifetime` (default 300 s — prevents stale connections on NeonDB/Supabase serverless). Converts `?` → `$1, $2, ...`. `table_exists` / `get_columns` query `information_schema`. Catches `asyncpg.UniqueViolationError` and `asyncpg.IntegrityConstraintViolationError` → `DatabaseIntegrityError`. Retries transient connection errors once. Pool size configurable via `ZENO_DB_POOL_MIN/MAX/TIMEOUT/CONNECT_TIMEOUT` env vars.
 
-* **`backends/mysql.py`** — `MySQLBackend`. Uses `aiomysql` (optional extra: `cinder[mysql]`). Creates `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. Converts `?` → `%s`. Rewrites `TEXT PRIMARY KEY` → `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for TEXT primary keys; all Cinder primary keys are 36-char UUID strings). Accepts `mysql://`, `mysql+aiomysql://`, and `mysql+asyncmy://` URL schemes. Catches `aiomysql.IntegrityError` → `DatabaseIntegrityError`.
+* **`backends/mysql.py`** — `MySQLBackend`. Uses `aiomysql` (optional extra: `zeno[mysql]`). Creates `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. Converts `?` → `%s`. Rewrites `TEXT PRIMARY KEY` → `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for TEXT primary keys; all Cinder primary keys are 36-char UUID strings). Accepts `mysql://`, `mysql+aiomysql://`, and `mysql+asyncmy://` URL schemes. Catches `aiomysql.IntegrityError` → `DatabaseIntegrityError`.
 
-* **`backends/__init__.py`** — `resolve_backend(url)` factory. Reads env vars first (`CINDER_DATABASE_URL` → `DATABASE_URL`), then falls back to the programmatic URL. Dispatches on URL prefix: `postgresql://` / `postgres://` → `PostgreSQLBackend`; `mysql://` / `mysql+*://` → `MySQLBackend`; anything else → `SQLiteBackend`. Drivers are imported lazily — SQLite-only users never need asyncpg or aiomysql installed.
+* **`backends/__init__.py`** — `resolve_backend(url)` factory. Reads env vars first (`ZENO_DATABASE_URL` → `DATABASE_URL`), then falls back to the programmatic URL. Dispatches on URL prefix: `postgresql://` / `postgres://` → `PostgreSQLBackend`; `mysql://` / `mysql+*://` → `MySQLBackend`; anything else → `SQLiteBackend`. Drivers are imported lazily — SQLite-only users never need asyncpg or aiomysql installed.
 
-### 3. Dynamic Collections & API Generation (`src/cinder/collections/`)
+### 3. Dynamic Collections & API Generation (`src/zeno/collections/`)
 
 * **`schema.py`** — Contains `Collection` and all field definitions. Built-in field types:
   - `TextField`, `IntField` (min/max), `FloatField` (min/max), `BoolField`, `DateTimeField` (auto_now), `URLField`, `JSONField`, `RelationField`
@@ -164,13 +164,13 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
 * **`router.py`** — Generates CRUD REST endpoints (`GET`, `POST`, `PATCH`, `DELETE`). Connects requests, extracts query filters/pagination, enforces RBAC, triggers hooks. Additionally mounts three file endpoints for every `FileField` on a collection: `POST/GET/DELETE /api/{collection}/{id}/files/{field}`.
 * **`store.py`** — SQL query building engine. Handles serialisation/deserialisation of `BoolField`, `JSONField`, and `FileField` values. Uses `db.table_exists()` and `db.get_columns()` for schema introspection (database-agnostic — no SQLite-specific queries). Catches `DatabaseIntegrityError` (UNIQUE / NOT NULL constraint violations from any backend) and converts them to `CinderError(400, ...)` so callers always receive a clean 400 instead of an unhandled 500.
 
-### 4. Lifecycle Hooks (`src/cinder/hooks/`)
+### 4. Lifecycle Hooks (`src/zeno/hooks/`)
 
 * **`registry.py`** — Centralised repository storing developer-registered hook functions, keyed by event string.
 * **`runner.py`** — Invokes registered hooks in registration order during the lifecycle of an HTTP request. Supports sync and async handlers transparently.
 * **`context.py`** — Defines `CinderContext`, injected into every hook, carrying `user`, `request_id`, `collection`, `operation`, `request`, and `extra`.
 
-### 5. Authentication System (`src/cinder/auth/`)
+### 5. Authentication System (`src/zeno/auth/`)
 
 * **`models.py`** — Configures the built-in `_users` table, allows developers to extend it with custom fields. Creates and owns:
   - `_token_blocklist` — revoked JWT tokens (auto-cleaned on startup). `block_token()` uses a try/except on `DatabaseIntegrityError` instead of `INSERT OR IGNORE` — portable across all backends.
@@ -182,7 +182,7 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
 * **`passwords.py`** — Securely hashes and verifies user passwords.
 * **`tokens.py`** — Signs and verifies JSON Web Tokens for stateless session handling.
 
-### 6. File Storage Subsystem (`src/cinder/storage/`) *(Phase 4)*
+### 6. File Storage Subsystem (`src/zeno/storage/`) *(Phase 4)*
 
 * **`backends.py`** — `FileStorageBackend` ABC defines the contract every backend must implement: `put`, `get`, `delete`, `signed_url`, `url`. `LocalFileBackend` stores files on disk, always proxied (no signing). Path-traversal is prevented with `Path.resolve()`.
 * **`s3.py`** — `S3CompatibleBackend` — wraps boto3 in `asyncio.get_event_loop().run_in_executor` for async safety. Ships with seven provider preset classmethods: `.aws()`, `.r2()`, `.minio()`, `.backblaze()`, `.digitalocean()`, `.wasabi()`, `.gcs()`. All use the same underlying S3 wire protocol; only `endpoint_url` and `region_name` differ. Presigned URLs are generated fresh per request and never stored.
@@ -193,7 +193,7 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
   - **Delete** — supports `?index=N` (remove one file from a `multiple` field) and `?all=true` (remove all). Calls `backend.delete()` and updates metadata.
 * **`cleanup.py`** — `install_file_cleanup(registry, backend, collections)` — installs `after_delete` hooks on all collections with FileFields. On record deletion, iterates stored metadata and calls `backend.delete(key)` for each file. Failures are logged and swallowed — background cleanup never raises.
 
-### 7. Email Subsystem (`src/cinder/email/`) *(Phase 5)*
+### 7. Email Subsystem (`src/zeno/email/`) *(Phase 5)*
 
 * **`backends.py`** — `EmailMessage` dataclass (`to`, `subject`, `html_body`, `text_body`, `from_address`). `EmailBackend` ABC with a single abstract method `send(message)`. `ConsoleEmailBackend` — zero-dependency development fallback that logs email content to the server log; used automatically when no backend is configured.
 * **`smtp.py`** — `SMTPBackend` — async SMTP delivery via `aiosmtplib` (lazy import; raises `ImportError` with install instructions if missing). Builds `multipart/alternative` MIME messages (plain text first, HTML second per RFC 2046). Retry logic classifies errors as **permanent** (`SMTPAuthenticationError`, `SMTPRecipientsRefused`, `SMTPSenderRefused` — re-raised immediately) or **transient** (exponential back-off with `asyncio.sleep`). Ships with seven provider preset classmethods: `.gmail()`, `.sendgrid()`, `.ses()`, `.mailgun()`, `.mailtrap()`, `.postmark()`, `.resend()`. All presets use STARTTLS on port 587 except Resend (implicit TLS, port 465).
@@ -203,29 +203,29 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
   - `welcome_email(user_email, app_name)`
   No CDN, no external dependencies. Templates are overridable via `app.email.on_password_reset(fn)` / `.on_verification(fn)` / `.on_welcome(fn)` — any callable returning `(subject, html, text)` is accepted, supporting Jinja2, f-strings, Mako, or any other engine.
 
-### 8. Cache Subsystem (`src/cinder/cache/`)
+### 8. Cache Subsystem (`src/zeno/cache/`)
 
 * **`redis_client.py`** — Shared lazy async Redis client singleton. Created once on first use and reused across cache, rate-limit, and realtime broker subsystems. Closed during `app:shutdown`.
 * **`backends.py`** — `CacheBackend` ABC with two built-in implementations: `MemoryCacheBackend` (dict + asyncio timers, zero-dependency) and `RedisCacheBackend` (Redis-backed, multi-process safe). Custom backends subclass `CacheBackend`.
 * **`middleware.py`** — `CacheMiddleware` implements the cache-aside pattern for collection GET requests. Per-user key segmentation prevents RBAC leaks. Adds `X-Cache: HIT/MISS` headers. Fail-open on backend errors.
 * **`invalidation.py`** — Installs `after_create/update/delete` hooks on every collection to automatically bust cached responses using tag-based key grouping.
 
-### 9. Rate-Limit Subsystem (`src/cinder/ratelimit/`)
+### 9. Rate-Limit Subsystem (`src/zeno/ratelimit/`)
 
 * **`backends.py`** — `RateLimitBackend` ABC with `MemoryRateLimitBackend` (sliding-window deque) and `RedisRateLimitBackend` (atomic Lua script token bucket, race-condition safe across workers).
 * **`middleware.py`** — `RateLimitMiddleware` returns `429 Too Many Requests` with `Retry-After`, `X-RateLimit-Limit/Remaining/Reset` headers. Supports global defaults and per-route `RateLimitRule` overrides. Fail-open on backend errors.
 
-### 10. Realtime Subsystem (`src/cinder/realtime/`)
+### 10. Realtime Subsystem (`src/zeno/realtime/`)
 
 * **`broker.py`** — Defines `BrokerProtocol` (a `typing.Protocol`) and `RealtimeBroker` — the default in-process fan-out pub/sub. The protocol ensures custom brokers are type-checkable drop-ins.
-* **`redis_broker.py`** — `RedisBroker` — a `BrokerProtocol`-satisfying Redis pub/sub implementation. Activated via `CINDER_REALTIME_BROKER=redis` or `app.configure_redis(url=...)`. RBAC filtering is applied locally after receiving from Redis.
+* **`redis_broker.py`** — `RedisBroker` — a `BrokerProtocol`-satisfying Redis pub/sub implementation. Activated via `ZENO_REALTIME_BROKER=redis` or `app.configure_redis(url=...)`. RBAC filtering is applied locally after receiving from Redis.
 * **`websocket.py`** — Provides bi-directional realtime communication, managing the WebSocket ASGI lifecycle, ping/pong heartbeats, and client subscriptions.
 * **`sse.py`** — Provides Server-Sent Events via an HTTP stream for read-only, robust unidirectional real-time updates.
 * **`bridge.py`** — The connector between CRUD components and the realtime stream. Hooks into database mutations and broadcasts events to the broker.
 * **`auth.py`** — Utilities for authenticating realtime connections dynamically.
 * **`auth_filter.py`** — Applies RBAC filtering during broadcast, preventing clients from receiving data they shouldn't see.
 
-### 11. Migrations Subsystem (`src/cinder/migrations/`)
+### 11. Migrations Subsystem (`src/zeno/migrations/`)
 
 CLI-driven, explicit schema migration system that coexists with the existing `sync_schema()` auto-sync. Auto-sync continues to handle additive changes (new tables, new columns) on every startup. Migration files handle version-tracked, complex operations that auto-sync cannot: indexes, data transforms, column drops, renames, and any change requiring an audit trail.
 
@@ -292,7 +292,7 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
   - Multi-field expand (`?expand=a,b`) and expand on list endpoints in `test_router.py::TestExpand`.
   - Invalid expand field (non-relation field) — verifies no crash, graceful 200.
   - UNIQUE constraint violations — `TestUniqueConstraints` covers both `POST` (duplicate create) and `PATCH` (update to conflicting value) returning 400, backed by the `DatabaseIntegrityError` → `CinderError(400)` conversion in `store.py` (driver-agnostic, works across SQLite, PostgreSQL, and MySQL).
-  - Database backend dispatch — `test_db.py` covers `table_exists`, `get_columns`, `resolve_backend` URL dispatch for all three drivers, env-var priority chain (`CINDER_DATABASE_URL` > `DATABASE_URL` > programmatic), and `DatabaseIntegrityError` surfacing through the `Database` shim.
+  - Database backend dispatch — `test_db.py` covers `table_exists`, `get_columns`, `resolve_backend` URL dispatch for all three drivers, env-var priority chain (`ZENO_DATABASE_URL` > `DATABASE_URL` > programmatic), and `DatabaseIntegrityError` surfacing through the `Database` shim.
   - Multiple required fields missing — `TestFieldConstraintsAtHTTPLayer` covers partial and fully missing required fields, `IntField` min constraint, and `FloatField` max constraint at the HTTP layer.
 
 ---

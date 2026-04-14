@@ -38,7 +38,7 @@ uv run pytest
 
 ```
 cinder/
-├── src/cinder/         # Framework source code
+├── src/zeno/           # Framework source code
 │   ├── app.py          # Cinder app entry point
 │   ├── collections/    # Collection and field definitions
 │   ├── auth/           # JWT auth, user model, endpoints
@@ -51,7 +51,7 @@ cinder/
 │   ├── email/          # Email backends
 │   ├── migrations/     # Schema migration engine
 │   ├── openapi.py      # OpenAPI 3.1 generation
-│   └── cli.py          # CLI commands (cinderapi serve, migrate, etc.)
+│   └── cli.py          # CLI commands (zeno serve, migrate, etc.)
 ├── tests/              # Pytest test suite
 ├── web/                # Docs site (Astro + Starlight)
 └── pyproject.toml
@@ -114,7 +114,7 @@ Tests use `pytest-asyncio` for async test cases and `fakeredis` for Redis-depend
 
 Open an issue and include:
 
-- Cinder version (`pip show cinder`)
+- Zeno version (`pip show zeno`)
 - Python version (`python --version`)
 - Minimal reproduction case
 - Full error traceback if applicable

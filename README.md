@@ -1,45 +1,45 @@
-# CinderAPI
+# Zeno
 
 <p align="center">
 
-[![PyPI version](https://img.shields.io/pypi/v/cinderapi?color=f47b20&label=cinderapi&style=flat-square)](https://pypi.org/project/cinderapi/)
-[![Python](https://img.shields.io/pypi/pyversions/cinderapi?color=3572A5&style=flat-square)](https://pypi.org/project/cinderapi/)
+[![PyPI version](https://img.shields.io/pypi/v/zeno-api?color=f47b20&label=zeno&style=flat-square)](https://pypi.org/project/zeno-api/)
+[![Python](https://img.shields.io/pypi/pyversions/zeno-api?color=3572A5&style=flat-square)](https://pypi.org/project/zeno/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-cinderapi.vercel.app-f47b20?style=flat-square)](https://cinderapi.vercel.app)
+[![Docs](https://img.shields.io/badge/docs-zeno.vercel.app-f47b20?style=flat-square)](https://zeno.vercel.app)
 
 </p>
 
-A lightweight, open-source backend framework for Python. Define your data schema — Cinder auto-generates a full REST API with auth, CRUD, filtering, and more.
+A lightweight, open-source backend framework for Python. Define your data schema — Zeno auto-generates a full REST API with auth, CRUD, filtering, and more.
 
 ## Install
 
 ```bash
-pip install cinder
+pip install zeno-api
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add cinder
+uv add zeno-api
 ```
 
 **Optional extras:**
 
 | Extra | What it adds |
 |-------|-------------|
-| `cinder[postgres]` | PostgreSQL support (asyncpg) |
-| `cinder[mysql]` | MySQL support (aiomysql) |
-| `cinder[s3]` | S3-compatible file storage (boto3) |
-| `cinder[email]` | Email delivery (aiosmtplib) |
-| `cinder[redis]` | Redis caching & sessions |
-| `cinder[all]` | Everything above |
+| `zeno-api[postgres]` | PostgreSQL support (asyncpg) |
+| `zeno-api[mysql]` | MySQL support (aiomysql) |
+| `zeno-api[s3]` | S3-compatible file storage (boto3) |
+| `zeno-api[email]` | Email delivery (aiosmtplib) |
+| `zeno-api[redis]` | Redis caching & sessions |
+| `zeno-api[all]` | Everything above |
 
 ## Quick Start
 
 ```python
-from cinder import Cinder, Collection, TextField, IntField, Auth
+from zeno import Zeno, Collection, TextField, IntField, Auth
 
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -55,7 +55,7 @@ app.serve()
 ```
 
 ```bash
-cinderapi serve main.py
+zeno serve main.py
 # Server running at http://localhost:8000
 ```
 
@@ -84,13 +84,13 @@ You now have:
 - Rate limiting per route
 - Email delivery with SMTP and provider presets
 - Schema migrations via CLI
-- One-command deployment — generate Docker, Railway, Render, and Fly.io configs with `cinderapi deploy`
+- One-command deployment — generate Docker, Railway, Render, and Fly.io configs with `zeno deploy`
 - Auto-generated OpenAPI 3.1 + Swagger UI
 - Zero boilerplate — one file to a working API
 
 ## Documentation
 
-Full documentation at **[cinderapi.vercel.app](https://cinderapi.vercel.app)**
+Full documentation at **[zeno.vercel.app](https://zeno.vercel.app)**
 
 ## License
 
