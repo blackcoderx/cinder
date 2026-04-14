@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
-from cinder.deploy.platforms.base import GeneratedFile, PlatformGenerator
-from cinder.deploy.platforms.docker import DockerGenerator
+from zeno.deploy.platforms.base import GeneratedFile, PlatformGenerator
+from zeno.deploy.platforms.docker import DockerGenerator
 
 
 class FlyGenerator(PlatformGenerator):
@@ -66,7 +66,7 @@ class FlyGenerator(PlatformGenerator):
             "1. Install the Fly CLI: https://fly.io/docs/flyctl/install/",
             "2. Run: fly launch --no-deploy  (to create the app)",
             "3. Set secrets:",
-            "   fly secrets set CINDER_SECRET=$(cinderapi generate-secret)",
+            "   fly secrets set ZENO_SECRET=$(zeno generate-secret)",
         ]
         if p.needs_postgres:
             lines += [

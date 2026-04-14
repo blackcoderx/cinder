@@ -1,4 +1,4 @@
-"""Cache backends for Cinder.
+"""Cache backends for Zeno.
 
 All backends implement :class:`CacheBackend`.  Two built-in backends ship:
 
@@ -8,6 +8,7 @@ All backends implement :class:`CacheBackend`.  Two built-in backends ship:
 Custom backends: subclass :class:`CacheBackend` and pass an instance to
 ``app.cache.use(my_backend)``.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -16,7 +17,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 
-logger = logging.getLogger("cinder.cache.backends")
+logger = logging.getLogger("zeno.cache.backends")
 
 
 class CacheBackend(ABC):
@@ -63,6 +64,7 @@ class CacheBackend(ABC):
 # In-memory backend
 # ---------------------------------------------------------------------------
 
+
 class MemoryCacheBackend(CacheBackend):
     """Thread-safe, asyncio-compatible in-memory cache.
 
@@ -101,6 +103,7 @@ class MemoryCacheBackend(CacheBackend):
 
     async def delete_pattern(self, pattern: str) -> None:
         import fnmatch
+
         matched = [k for k in self._store if fnmatch.fnmatch(k, pattern)]
         await self.delete(*matched)
 
@@ -128,22 +131,24 @@ class MemoryCacheBackend(CacheBackend):
 # Redis backend
 # ---------------------------------------------------------------------------
 
+
 class RedisCacheBackend(CacheBackend):
     """Redis-backed cache using the shared Cinder Redis client.
 
-    Requires ``pip install 'cinder[redis]'``.
+    Requires ``pip install 'zeno[redis]'``.
 
-    All keys are namespaced under *prefix* (default ``"cinder"``).
+    All keys are namespaced under *prefix* (default ``"zeno"``).
     """
 
-    def __init__(self, *, prefix: str = "cinder") -> None:
+    def __init__(self, *, prefix: str = "zeno") -> None:
         self._prefix = prefix
 
     def _k(self, key: str) -> str:
         return f"{self._prefix}:{key}"
 
     async def _redis(self):
-        from cinder.cache.redis_client import get_client
+        from zeno.cache.redis_client import get_client
+
         return await get_client()
 
     async def get(self, key: str) -> bytes | None:

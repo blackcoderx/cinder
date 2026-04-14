@@ -11,7 +11,7 @@ def filter_for_rule(rule: str) -> Callable[[dict, dict | None], bool]:
     the envelope is delivered; ``False`` means it is silently dropped for that
     subscriber.
 
-    Rules mirror ``src/cinder/collections/router.py::_check_auth`` /
+    Rules mirror ``src/zeno/collections/router.py::_check_auth`` /
     ``_check_owner`` exactly so that subscribers only receive events for
     records they are authorised to read via the REST API.
 

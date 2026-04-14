@@ -56,7 +56,7 @@ class PostgreSQLBackend(DatabaseBackend):
         except ImportError as exc:
             raise ImportError(
                 "asyncpg is required for PostgreSQL support. "
-                "Install it with: pip install cinder[postgres]"
+                "Install it with: pip install zeno[postgres]"
             ) from exc
 
         connect_timeout = float(os.getenv("ZENO_DB_CONNECT_TIMEOUT", "10"))

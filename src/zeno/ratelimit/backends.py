@@ -1,4 +1,4 @@
-"""Rate-limit backends for Cinder.
+"""Rate-limit backends for Zeno.
 
 All backends implement :class:`RateLimitBackend`.  Two built-in backends ship:
 
@@ -11,6 +11,7 @@ All backends implement :class:`RateLimitBackend`.  Two built-in backends ship:
 Custom backends: subclass :class:`RateLimitBackend` and pass an instance to
 ``app.rate_limit.use(my_backend)``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +20,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from dataclasses import dataclass
 
-logger = logging.getLogger("cinder.ratelimit.backends")
+logger = logging.getLogger("zeno.ratelimit.backends")
 
 
 @dataclass
@@ -30,7 +31,7 @@ class RateLimitResult:
 
 
 class RateLimitBackend(ABC):
-    """Abstract base for Cinder rate-limit backends."""
+    """Abstract base for Zeno rate-limit backends."""
 
     @abstractmethod
     async def check(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
@@ -48,6 +49,7 @@ class RateLimitBackend(ABC):
 # ---------------------------------------------------------------------------
 # In-memory sliding-window backend
 # ---------------------------------------------------------------------------
+
 
 class MemoryRateLimitBackend(RateLimitBackend):
     """Sliding-window rate limiter using an in-process deque.
@@ -124,7 +126,7 @@ return {1, remaining, now + window}
 class RedisRateLimitBackend(RateLimitBackend):
     """Atomic sliding-window rate limiter backed by Redis sorted sets.
 
-    Requires ``pip install 'cinder[redis]'``.
+    Requires ``pip install 'zeno[redis]'``.
     Uses a Lua script for atomicity; the script SHA is cached after first load.
     """
 
@@ -132,7 +134,8 @@ class RedisRateLimitBackend(RateLimitBackend):
         self._sha: str | None = None
 
     async def _redis(self):
-        from cinder.cache.redis_client import get_client
+        from zeno.cache.redis_client import get_client
+
         return await get_client()
 
     async def _get_sha(self, r) -> str:
@@ -147,7 +150,9 @@ class RedisRateLimitBackend(RateLimitBackend):
         member = f"{now_ms:.3f}-{id(object())}"
 
         sha = await self._get_sha(r)
-        result = await r.evalsha(sha, 1, key, str(now_ms), str(window_ms), str(limit), member)
+        result = await r.evalsha(
+            sha, 1, key, str(now_ms), str(window_ms), str(limit), member
+        )
 
         allowed = bool(result[0])
         remaining = int(result[1])

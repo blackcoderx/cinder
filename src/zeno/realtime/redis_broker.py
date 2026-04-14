@@ -1,6 +1,6 @@
 """Redis pub/sub broker for Cinder realtime.
 
-A drop-in replacement for :class:`~cinder.realtime.broker.RealtimeBroker` that
+A drop-in replacement for :class:`~zeno.realtime.broker.RealtimeBroker` that
 fans out events across multiple processes/nodes via Redis pub/sub.
 
 Architecture
@@ -19,10 +19,11 @@ Architecture
 
 Usage::
 
-    from cinder.realtime.redis_broker import RedisBroker
+    from zeno.realtime.redis_broker import RedisBroker
     broker = RedisBroker()
     # In app.py: self._broker = RedisBroker() when CINDER_REALTIME_BROKER=redis
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,13 +31,13 @@ import json
 import logging
 from typing import Callable
 
-from cinder.realtime.broker import Subscription
+from zeno.realtime.broker import Subscription
 
-logger = logging.getLogger("cinder.realtime.redis_broker")
+logger = logging.getLogger("zeno.realtime.redis_broker")
 
 
 class RedisBroker:
-    """Redis pub/sub broker satisfying :class:`~cinder.realtime.broker.BrokerProtocol`."""
+    """Redis pub/sub broker satisfying :class:`~zeno.realtime.broker.BrokerProtocol`."""
 
     def __init__(self, *, queue_size: int = 100) -> None:
         self._queue_size = queue_size
@@ -44,7 +45,8 @@ class RedisBroker:
         self._lock = asyncio.Lock()
 
     async def _redis(self):
-        from cinder.cache.redis_client import get_client
+        from zeno.cache.redis_client import get_client
+
         return await get_client()
 
     async def subscribe(
@@ -59,7 +61,7 @@ class RedisBroker:
             import redis.asyncio as aioredis  # type: ignore[import]
         except ImportError as exc:
             raise ImportError(
-                "Redis not installed. Install with: pip install 'cinder[redis]'"
+                "Redis not installed. Install with: pip install 'zeno[redis]'"
             ) from exc
 
         sub = Subscription(

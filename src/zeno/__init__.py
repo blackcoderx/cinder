@@ -2,8 +2,6 @@
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 from zeno.app import Zeno
 from zeno.auth import Auth
 from zeno.cache.backends import CacheBackend, MemoryCacheBackend, RedisCacheBackend
@@ -26,6 +24,8 @@ from zeno.ratelimit.backends import (
     RedisRateLimitBackend,
 )
 from zeno.ratelimit.middleware import RateLimitRule
+
+load_dotenv()
 
 
 __all__ = [

@@ -5,7 +5,7 @@ from typing import Any
 
 
 @dataclass
-class CinderContext:
+class ZenoContext:
     """Context passed to every hook handler.
 
     Carries the authenticated user (if any), a request id for correlation,
@@ -27,7 +27,7 @@ class CinderContext:
         *,
         collection: str | None = None,
         operation: str | None = None,
-    ) -> "CinderContext":
+    ) -> "ZenoContext":
         user = getattr(getattr(request, "state", None), "user", None)
         request_id = None
         scope = getattr(request, "scope", None)
@@ -43,5 +43,5 @@ class CinderContext:
         )
 
     @classmethod
-    def system(cls, **kwargs: Any) -> "CinderContext":
+    def system(cls, **kwargs: Any) -> "ZenoContext":
         return cls(**kwargs)

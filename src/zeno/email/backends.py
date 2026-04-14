@@ -12,7 +12,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-logger = logging.getLogger("cinder.email")
+logger = logging.getLogger("zeno.email")
 
 
 @dataclass
@@ -24,7 +24,7 @@ class EmailMessage:
 
     Example::
 
-        from cinder.email import EmailMessage
+        from zeno.email import EmailMessage
 
         msg = EmailMessage(
             to="user@example.com",
@@ -50,7 +50,7 @@ class EmailBackend(ABC):
 
     Example (custom HTTP API backend)::
 
-        from cinder.email import EmailBackend, EmailMessage
+        from zeno.email import EmailBackend, EmailMessage
         import httpx
 
         class PostmarkHTTPBackend(EmailBackend):

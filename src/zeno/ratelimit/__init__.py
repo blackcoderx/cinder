@@ -2,14 +2,15 @@
 
 Public API::
 
-    from cinder.ratelimit import RateLimitBackend, MemoryRateLimitBackend, RedisRateLimitBackend
-    from cinder.ratelimit.middleware import RateLimitMiddleware, RateLimitRule
+    from zeno.ratelimit import RateLimitBackend, MemoryRateLimitBackend, RedisRateLimitBackend
+    from zeno.ratelimit.middleware import RateLimitMiddleware, RateLimitRule
 """
-from cinder.ratelimit.backends import (
-    RateLimitBackend,
+
+from zeno.ratelimit.backends import (
     MemoryRateLimitBackend,
-    RedisRateLimitBackend,
+    RateLimitBackend,
     RateLimitResult,
+    RedisRateLimitBackend,
 )
 
 __all__ = [

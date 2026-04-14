@@ -13,18 +13,18 @@ from typing import TYPE_CHECKING
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 
-from cinder.errors import CinderError
-from cinder.hooks.context import CinderContext
+from zeno.errors import ZenoError
+from zeno.hooks.context import ZenoContext
 
 from .keys import generate_key
 
 if TYPE_CHECKING:
-    from cinder.collections.schema import Collection, FileField
-    from cinder.collections.store import CollectionStore
+    from zeno.collections.schema import Collection, FileField
+    from zeno.collections.store import CollectionStore
 
     from .backends import FileStorageBackend
 
-logger = logging.getLogger("cinder.storage")
+logger = logging.getLogger("zeno.storage")
 
 # Magic bytes map: MIME type prefix → (offset, bytes_sequence)
 # Used to validate actual file content against the declared MIME type.
@@ -88,9 +88,9 @@ def _check_auth(request: Request, rule: str) -> None:
         return
     user = getattr(request.state, "user", None)
     if user is None:
-        raise CinderError(401, "Authentication required")
+        raise ZenoError(401, "Authentication required")
     if rule == "admin" and user.get("role") != "admin":
-        raise CinderError(403, "Admin access required")
+        raise ZenoError(403, "Admin access required")
 
 
 def make_upload_handler(
@@ -112,17 +112,17 @@ def make_upload_handler(
         # 2. Content-type must be multipart/form-data
         content_type = request.headers.get("content-type", "")
         if "multipart/form-data" not in content_type:
-            raise CinderError(415, "File upload requires multipart/form-data")
+            raise ZenoError(415, "File upload requires multipart/form-data")
 
         # 3. Parse form
         try:
             form = await request.form()
         except Exception as exc:
-            raise CinderError(400, f"Failed to parse multipart form: {exc}") from exc
+            raise ZenoError(400, f"Failed to parse multipart form: {exc}") from exc
 
         upload = form.get("file")
         if upload is None:
-            raise CinderError(400, "Missing 'file' field in multipart form")
+            raise ZenoError(400, "Missing 'file' field in multipart form")
 
         filename = getattr(upload, "filename", None) or "upload"
         declared_content_type = (
@@ -139,7 +139,7 @@ def make_upload_handler(
                 break
             total += len(chunk)
             if total > field.max_size:
-                raise CinderError(
+                raise ZenoError(
                     413,
                     f"File exceeds maximum allowed size of {field.max_size} bytes",
                 )
@@ -148,7 +148,7 @@ def make_upload_handler(
 
         # 5. MIME validation: header check + magic bytes
         if not field.matches_mime(declared_content_type):
-            raise CinderError(
+            raise ZenoError(
                 422,
                 f"File type '{declared_content_type}' is not allowed. "
                 f"Accepted: {', '.join(field.allowed_types)}",
@@ -156,7 +156,7 @@ def make_upload_handler(
         header_bytes = data[:512]
         sniffed = _sniff_mime(header_bytes)
         if not _mime_matches_header(sniffed, declared_content_type):
-            raise CinderError(
+            raise ZenoError(
                 422,
                 f"File content does not match declared MIME type '{declared_content_type}'",
             )
@@ -164,12 +164,12 @@ def make_upload_handler(
         effective_mime = sniffed or declared_content_type
 
         # 6. Fetch the existing record
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="update"
         )
         record = await store.get(collection, record_id, ctx=ctx)
         if record is None:
-            raise CinderError(404, "Record not found")
+            raise ZenoError(404, "Record not found")
 
         # 7. If single-file mode, delete the old file from the backend first
         existing_meta = record.get(field_name)
@@ -205,7 +205,7 @@ def make_upload_handler(
             collection, record_id, {field_name: updated_meta}, ctx=ctx
         )
         if updated_record is None:
-            raise CinderError(500, "Failed to update record metadata")
+            raise ZenoError(500, "Failed to update record metadata")
         return JSONResponse(updated_record, status_code=201)
 
     return upload_file
@@ -231,37 +231,37 @@ def make_download_handler(
             _check_auth(request, effective_rule)
 
         record_id = request.path_params["id"]
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="read"
         )
         record = await store.get(collection, record_id, ctx=ctx)
         if record is None:
-            raise CinderError(404, "Record not found")
+            raise ZenoError(404, "Record not found")
 
         # 2. Extract metadata
         meta = record.get(field_name)
         if not meta:
-            raise CinderError(404, "No file uploaded for this field")
+            raise ZenoError(404, "No file uploaded for this field")
 
         if field.multiple:
             index_param = request.query_params.get("index")
             if index_param is None:
-                raise CinderError(400, "?index=N is required for multi-file fields")
+                raise ZenoError(400, "?index=N is required for multi-file fields")
             try:
                 index = int(index_param)
             except ValueError:
-                raise CinderError(400, "?index must be an integer")
+                raise ZenoError(400, "?index must be an integer")
             if not isinstance(meta, list) or index < 0 or index >= len(meta):
-                raise CinderError(404, f"No file at index {index}")
+                raise ZenoError(404, f"No file at index {index}")
             file_meta = meta[index]
         else:
             file_meta = meta if isinstance(meta, dict) else None
             if not file_meta:
-                raise CinderError(404, "No file uploaded for this field")
+                raise ZenoError(404, "No file uploaded for this field")
 
         key = file_meta.get("key")
         if not key:
-            raise CinderError(500, "File metadata is corrupt (missing key)")
+            raise ZenoError(500, "File metadata is corrupt (missing key)")
 
         original_name = file_meta.get("name", "download")
         stored_mime = file_meta.get("mime", "application/octet-stream")
@@ -279,7 +279,7 @@ def make_download_handler(
         try:
             data, content_type = await backend.get(key)
         except FileNotFoundError:
-            raise CinderError(404, "File not found in storage backend")
+            raise ZenoError(404, "File not found in storage backend")
 
         effective_mime = stored_mime or content_type
         return Response(
@@ -309,16 +309,16 @@ def make_delete_handler(
         _check_auth(request, write_rule)
 
         record_id = request.path_params["id"]
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="update"
         )
         record = await store.get(collection, record_id, ctx=ctx)
         if record is None:
-            raise CinderError(404, "Record not found")
+            raise ZenoError(404, "Record not found")
 
         meta = record.get(field_name)
         if not meta:
-            raise CinderError(404, "No file to delete for this field")
+            raise ZenoError(404, "No file to delete for this field")
 
         if field.multiple:
             delete_all = request.query_params.get("all", "").lower() == "true"
@@ -338,9 +338,9 @@ def make_delete_handler(
                 try:
                     index = int(index_param)
                 except ValueError:
-                    raise CinderError(400, "?index must be an integer")
+                    raise ZenoError(400, "?index must be an integer")
                 if not isinstance(meta, list) or index < 0 or index >= len(meta):
-                    raise CinderError(404, f"No file at index {index}")
+                    raise ZenoError(404, f"No file at index {index}")
                 entry = meta[index]
                 if isinstance(entry, dict) and entry.get("key"):
                     try:
@@ -349,7 +349,7 @@ def make_delete_handler(
                         pass
                 updated_meta = [m for i, m in enumerate(meta) if i != index]
             else:
-                raise CinderError(
+                raise ZenoError(
                     400, "Provide ?index=N or ?all=true for multi-file fields"
                 )
         else:
@@ -366,7 +366,7 @@ def make_delete_handler(
             collection, record_id, {field_name: updated_meta}, ctx=ctx
         )
         if updated_record is None:
-            raise CinderError(500, "Failed to update record metadata")
+            raise ZenoError(500, "Failed to update record metadata")
         return JSONResponse(updated_record)
 
     return delete_file

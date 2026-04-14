@@ -14,7 +14,7 @@ class HookRunner:
     - ``after_*`` handlers can return ``None``; return values are still
       propagated for consistency.
     - Sync and async handlers both work; sync returns are awaited if needed.
-    - Raising :class:`cinder.errors.CinderError` (including the
+    - Raising :class:`zeno.errors.ZenoError` (including the
       ``cancel_delete`` sentinel) aborts the chain and propagates the error
       so the caller can decide whether to swallow it (soft delete) or bubble
       it to the client.

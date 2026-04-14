@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from cinder.deploy.introspect import AppProfile
-from cinder.deploy.platforms.base import GeneratedFile, PlatformGenerator
+from zeno.deploy.introspect import AppProfile
+from zeno.deploy.platforms.base import GeneratedFile, PlatformGenerator
 
 
 class DockerGenerator(PlatformGenerator):
@@ -42,7 +42,7 @@ class DockerGenerator(PlatformGenerator):
             # --- Runtime stage ---
             FROM python:{p.python_version}-slim
 
-            RUN groupadd -r cinder && useradd -r -g cinder -u 1001 cinder
+            RUN groupadd -r zeno && useradd -r -g zeno -u 1001 zeno
 
             WORKDIR /app
             COPY --from=builder /app /app
@@ -51,7 +51,7 @@ class DockerGenerator(PlatformGenerator):
             ENV PATH="/app/.venv/bin:$PATH"
             ENV PYTHONUNBUFFERED=1
 
-            USER cinder
+            USER zeno
             EXPOSE {p.port}
 
             # Run migrations then start the server
@@ -110,7 +110,7 @@ class DockerGenerator(PlatformGenerator):
         p = self.profile
         lines = ""
         if p.needs_postgres:
-            lines += "      - DATABASE_URL=postgresql://cinder:cinder@postgres:5432/cinder\n"
+            lines += "      - DATABASE_URL=postgresql://zeno:zeno@postgres:5432/zeno\n"
         if p.needs_redis:
             lines += "      - CINDER_REDIS_URL=redis://redis:6379/0\n"
         return lines
@@ -133,13 +133,13 @@ class DockerGenerator(PlatformGenerator):
           postgres:
             image: postgres:16-alpine
             environment:
-              - POSTGRES_USER=cinder
-              - POSTGRES_PASSWORD=cinder
-              - POSTGRES_DB=cinder
+              - POSTGRES_USER=zeno
+              - POSTGRES_PASSWORD=zeno
+              - POSTGRES_DB=zeno
             volumes:
               - pgdata:/var/lib/postgresql/data
             healthcheck:
-              test: ["CMD-SHELL", "pg_isready -U cinder"]
+              test: ["CMD-SHELL", "pg_isready -U zeno"]
               interval: 5s
               timeout: 3s
               retries: 5

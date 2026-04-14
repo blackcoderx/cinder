@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from cinder.collections.schema import Collection
-from cinder.db.connection import Database
+
+from zeno.collections.schema import Collection
+from zeno.db.connection import Database
 
 
 @dataclass

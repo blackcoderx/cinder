@@ -9,21 +9,23 @@ prevent the record deletion from succeeding.
 
 Usage (called from ``app.py`` during ``build()``)::
 
-    from cinder.storage.cleanup import install_file_cleanup
+    from zeno.storage.cleanup import install_file_cleanup
     install_file_cleanup(registry, backend, collections)
 """
+
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
-from cinder.hooks.registry import HookRegistry
+from zeno.hooks.registry import HookRegistry
 
 if TYPE_CHECKING:
-    from cinder.collections.schema import Collection, FileField
+    from zeno.collections.schema import Collection, FileField
+
     from .backends import FileStorageBackend
 
-logger = logging.getLogger("cinder.storage.cleanup")
+logger = logging.getLogger("zeno.storage.cleanup")
 
 
 def install_file_cleanup(
@@ -32,15 +34,13 @@ def install_file_cleanup(
     collections: dict,
 ) -> None:
     """Register after_delete cleanup hooks for collections with FileFields."""
-    from cinder.collections.schema import FileField as _FileField
+    from zeno.collections.schema import FileField as _FileField
 
     for name, entry in collections.items():
         # collections dict is {name: (Collection, auth_rules)} from app.py
         collection: Collection = entry[0] if isinstance(entry, tuple) else entry
         file_fields: list[tuple[str, FileField]] = [
-            (f.name, f)
-            for f in collection.fields
-            if isinstance(f, _FileField)
+            (f.name, f) for f in collection.fields if isinstance(f, _FileField)
         ]
         if file_fields:
             _register_cleanup_hooks(registry, backend, name, file_fields)

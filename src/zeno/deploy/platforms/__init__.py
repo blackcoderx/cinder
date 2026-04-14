@@ -1,9 +1,9 @@
 """Platform-specific deployment generators."""
 
-from cinder.deploy.platforms.docker import DockerGenerator
-from cinder.deploy.platforms.fly import FlyGenerator
-from cinder.deploy.platforms.railway import RailwayGenerator
-from cinder.deploy.platforms.render import RenderGenerator
+from zeno.deploy.platforms.docker import DockerGenerator
+from zeno.deploy.platforms.fly import FlyGenerator
+from zeno.deploy.platforms.railway import RailwayGenerator
+from zeno.deploy.platforms.render import RenderGenerator
 
 PLATFORMS: dict[str, type] = {
     "docker": DockerGenerator,

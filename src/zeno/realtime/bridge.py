@@ -4,10 +4,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from cinder.hooks.registry import HookRegistry
-from cinder.realtime.broker import RealtimeBroker
+from zeno.hooks.registry import HookRegistry
+from zeno.realtime.broker import RealtimeBroker
 
-logger = logging.getLogger("cinder.realtime.bridge")
+logger = logging.getLogger("zeno.realtime.bridge")
 
 
 def default_envelope(
@@ -34,12 +34,12 @@ def default_envelope(
         }
     """
     envelope: dict[str, Any] = {
-        "channel":    f"collection:{collection}",
-        "event":      event,
+        "channel": f"collection:{collection}",
+        "event": event,
         "collection": collection,
-        "record":     record,
-        "id":         record.get("id"),
-        "ts":         datetime.now(timezone.utc).isoformat(),
+        "record": record,
+        "id": record.get("id"),
+        "ts": datetime.now(timezone.utc).isoformat(),
     }
     if previous is not None:
         envelope["previous"] = previous
@@ -48,7 +48,7 @@ def default_envelope(
 
 def install(
     registry: HookRegistry,
-    collections: dict,          # {name: (Collection, auth_rules)}
+    collections: dict,  # {name: (Collection, auth_rules)}
     broker: RealtimeBroker,
     *,
     disabled: set[str],
@@ -57,7 +57,7 @@ def install(
     """Register ``after_*`` hook handlers on the shared registry for every
     collection so that CRUD events are automatically published to the broker.
 
-    Called from ``Cinder.build()`` after all collections are bound.
+    Called from ``Zeno.build()`` after all collections are bound.
     Handlers are installed directly on the registry (not through the
     collection proxy) so they do not add a ``{collection}:`` prefix twice.
     """

@@ -14,6 +14,7 @@ On limit exceeded, returns 429 with headers:
 
 Fail-open: if the backend raises, the middleware logs and passes through.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,9 +23,9 @@ import math
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from cinder.ratelimit.backends import RateLimitBackend, RateLimitResult
+from zeno.ratelimit.backends import RateLimitBackend, RateLimitResult
 
-logger = logging.getLogger("cinder.ratelimit.middleware")
+logger = logging.getLogger("zeno.ratelimit.middleware")
 
 
 class RateLimitRule:
@@ -137,14 +138,17 @@ class RateLimitMiddleware:
         if not result.allowed:
             rl_headers.append((b"retry-after", str(retry_after).encode()))
             body = json.dumps({"status": 429, "error": "Rate limit exceeded"}).encode()
-            await send({
-                "type": "http.response.start",
-                "status": 429,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(body)).encode()),
-                ] + rl_headers,
-            })
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 429,
+                    "headers": [
+                        (b"content-type", b"application/json"),
+                        (b"content-length", str(len(body)).encode()),
+                    ]
+                    + rl_headers,
+                }
+            )
             await send({"type": "http.response.body", "body": body, "more_body": False})
             return
 

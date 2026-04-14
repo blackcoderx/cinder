@@ -6,16 +6,16 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from cinder.errors import CinderError
-from cinder.auth.tokens import decode_token
-from cinder.auth.models import is_blocked
-from cinder.hooks.context import CinderContext
-from cinder.hooks.runner import HookRunner
+from zeno.errors import ZenoError
+from zeno.auth.tokens import decode_token
+from zeno.auth.models import is_blocked
+from zeno.hooks.context import ZenoContext
+from zeno.hooks.runner import HookRunner
 
-logger = logging.getLogger("cinder.pipeline")
+logger = logging.getLogger("zeno.pipeline")
 
 
-async def _handle_cinder_error(request: Request, exc: CinderError) -> JSONResponse:
+async def _handle_zeno_error(request: Request, exc: ZenoError) -> JSONResponse:
     return JSONResponse(
         {"status": exc.status_code, "error": exc.message},
         status_code=exc.status_code,
@@ -27,7 +27,7 @@ def _make_unhandled_error_handler(runner: HookRunner | None):
         logger.exception("Unhandled error: %s", exc)
         if runner is not None:
             try:
-                ctx = CinderContext.from_request(request, operation="error")
+                ctx = ZenoContext.from_request(request, operation="error")
                 await runner.fire("app:error", exc, ctx)
             except Exception:
                 # A failing error hook must never mask the original error.
@@ -147,7 +147,7 @@ def build_middleware_stack(
     from starlette.applications import Starlette
 
     if isinstance(app, Starlette):
-        app.add_exception_handler(CinderError, _handle_cinder_error)
+        app.add_exception_handler(ZenoError, _handle_zeno_error)
         app.add_exception_handler(Exception, _make_unhandled_error_handler(hook_runner))
 
     # Auth (innermost, closest to routes)

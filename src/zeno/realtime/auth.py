@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from cinder.auth.models import USERS_TABLE, is_blocked
-from cinder.auth.tokens import decode_token
-from cinder.db.connection import Database
-from cinder.errors import CinderError
+from zeno.auth.models import USERS_TABLE, is_blocked
+from zeno.auth.tokens import decode_token
+from zeno.db.connection import Database
+from zeno.errors import ZenoError
 
-logger = logging.getLogger("cinder.realtime.auth")
+logger = logging.getLogger("zeno.realtime.auth")
 
 
 async def authenticate_ws_token(
@@ -29,22 +29,20 @@ async def authenticate_ws_token(
     """
     try:
         payload = decode_token(token, secret)
-    except CinderError:
+    except ZenoError:
         raise
 
     jti = payload.get("jti")
     if jti and await is_blocked(db, jti):
-        raise CinderError(401, "Token has been revoked")
+        raise ZenoError(401, "Token has been revoked")
 
     user_id = payload.get("sub")
     if not user_id:
-        raise CinderError(401, "Invalid token payload")
+        raise ZenoError(401, "Invalid token payload")
 
-    row = await db.fetch_one(
-        f"SELECT * FROM {USERS_TABLE} WHERE id = ?", (user_id,)
-    )
+    row = await db.fetch_one(f"SELECT * FROM {USERS_TABLE} WHERE id = ?", (user_id,))
     if row is None:
-        raise CinderError(401, "User not found")
+        raise ZenoError(401, "User not found")
 
     user = dict(row)
     user.pop("password", None)

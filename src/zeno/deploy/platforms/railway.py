@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from cinder.deploy.platforms.base import GeneratedFile, PlatformGenerator
+from zeno.deploy.platforms.base import GeneratedFile, PlatformGenerator
 
 
 class RailwayGenerator(PlatformGenerator):
@@ -34,7 +34,7 @@ class RailwayGenerator(PlatformGenerator):
             "",
             "1. Push this repo to GitHub and connect it to a Railway project.",
             "2. Add the following environment variables in Railway dashboard:",
-            "   - CINDER_SECRET  (use `cinderapi generate-secret` to create one)",
+            "   - ZENO_SECRET  (use `zeno generate-secret` to create one)",
         ]
         if p.needs_postgres:
             lines += [

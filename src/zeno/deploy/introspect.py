@@ -7,8 +7,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from cinder.cache.backends import RedisCacheBackend
-from cinder.ratelimit.backends import RedisRateLimitBackend
+from zeno.cache.backends import RedisCacheBackend
+from zeno.ratelimit.backends import RedisRateLimitBackend
 
 
 @dataclass
@@ -37,8 +37,8 @@ class AppProfile:
 
 
 def introspect(app_path: str) -> AppProfile:
-    """Load the Cinder app at *app_path* and return an :class:`AppProfile`."""
-    from cinder.app import Cinder
+    """Load the Zeno app at *app_path* and return an :class:`AppProfile`."""
+    from zeno.app import Zeno
 
     path = Path(app_path).resolve()
     parent = str(path.parent)
@@ -49,16 +49,16 @@ def introspect(app_path: str) -> AppProfile:
     module = importlib.import_module(module_name)
 
     # Find the Cinder instance and its variable name
-    cinder_app: Cinder | None = None
+    zeno_app: Zeno | None = None
     var_name = "app"
     for attr_name in dir(module):
         attr = getattr(module, attr_name)
-        if isinstance(attr, Cinder):
-            cinder_app = attr
+        if isinstance(attr, Zeno):
+            zeno_app = attr
             var_name = attr_name
             break
 
-    if cinder_app is None:
+    if zeno_app is None:
         raise RuntimeError(f"No Cinder instance found in {app_path}")
 
     # --- Detect database type ---
@@ -67,7 +67,7 @@ def introspect(app_path: str) -> AppProfile:
     db_url = (
         os.getenv("CINDER_DATABASE_URL")
         or os.getenv("DATABASE_URL")
-        or cinder_app.database
+        or zeno_app.database
     )
     needs_postgres = db_url.startswith(("postgresql://", "postgres://"))
     needs_mysql = db_url.startswith(("mysql://", "mysql+aiomysql://"))
@@ -78,15 +78,15 @@ def introspect(app_path: str) -> AppProfile:
     needs_redis = bool(redis_url)
     if not needs_redis:
         # Check if cache or rate-limit backends are Redis-backed
-        if isinstance(cinder_app.cache._backend, RedisCacheBackend):
+        if isinstance(zeno_app.cache._backend, RedisCacheBackend):
             needs_redis = True
-        elif isinstance(cinder_app.rate_limit._backend, RedisRateLimitBackend):
+        elif isinstance(zeno_app.rate_limit._backend, RedisRateLimitBackend):
             needs_redis = True
 
     # --- Auth, S3, Email ---
-    needs_auth = cinder_app._auth is not None
-    needs_s3 = cinder_app._storage_backend is not None
-    needs_email = cinder_app.email._backend is not None
+    needs_auth = zeno_app._auth is not None
+    needs_s3 = zeno_app._storage_backend is not None
+    needs_email = zeno_app.email._backend is not None
 
     # --- Python version ---
     python_version = _detect_python_version(path.parent)

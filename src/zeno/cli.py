@@ -94,9 +94,9 @@ def init(
     project_path = Path(project_name)
     project_path.mkdir(parents=True, exist_ok=True)
 
-    main_content = """from cinder import Cinder, Collection, TextField, IntField, Auth
+    main_content = """from zeno import Zeno, Collection, TextField, IntField, Auth
 
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 """
     (project_path / "main.py").write_text(main_content)
 
-    env_content = "# CINDER_SECRET=your-secret-key-here\n"
+    env_content = "# ZENO_SECRET=your-secret-key-here\n"
     (project_path / ".env").write_text(env_content)
 
     gitignore_content = "*.db\n.env\n__pycache__/\n.venv/\n"
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     typer.echo(f"Project created at {project_path.resolve()}")
     typer.echo(f"  cd {project_name}")
-    typer.echo("cinderapi serve main.py")
+    typer.echo("zeno serve main.py")
 
 
 @app.command()
@@ -311,9 +311,9 @@ def info(
     zeno_app, _ = _load_app(app_path)
 
     try:
-        cinder_version = importlib.metadata.version("cinder")
+        zeno_version = importlib.metadata.version("zeno")
     except importlib.metadata.PackageNotFoundError:
-        cinder_version = "development"
+        zeno_version = "development"
 
     # Mask password in DB URL: ://user:pass@ -> ://***:***@
     db_url = zeno_app.database or ""
@@ -330,7 +330,7 @@ def info(
     typer.echo(f"Title:            {zeno_app.title}")
     typer.echo(f"Version:          {zeno_app.version}")
     typer.echo(f"Python version:   {sys.version}")
-    typer.echo(f"Cinder version:   {cinder_version}")
+    typer.echo(f"Zeno version:     {zeno_version}")
     typer.echo(f"Database:         {db_masked}")
     typer.echo(
         f"Collections ({len(collections)}):  {', '.join(collections) if collections else '(none)'}"
@@ -551,15 +551,19 @@ def _detect_platform() -> str:
 @app.command()
 def deploy(
     platform: Optional[str] = typer.Option(
-        None, "--platform", "-p",
+        None,
+        "--platform",
+        "-p",
         help=f"Target platform: {', '.join(SUPPORTED_PLATFORMS)}",
     ),
     app_path: str = typer.Option("main.py", "--app", help="Path to Cinder app file"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Preview files without writing"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview files without writing"
+    ),
     force: bool = typer.Option(False, "--force", help="Overwrite existing files"),
 ):
     """Generate deployment configuration files for your Cinder app."""
-    from zeno.deploy.config import generate_cinder_toml
+    from zeno.deploy.config import generate_zeno_toml
     from zeno.deploy.introspect import introspect
     from zeno.deploy.platforms import PLATFORMS
 
@@ -597,10 +601,8 @@ def deploy(
     generator = PLATFORMS[chosen](profile, output_dir)
     files = generator.generate()
 
-    # Also generate cinder.toml
-    files.append(
-        type(files[0])("cinder.toml", generate_cinder_toml(profile, chosen))
-    )
+    # Also generate zeno.toml
+    files.append(type(files[0])("zeno.toml", generate_zeno_toml(profile, chosen)))
 
     if dry_run:
         for f in files:

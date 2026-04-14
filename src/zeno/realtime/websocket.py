@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from cinder.errors import CinderError
-from cinder.realtime.auth import authenticate_ws_token
-from cinder.realtime.auth_filter import filter_for_rule
+from zeno.errors import ZenoError
+from zeno.realtime.auth import authenticate_ws_token
+from zeno.realtime.auth_filter import filter_for_rule
 
 if TYPE_CHECKING:
-    from cinder.realtime import RealtimeFacade
+    from zeno.realtime import RealtimeFacade
 
-logger = logging.getLogger("cinder.realtime.websocket")
+logger = logging.getLogger("zeno.realtime.websocket")
 
 # How often the server sends a ping frame to keep the connection alive (seconds)
 PING_INTERVAL = 30
@@ -43,7 +43,7 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
         if token:
             try:
                 user = await authenticate_ws_token(token, db, secret)
-            except CinderError as e:
+            except ZenoError as e:
                 await websocket.close(code=1008, reason=e.message)
                 return
 
@@ -73,7 +73,9 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                     try:
                         msg = json.loads(raw)
                     except json.JSONDecodeError:
-                        await _send(websocket, {"type": "error", "message": "Invalid JSON"})
+                        await _send(
+                            websocket, {"type": "error", "message": "Invalid JSON"}
+                        )
                         continue
 
                     action = msg.get("action")
@@ -84,8 +86,10 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                             authed = await authenticate_ws_token(
                                 msg.get("token", ""), db, secret
                             )
-                        except CinderError as e:
-                            await _send(websocket, {"type": "error", "message": e.message})
+                        except ZenoError as e:
+                            await _send(
+                                websocket, {"type": "error", "message": e.message}
+                            )
                             continue
                         user_ref[0] = authed
                         subscription.user = authed
@@ -94,7 +98,10 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                     elif action == "subscribe":
                         channel = msg.get("channel", "")
                         if not channel:
-                            await _send(websocket, {"type": "error", "message": "Missing channel"})
+                            await _send(
+                                websocket,
+                                {"type": "error", "message": "Missing channel"},
+                            )
                             continue
 
                         # Attach auth filter if subscribing to a collection channel
@@ -102,7 +109,10 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 
                         if channel not in subscription.channels:
                             subscription.channels.append(channel)
-                        await _send(websocket, {"type": "ack", "action": "subscribe", "channel": channel})
+                        await _send(
+                            websocket,
+                            {"type": "ack", "action": "subscribe", "channel": channel},
+                        )
 
                     elif action == "unsubscribe":
                         channel = msg.get("channel", "")
@@ -110,13 +120,23 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                             subscription.channels.remove(channel)
                         except ValueError:
                             pass
-                        await _send(websocket, {"type": "ack", "action": "unsubscribe", "channel": channel})
+                        await _send(
+                            websocket,
+                            {
+                                "type": "ack",
+                                "action": "unsubscribe",
+                                "channel": channel,
+                            },
+                        )
 
                     elif action == "ping":
                         await _send(websocket, {"type": "pong"})
 
                     else:
-                        await _send(websocket, {"type": "error", "message": f"Unknown action: {action}"})
+                        await _send(
+                            websocket,
+                            {"type": "error", "message": f"Unknown action: {action}"},
+                        )
 
             async def writer():
                 """Push broker envelopes to the client, with periodic pings."""
@@ -175,6 +195,7 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _send(ws: WebSocket, data: dict) -> None:
     await ws.send_text(json.dumps(data))

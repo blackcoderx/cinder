@@ -3,25 +3,26 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
-from cinder.errors import CinderError
-from cinder.realtime.auth import authenticate_ws_token
-from cinder.realtime.auth_filter import filter_for_rule
+from zeno.errors import ZenoError
+from zeno.realtime.auth import authenticate_ws_token
+from zeno.realtime.auth_filter import filter_for_rule
 
 if TYPE_CHECKING:
-    from cinder.realtime import RealtimeFacade
+    from zeno.realtime import RealtimeFacade
 
-logger = logging.getLogger("cinder.realtime.sse")
+logger = logging.getLogger("zeno.realtime.sse")
 
 # How often to send an SSE comment heartbeat (seconds).
 # Keeps proxies and load balancers from killing idle connections.
-# Override via the CINDER_SSE_HEARTBEAT env var or by patching this module in tests.
-import os
-HEARTBEAT_INTERVAL: float = float(os.getenv("CINDER_SSE_HEARTBEAT", "15"))
+# Override via the ZENO_SSE_HEARTBEAT env var or by patching this module in tests.
+
+HEARTBEAT_INTERVAL: float = float(os.getenv("ZENO_SSE_HEARTBEAT", "15"))
 
 
 def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
@@ -48,8 +49,9 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
         if token:
             try:
                 user = await authenticate_ws_token(token, db, secret)
-            except CinderError as e:
+            except ZenoError as e:
                 from starlette.responses import JSONResponse
+
                 return JSONResponse(
                     {"status": e.status_code, "error": e.message},
                     status_code=e.status_code,
@@ -61,6 +63,7 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
         channels = request.query_params.getlist("channel")
         if not channels:
             from starlette.responses import JSONResponse
+
             return JSONResponse(
                 {"status": 400, "error": "At least one channel is required"},
                 status_code=400,
@@ -100,11 +103,7 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                     data = json.dumps(envelope)
                     event_type = envelope.get("event", "message")
                     record_id = envelope.get("id", "")
-                    frame = (
-                        f"event: {event_type}\n"
-                        f"data: {data}\n"
-                        f"id: {record_id}\n\n"
-                    )
+                    frame = f"event: {event_type}\ndata: {data}\nid: {record_id}\n\n"
                     yield frame.encode()
 
             except asyncio.CancelledError:
@@ -130,6 +129,7 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_filter(channels: list[str], facade: "RealtimeFacade", user: dict | None):
     """Build a combined filter that applies per-collection auth rules for

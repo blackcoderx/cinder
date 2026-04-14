@@ -28,7 +28,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from zeno.cache.backends import CacheBackend
 from zeno.cache.invalidation import TAG_PREFIX, _get_key
 
-logger = logging.getLogger("cinder.cache.middleware")
+logger = logging.getLogger("zeno.cache.middleware")
 
 _CACHE_PREFIX = "response"
 

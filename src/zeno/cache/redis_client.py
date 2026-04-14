@@ -5,17 +5,18 @@ and reused across all Cinder subsystems (cache, rate-limit, realtime broker).
 
 Usage::
 
-    from cinder.cache.redis_client import get_client, configure, close
+    from zeno.cache.redis_client import get_client, configure, close
 
     configure(url="redis://localhost:6379/0")
     client = await get_client()   # connects on first call
     await close()                 # called during app shutdown
 """
+
 from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger("cinder.cache.redis_client")
+logger = logging.getLogger("zeno.cache.redis_client")
 
 _url: str | None = None
 _client = None  # redis.asyncio.Redis | None
@@ -41,15 +42,14 @@ async def get_client():
     if _url is None:
         raise RuntimeError(
             "Redis URL not configured. Call configure(url=...) or set "
-            "CINDER_REDIS_URL before using Redis-backed features."
+            "ZENO_REDIS_URL before using Redis-backed features."
         )
 
     try:
         import redis.asyncio as aioredis  # type: ignore[import]
     except ImportError as exc:
         raise ImportError(
-            "Redis client not installed. "
-            "Install it with: pip install 'cinder[redis]'"
+            "Redis client not installed. Install it with: pip install 'zeno[redis]'"
         ) from exc
 
     _client = aioredis.from_url(

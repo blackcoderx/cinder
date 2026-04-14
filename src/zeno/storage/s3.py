@@ -13,9 +13,9 @@ class S3CompatibleBackend(FileStorageBackend):
     Uses boto3 (sync) executed in a thread pool so Cinder's async event loop
     is never blocked. Requires the ``s3`` optional dependency::
 
-        pip install cinder[s3]
+        pip install zeno[s3]
         # or
-        uv add cinder[s3]
+        uv add zeno[s3]
 
     **Quick start — provider presets:**
 
@@ -238,7 +238,7 @@ class S3CompatibleBackend(FileStorageBackend):
         except ImportError as exc:
             raise ImportError(
                 "boto3 is required for S3CompatibleBackend. "
-                "Install it with: pip install cinder[s3]"
+                "Install it with: pip install zeno[s3]"
             ) from exc
 
         config_kwargs: dict[str, Any] = {}

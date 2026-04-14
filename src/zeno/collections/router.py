@@ -8,7 +8,7 @@ from starlette.routing import Route
 from zeno.collections.schema import Collection, FileField, RelationField
 from zeno.collections.store import CollectionStore
 from zeno.errors import ZenoError
-from zeno.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
 
 
 def build_collection_routes(
@@ -70,7 +70,7 @@ def _routes_for_collection(
             params.pop("expand", "").split(",") if "expand" in params else []
         )
         filters = params if params else None
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="list"
         )
         items, total = await store.list(
@@ -106,7 +106,7 @@ def _routes_for_collection(
     async def get_record(request: Request) -> JSONResponse:
         _check_auth(request, read_rule)
         record_id = request.path_params["id"]
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="read"
         )
         record = await store.get(collection, record_id, ctx=ctx)
@@ -130,7 +130,7 @@ def _routes_for_collection(
             user = getattr(request.state, "user", None)
             if user:
                 body["created_by"] = user["id"]
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="create"
         )
         try:
@@ -145,10 +145,10 @@ def _routes_for_collection(
         if write_rule == "owner":
             existing = await store.get(collection, record_id)
             if existing is None:
-                raise CinderError(404, "Record not found")
+                raise ZenoError(404, "Record not found")
             _check_owner(request, existing)
         body = await request.json()
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="update"
         )
         try:
@@ -167,7 +167,7 @@ def _routes_for_collection(
             if existing is None:
                 raise ZenoError(404, "Record not found")
             _check_owner(request, existing)
-        ctx = CinderContext.from_request(
+        ctx = ZenoContext.from_request(
             request, collection=collection.name, operation="delete"
         )
         deleted = await store.delete(collection, record_id, ctx=ctx)
@@ -185,7 +185,7 @@ def _routes_for_collection(
 
     # Auto-generate file routes for every FileField on this collection
     if storage_backend is not None:
-        from cinder.storage.routes import (
+        from zeno.storage.routes import (
             make_delete_handler,
             make_download_handler,
             make_upload_handler,

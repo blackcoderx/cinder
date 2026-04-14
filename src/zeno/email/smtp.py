@@ -7,13 +7,13 @@ with a single line of configuration.
 
 Requires the ``email`` optional dependency::
 
-    pip install cinder[email]
+    pip install zeno[email]
     # or
-    uv add cinder[email]
+    uv add zeno[email]
 
 Quick start::
 
-    from cinder.email import SMTPBackend
+    from zeno.email import SMTPBackend
 
     # SendGrid
     app.email.use(SMTPBackend.sendgrid(api_key=os.getenv("SENDGRID_API_KEY")))
@@ -34,7 +34,7 @@ from typing import Any
 
 from .backends import EmailBackend, EmailMessage
 
-logger = logging.getLogger("cinder.email.smtp")
+logger = logging.getLogger("zeno.email.smtp")
 
 
 class SMTPBackend(EmailBackend):
@@ -223,7 +223,7 @@ class SMTPBackend(EmailBackend):
         """Send ``message`` via SMTP with retry on transient failures.
 
         Raises:
-            ImportError: If ``aiosmtplib`` is not installed (``cinder[email]`` extra).
+            ImportError: If ``aiosmtplib`` is not installed (``zeno[email]`` extra).
             Exception: On permanent failure after all retries are exhausted.
         """
         try:
@@ -231,7 +231,7 @@ class SMTPBackend(EmailBackend):
         except ImportError as exc:
             raise ImportError(
                 "aiosmtplib is required for SMTPBackend. "
-                "Install it with: pip install cinder[email]"
+                "Install it with: pip install zeno[email]"
             ) from exc
 
         mime = self._build_mime(message)

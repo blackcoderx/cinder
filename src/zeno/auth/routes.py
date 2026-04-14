@@ -21,7 +21,7 @@ from zeno.auth.passwords import hash_password, verify_password
 from zeno.auth.tokens import create_token, decode_token
 from zeno.db.connection import Database
 from zeno.errors import ZenoError
-from zeno.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
 
 
 def _user_response(user: dict) -> dict:
@@ -58,7 +58,7 @@ def build_auth_routes(
             raise ZenoError(403, "Registration is disabled")
 
         body = await request.json()
-        ctx = CinderContext.from_request(request, operation="register")
+        ctx = ZenoContext.from_request(request, operation="register")
         body = await runner.run("auth:before_register", body, ctx)
         email = body.get("email")
         password = body.get("password")
@@ -140,7 +140,7 @@ def build_auth_routes(
 
     async def login(request: Request) -> JSONResponse:
         body = await request.json()
-        ctx = CinderContext.from_request(request, operation="login")
+        ctx = ZenoContext.from_request(request, operation="login")
         body = await runner.run("auth:before_login", body, ctx)
         email = body.get("email")
         password = body.get("password")
@@ -168,7 +168,7 @@ def build_auth_routes(
 
     async def logout(request: Request) -> JSONResponse:
         user, payload = await _get_current_user(request, db, secret)
-        ctx = CinderContext.from_request(request, operation="logout")
+        ctx = ZenoContext.from_request(request, operation="logout")
         user_resp = _user_response(user)
         await runner.run("auth:before_logout", user_resp, ctx)
         exp = payload.get("exp", "")
@@ -199,7 +199,7 @@ def build_auth_routes(
 
     async def forgot_password(request: Request) -> JSONResponse:
         body = await request.json()
-        ctx = CinderContext.from_request(request, operation="forgot_password")
+        ctx = ZenoContext.from_request(request, operation="forgot_password")
         body = await runner.run("auth:before_password_reset", body, ctx)
         email = body.get("email")
         if not email:
@@ -217,7 +217,7 @@ def build_auth_routes(
                 (reset_token, user["id"], expires_at),
             )
             if email_config is not None:
-                from cinder.email.backends import EmailMessage
+                from zeno.email.backends import EmailMessage
 
                 reset_url = (
                     f"{email_config._base_url}/reset-password?token={reset_token}"
@@ -229,7 +229,7 @@ def build_auth_routes(
                     )
                 )
             else:
-                logging.getLogger("cinder.auth").info(
+                logging.getLogger("zeno.auth").info(
                     "Password reset token for %s: %s", email, reset_token
                 )
             await runner.run(
@@ -302,7 +302,7 @@ def build_auth_routes(
             f"DELETE FROM {EMAIL_VERIFICATIONS_TABLE} WHERE token = ?", (token,)
         )
 
-        ctx = CinderContext.from_request(request, operation="verify_email")
+        ctx = ZenoContext.from_request(request, operation="verify_email")
         await runner.run(
             "auth:after_verify_email",
             {"user_id": row["user_id"], "email": row["email"]},

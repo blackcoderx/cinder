@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from cinder.deploy.platforms.base import GeneratedFile, PlatformGenerator
+from zeno.deploy.platforms.base import GeneratedFile, PlatformGenerator
 
 
 class RenderGenerator(PlatformGenerator):

@@ -1,5 +1,5 @@
-from cinder.hooks.registry import HookRegistry
-from cinder.hooks.runner import HookRunner
-from cinder.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
+from zeno.hooks.registry import HookRegistry
+from zeno.hooks.runner import HookRunner
 
-__all__ = ["HookRegistry", "HookRunner", "CinderContext"]
+__all__ = ["HookRegistry", "HookRunner", "ZenoContext"]

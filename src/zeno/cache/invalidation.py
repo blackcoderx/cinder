@@ -12,7 +12,7 @@ The invalidation strategy:
 
 Usage (called from ``app.py`` during ``build()``)::
 
-    from cinder.cache.invalidation import install_invalidation
+    from zeno.cache.invalidation import install_invalidation
     install_invalidation(registry, backend, collections)
 """
 
@@ -23,7 +23,7 @@ import logging
 from zeno.cache.backends import CacheBackend
 from zeno.hooks.registry import HookRegistry
 
-logger = logging.getLogger("cinder.cache.invalidation")
+logger = logging.getLogger("zeno.cache.invalidation")
 
 TAG_PREFIX = "tag:collection"
 CACHE_PREFIX = "response"

@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
-_logger = logging.getLogger(__name__)
+from zeno.db.connection import Database
 
-from cinder.db.connection import Database
+_logger = logging.getLogger(__name__)
 
 
 class MigrationFile(NamedTuple):
-    id: str       # filename stem (e.g. "20260409_143022_add_index")
+    id: str  # filename stem (e.g. "20260409_143022_add_index")
     path: Path
 
 
@@ -66,7 +66,9 @@ class MigrationEngine:
         """Load the migration module, call up(db), then record it as applied."""
         mod = _load_migration_module(migration)
         if not callable(getattr(mod, "up", None)):
-            raise RuntimeError(f"Migration {migration.id!r} is missing an 'up' function: {migration.path}")
+            raise RuntimeError(
+                f"Migration {migration.id!r} is missing an 'up' function: {migration.path}"
+            )
         # NOTE: DDL transactions are not natively abstracted by the Database interface.
         # If up() partially fails mid-migration, the schema may be left in an inconsistent
         # state. Migration authors should keep individual migration files atomic (single
@@ -74,7 +76,9 @@ class MigrationEngine:
         try:
             await mod.up(self.db)
         except Exception as exc:
-            raise RuntimeError(f"Migration {migration.id!r} failed during up(): {exc}") from exc
+            raise RuntimeError(
+                f"Migration {migration.id!r} failed during up(): {exc}"
+            ) from exc
         applied_at = datetime.now(timezone.utc).isoformat()
         await self.db.execute(
             "INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
@@ -101,15 +105,21 @@ class MigrationEngine:
                 "Verify your database schema manually.",
                 last_id,
             )
-            await self.db.execute("DELETE FROM _schema_migrations WHERE id = ?", (last_id,))
+            await self.db.execute(
+                "DELETE FROM _schema_migrations WHERE id = ?", (last_id,)
+            )
             return None
         mod = _load_migration_module(last)
         if not callable(getattr(mod, "down", None)):
-            raise RuntimeError(f"Migration {last.id!r} is missing a 'down' function: {last.path}")
+            raise RuntimeError(
+                f"Migration {last.id!r} is missing a 'down' function: {last.path}"
+            )
         try:
             await mod.down(self.db)
         except Exception as exc:
-            raise RuntimeError(f"Migration {last.id!r} failed during down(): {exc}") from exc
+            raise RuntimeError(
+                f"Migration {last.id!r} failed during down(): {exc}"
+            ) from exc
         await self.db.execute("DELETE FROM _schema_migrations WHERE id = ?", (last.id,))
         return last
 
@@ -130,11 +140,15 @@ class MigrationEngine:
         for m in self.discover():
             discovered_ids.add(m.id)
             if m.id in applied_map:
-                result.append({"id": m.id, "status": "applied", "applied_at": applied_map[m.id]})
+                result.append(
+                    {"id": m.id, "status": "applied", "applied_at": applied_map[m.id]}
+                )
             else:
                 result.append({"id": m.id, "status": "pending", "applied_at": None})
         # Surface orphaned migrations
         for mid, applied_at in applied_map.items():
             if mid not in discovered_ids:
-                result.append({"id": mid, "status": "orphaned", "applied_at": applied_at})
+                result.append(
+                    {"id": mid, "status": "orphaned", "applied_at": applied_at}
+                )
         return result

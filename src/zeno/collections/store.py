@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from cinder.collections.schema import (
+from zeno.collections.schema import (
     BoolField,
     Collection,
     DateTimeField,
@@ -17,9 +17,9 @@ from cinder.collections.schema import (
 from zeno.db.backends.base import DatabaseIntegrityError
 from zeno.db.connection import Database
 from zeno.errors import CANCEL_DELETE_MESSAGE, ZenoError
-from zeno.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
 
-logger = logging.getLogger("cinder.collections.store")
+logger = logging.getLogger("zeno.collections.store")
 
 
 class CollectionStore:
@@ -60,9 +60,9 @@ class CollectionStore:
                 logger.info("Created index %s on %s", idx_name, collection.name)
 
     async def create(
-        self, collection: Collection, data: dict, ctx: CinderContext | None = None
+        self, collection: Collection, data: dict, ctx: ZenoContext | None = None
     ) -> dict:
-        ctx = ctx or CinderContext(collection=collection.name, operation="create")
+        ctx = ctx or ZenoContext(collection=collection.name, operation="create")
         data = await collection._runner.run(
             f"{collection.name}:before_create", data, ctx
         )
@@ -109,9 +109,9 @@ class CollectionStore:
         return saved
 
     async def get(
-        self, collection: Collection, id: str, ctx: CinderContext | None = None
+        self, collection: Collection, id: str, ctx: ZenoContext | None = None
     ) -> dict | None:
-        ctx = ctx or CinderContext(collection=collection.name, operation="read")
+        ctx = ctx or ZenoContext(collection=collection.name, operation="read")
         id = await collection._runner.run(f"{collection.name}:before_read", id, ctx)
         row = await self.db.fetch_one(
             f"SELECT * FROM {collection.name} WHERE id = ?", (id,)
@@ -132,9 +132,9 @@ class CollectionStore:
         order_by: str = "created_at",
         limit: int = 20,
         offset: int = 0,
-        ctx: CinderContext | None = None,
+        ctx: ZenoContext | None = None,
     ) -> tuple[list[dict], int]:
-        ctx = ctx or CinderContext(collection=collection.name, operation="list")
+        ctx = ctx or ZenoContext(collection=collection.name, operation="list")
         query_desc: dict[str, Any] = {
             "filters": dict(filters) if filters else {},
             "order_by": order_by,
@@ -185,9 +185,9 @@ class CollectionStore:
         collection: Collection,
         id: str,
         data: dict,
-        ctx: CinderContext | None = None,
+        ctx: ZenoContext | None = None,
     ) -> dict | None:
-        ctx = ctx or CinderContext(collection=collection.name, operation="update")
+        ctx = ctx or ZenoContext(collection=collection.name, operation="update")
         existing = await self._raw_get(collection, id)
         if existing is None:
             return None
@@ -255,9 +255,9 @@ class CollectionStore:
         return updated
 
     async def delete(
-        self, collection: Collection, id: str, ctx: CinderContext | None = None
+        self, collection: Collection, id: str, ctx: ZenoContext | None = None
     ) -> bool:
-        ctx = ctx or CinderContext(collection=collection.name, operation="delete")
+        ctx = ctx or ZenoContext(collection=collection.name, operation="delete")
         existing = await self._raw_get(collection, id)
         if existing is None:
             return False

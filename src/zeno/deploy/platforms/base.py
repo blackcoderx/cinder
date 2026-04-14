@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-from cinder.deploy.introspect import AppProfile
+from zeno.deploy.introspect import AppProfile
 
 
 @dataclass
@@ -39,7 +39,7 @@ class PlatformGenerator(ABC):
         )
 
     def _migrate_command(self) -> str:
-        return f"cinderapi migrate run --app {self.profile.app_module}.py"
+        return f"zeno migrate run --app {self.profile.app_module}.py"
 
     def _start_with_migrate(self, *, use_port_env: bool = False) -> str:
         return f"{self._migrate_command()} && {self._start_command(use_port_env=use_port_env)}"
@@ -48,5 +48,5 @@ class PlatformGenerator(ABC):
         """Common environment variables for all platforms."""
         env: dict[str, str] = {}
         if self.profile.needs_auth:
-            env["CINDER_SECRET"] = "${CINDER_SECRET}"
+            env["ZENO_SECRET"] = "${ZENO_SECRET}"
         return env

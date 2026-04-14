@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Callable, Protocol, runtime_checkable
 
-logger = logging.getLogger("cinder.realtime.broker")
+logger = logging.getLogger("zeno.realtime.broker")
 
 
 @runtime_checkable

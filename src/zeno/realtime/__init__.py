@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from starlette.routing import Route, WebSocketRoute
 
-from cinder.realtime.broker import RealtimeBroker
-from cinder.realtime.bridge import default_envelope, install as install_bridge
-from cinder.realtime.sse import sse_endpoint_factory
-from cinder.realtime.websocket import ws_endpoint_factory
+from zeno.realtime.broker import RealtimeBroker
+from zeno.realtime.bridge import default_envelope, install as install_bridge
+from zeno.realtime.sse import sse_endpoint_factory
+from zeno.realtime.websocket import ws_endpoint_factory
 
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger("cinder.realtime")
+logger = logging.getLogger("zeno.realtime")
 
 __all__ = [
     "RealtimeFacade",

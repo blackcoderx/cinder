@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
-from cinder.collections.schema import (
+from zeno.collections.schema import (
     BoolField,
     Collection,
     DateTimeField,
@@ -56,7 +56,7 @@ SWAGGER_HTML = """<!DOCTYPE html>
 """
 
 
-class CinderOpenAPI:
+class ZenoOpenAPI:
     def __init__(
         self,
         title: str = "Cinder API",
