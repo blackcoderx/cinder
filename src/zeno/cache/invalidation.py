@@ -15,12 +15,13 @@ Usage (called from ``app.py`` during ``build()``)::
     from cinder.cache.invalidation import install_invalidation
     install_invalidation(registry, backend, collections)
 """
+
 from __future__ import annotations
 
 import logging
 
-from cinder.cache.backends import CacheBackend
-from cinder.hooks.registry import HookRegistry
+from zeno.cache.backends import CacheBackend
+from zeno.hooks.registry import HookRegistry
 
 logger = logging.getLogger("cinder.cache.invalidation")
 
@@ -59,7 +60,9 @@ def _register_hooks(
             members = await backend.smembers(tag)
             if members:
                 await backend.delete(*members)
-                logger.debug("Cache invalidated %d list keys for '%s'", len(members), name)
+                logger.debug(
+                    "Cache invalidated %d list keys for '%s'", len(members), name
+                )
             await backend.sdelete(tag)
         except Exception:
             logger.exception("Cache invalidation failed for collection '%s'", name)
@@ -71,9 +74,13 @@ def _register_hooks(
             if record_id is not None:
                 key = _get_key(name, record_id)
                 await backend.delete(key)
-                logger.debug("Cache invalidated get key for '%s' id=%s", name, record_id)
+                logger.debug(
+                    "Cache invalidated get key for '%s' id=%s", name, record_id
+                )
         except Exception:
-            logger.exception("Cache invalidation (get) failed for collection '%s'", name)
+            logger.exception(
+                "Cache invalidation (get) failed for collection '%s'", name
+            )
 
     async def after_create(record, ctx):
         await _invalidate_list(record, ctx)

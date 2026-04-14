@@ -15,6 +15,7 @@ Key design decisions
   ``tag:collection:{name}`` set so invalidation can delete them atomically.
 - **Excluded paths** — developers can opt specific paths out of caching.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,8 +25,8 @@ from urllib.parse import parse_qs, urlencode
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from cinder.cache.backends import CacheBackend
-from cinder.cache.invalidation import TAG_PREFIX, _get_key
+from zeno.cache.backends import CacheBackend
+from zeno.cache.invalidation import TAG_PREFIX, _get_key
 
 logger = logging.getLogger("cinder.cache.middleware")
 
@@ -39,7 +40,9 @@ def _sorted_qs(raw_qs: str) -> str:
 
 
 def _build_key(collection: str, op: str, path: str, qs: str, user_segment: str) -> str:
-    fingerprint = hashlib.sha256(f"{path}:{qs}:{user_segment}".encode()).hexdigest()[:16]
+    fingerprint = hashlib.sha256(f"{path}:{qs}:{user_segment}".encode()).hexdigest()[
+        :16
+    ]
     return f"{_CACHE_PREFIX}:{collection}:{op}:{fingerprint}"
 
 
@@ -118,7 +121,9 @@ class CacheMiddleware:
                 await _send_cached(scope, send, entry, cache_key)
                 return
             except Exception:
-                logger.exception("Cache entry corrupt for key %s — bypassing", cache_key)
+                logger.exception(
+                    "Cache entry corrupt for key %s — bypassing", cache_key
+                )
 
         # --- cache miss: capture downstream response ---
         captured: dict = {"status": None, "headers": [], "body": b""}
@@ -148,16 +153,22 @@ class CacheMiddleware:
                 try:
                     entry = {
                         "status": status,
-                        "headers": [[k.decode(), v.decode()] for k, v in captured["headers"]],
+                        "headers": [
+                            [k.decode(), v.decode()] for k, v in captured["headers"]
+                        ],
                         "body": captured["body"].decode("latin-1"),
                     }
-                    await self.backend.set(cache_key, json.dumps(entry).encode(), ttl=self.default_ttl)
+                    await self.backend.set(
+                        cache_key, json.dumps(entry).encode(), ttl=self.default_ttl
+                    )
                     # Register list keys in the tag set for invalidation
                     if op == "list":
                         tag = f"{TAG_PREFIX}:{collection}"
                         await self.backend.sadd(tag, cache_key)
                 except Exception:
-                    logger.exception("Cache SET failed for key %s — ignoring", cache_key)
+                    logger.exception(
+                        "Cache SET failed for key %s — ignoring", cache_key
+                    )
 
 
 async def _send_cached(scope: Scope, send: Send, entry: dict, cache_key: str) -> None:
@@ -166,13 +177,17 @@ async def _send_cached(scope: Scope, send: Send, entry: dict, cache_key: str) ->
     headers = [(k, v) for k, v in headers if k.lower() != b"x-cache"]
     headers.append((b"x-cache", b"HIT"))
 
-    await send({
-        "type": "http.response.start",
-        "status": entry["status"],
-        "headers": headers,
-    })
-    await send({
-        "type": "http.response.body",
-        "body": entry["body"].encode("latin-1"),
-        "more_body": False,
-    })
+    await send(
+        {
+            "type": "http.response.start",
+            "status": entry["status"],
+            "headers": headers,
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": entry["body"].encode("latin-1"),
+            "more_body": False,
+        }
+    )
