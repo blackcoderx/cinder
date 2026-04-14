@@ -1,8 +1,8 @@
-# Cinder Architecture & Developer Guide
+# Zeno Architecture & Developer Guide
 
-## What is Cinder?
+## What is Zeno?
 
-Cinder is a lightweight, open-source backend framework for Python. It is designed to rapidly build production-ready REST APIs and realtime applications by automatically generating CRUD endpoints and Pub/Sub streams directly from Python data schemas.
+Zeno is a lightweight, open-source backend framework for Python. It is designed to rapidly build production-ready REST APIs and realtime applications by automatically generating CRUD endpoints and Pub/Sub streams directly from Python data schemas.
 
 It significantly reduces boilerplate by providing built-in features including JWT-based authentication, role-based access control (RBAC), advanced relationship expansion, dynamic sorting/filtering, pluggable multi-database support (SQLite · PostgreSQL · MySQL), pluggable file storage (local + S3-compatible), transactional email delivery, and seamless WebSockets/SSE integration for real-time state sync.
 
@@ -130,19 +130,19 @@ graph TD
 
 ### 1. The Application Core (`src/zeno/`)
 
-* **`app.py`** — Defines the `Cinder` class. Central registry where developers register schemas, configure auth, email, storage, database, caching, and rate-limiting, and initialize the realtime broker. Exposes five fluent configuration entry-points:
+* **`app.py`** — Defines the `Zeno` class. Central registry where developers register schemas, configure auth, email, storage, database, caching, and rate-limiting, and initialize the realtime broker. Exposes five fluent configuration entry-points:
   - `app.cache` → `_CacheConfig` — cache backend, TTL, per-user segmentation, excluded paths.
   - `app.rate_limit` → `_RateLimitConfig` — backend, global defaults, per-route rules.
   - `app.email` → `_EmailConfig` — SMTP backend, sender address, app name, base URL, template overrides for password-reset / verification / welcome emails. Dispatches via `asyncio.create_task` (non-blocking).
   - `app.configure_storage(backend)` — sets the `FileStorageBackend` used by all `FileField` columns. Validated at `build()` time.
   - `app.configure_database(backend)` — plugs in a fully pre-configured `DatabaseBackend`. Takes highest precedence over env vars and the `database=` constructor arg. Useful for custom pool settings, SSL, or bring-your-own-driver scenarios.
 * **`pipeline.py`** — Formats HTTP and WebSocket requests. Manages CORS, standardises error shapes, assigns request IDs, and decides whether a request routes to Auth, Collections, or Realtime endpoints.
-* **`cli.py`** — Handles terminal commands (via Typer). Commands: `serve`, `init`, `promote`, `generate-secret`, `doctor`, `routes`, `info`, and the `migrate` sub-app (`run`, `status`, `rollback`, `create`). See [Migrations Subsystem](#11-migrations-subsystem-srccindermigrations) below.
+* **`cli.py`** — Handles terminal commands (via Typer). Commands: `serve`, `init`, `promote`, `generate-secret`, `doctor`, `routes`, `info`, and the `migrate` sub-app (`run`, `status`, `rollback`, `create`). See [Migrations Subsystem](#11-migrations-subsystem-srczeno-migrations) below.
 * **`errors.py`** — A unified set of exceptions allowing standard error responses across all modules.
 
 ### 2. The Database Layer (`src/zeno/db/`)
 
-Cinder's database layer is fully pluggable, mirroring the same backend-ABC pattern used by storage, email, cache, and rate-limit subsystems. All callers write SQL using `?` as the universal placeholder; each backend converts it internally to the native style.
+Zeno's database layer is fully pluggable, mirroring the same backend-ABC pattern used by storage, email, cache, and rate-limit subsystems. All callers write SQL using `?` as the universal placeholder; each backend converts it internally to the native style.
 
 * **`connection.py`** — Thin shim (`Database` class) that delegates all operations to the active `DatabaseBackend`. Constructor accepts a bare path, a `sqlite:///` URL, `postgresql://`, or `mysql://`. Two additional methods beyond the original five: `table_exists(name)` and `get_columns(name)` — used by `store.py` for database-agnostic schema introspection. Environment variables override the programmatic URL: `ZENO_DATABASE_URL` (highest) → `DATABASE_URL` (standard PaaS) → constructor arg → `"app.db"` (default SQLite).
 
@@ -152,7 +152,7 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
 
 * **`backends/postgresql.py`** — `PostgreSQLBackend`. Uses `asyncpg` (optional extra: `zeno[postgres]`). Creates an `asyncpg.create_pool` with configurable `min_size` / `max_size` / `max_inactive_connection_lifetime` (default 300 s — prevents stale connections on NeonDB/Supabase serverless). Converts `?` → `$1, $2, ...`. `table_exists` / `get_columns` query `information_schema`. Catches `asyncpg.UniqueViolationError` and `asyncpg.IntegrityConstraintViolationError` → `DatabaseIntegrityError`. Retries transient connection errors once. Pool size configurable via `ZENO_DB_POOL_MIN/MAX/TIMEOUT/CONNECT_TIMEOUT` env vars.
 
-* **`backends/mysql.py`** — `MySQLBackend`. Uses `aiomysql` (optional extra: `zeno[mysql]`). Creates `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. Converts `?` → `%s`. Rewrites `TEXT PRIMARY KEY` → `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for TEXT primary keys; all Cinder primary keys are 36-char UUID strings). Accepts `mysql://`, `mysql+aiomysql://`, and `mysql+asyncmy://` URL schemes. Catches `aiomysql.IntegrityError` → `DatabaseIntegrityError`.
+* **`backends/mysql.py`** — `MySQLBackend`. Uses `aiomysql` (optional extra: `zeno[mysql]`). Creates `aiomysql.create_pool` with `DictCursor` and `autocommit=True`. Converts `?` → `%s`. Rewrites `TEXT PRIMARY KEY` → `VARCHAR(36) PRIMARY KEY` inside `CREATE TABLE` DDL (MySQL requires a length prefix for TEXT primary keys; all Zeno primary keys are 36-char UUID strings). Accepts `mysql://`, `mysql+aiomysql://`, and `mysql+asyncmy://` URL schemes. Catches `aiomysql.IntegrityError` → `DatabaseIntegrityError`.
 
 * **`backends/__init__.py`** — `resolve_backend(url)` factory. Reads env vars first (`ZENO_DATABASE_URL` → `DATABASE_URL`), then falls back to the programmatic URL. Dispatches on URL prefix: `postgresql://` / `postgres://` → `PostgreSQLBackend`; `mysql://` / `mysql+*://` → `MySQLBackend`; anything else → `SQLiteBackend`. Drivers are imported lazily — SQLite-only users never need asyncpg or aiomysql installed.
 
@@ -162,13 +162,13 @@ Cinder's database layer is fully pluggable, mirroring the same backend-ABC patte
   - `TextField`, `IntField` (min/max), `FloatField` (min/max), `BoolField`, `DateTimeField` (auto_now), `URLField`, `JSONField`, `RelationField`
   - **`FileField`** *(Phase 4)* — stores file metadata as JSON in a SQLite TEXT column; actual bytes live in the configured `FileStorageBackend`. Parameters: `max_size`, `allowed_types` (MIME wildcards), `multiple`, `public`.
 * **`router.py`** — Generates CRUD REST endpoints (`GET`, `POST`, `PATCH`, `DELETE`). Connects requests, extracts query filters/pagination, enforces RBAC, triggers hooks. Additionally mounts three file endpoints for every `FileField` on a collection: `POST/GET/DELETE /api/{collection}/{id}/files/{field}`.
-* **`store.py`** — SQL query building engine. Handles serialisation/deserialisation of `BoolField`, `JSONField`, and `FileField` values. Uses `db.table_exists()` and `db.get_columns()` for schema introspection (database-agnostic — no SQLite-specific queries). Catches `DatabaseIntegrityError` (UNIQUE / NOT NULL constraint violations from any backend) and converts them to `CinderError(400, ...)` so callers always receive a clean 400 instead of an unhandled 500.
+* **`store.py`** — SQL query building engine. Handles serialisation/deserialisation of `BoolField`, `JSONField`, and `FileField` values. Uses `db.table_exists()` and `db.get_columns()` for schema introspection (database-agnostic — no SQLite-specific queries). Catches `DatabaseIntegrityError` (UNIQUE / NOT NULL constraint violations from any backend) and converts them to `ZenoError(400, ...)` so callers always receive a clean 400 instead of an unhandled 500.
 
 ### 4. Lifecycle Hooks (`src/zeno/hooks/`)
 
 * **`registry.py`** — Centralised repository storing developer-registered hook functions, keyed by event string.
 * **`runner.py`** — Invokes registered hooks in registration order during the lifecycle of an HTTP request. Supports sync and async handlers transparently.
-* **`context.py`** — Defines `CinderContext`, injected into every hook, carrying `user`, `request_id`, `collection`, `operation`, `request`, and `extra`.
+* **`context.py`** — Defines `ZenoContext`, injected into every hook, carrying `user`, `request_id`, `collection`, `operation`, `request`, and `extra`.
 
 ### 5. Authentication System (`src/zeno/auth/`)
 
@@ -291,7 +291,7 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
   - `FloatField` — `min_value`/`max_value` attribute assertions and full Pydantic validation (over/under boundary, required-field rejection) in `test_schema.py`.
   - Multi-field expand (`?expand=a,b`) and expand on list endpoints in `test_router.py::TestExpand`.
   - Invalid expand field (non-relation field) — verifies no crash, graceful 200.
-  - UNIQUE constraint violations — `TestUniqueConstraints` covers both `POST` (duplicate create) and `PATCH` (update to conflicting value) returning 400, backed by the `DatabaseIntegrityError` → `CinderError(400)` conversion in `store.py` (driver-agnostic, works across SQLite, PostgreSQL, and MySQL).
+  - UNIQUE constraint violations — `TestUniqueConstraints` covers both `POST` (duplicate create) and `PATCH` (update to conflicting value) returning 400, backed by the `DatabaseIntegrityError` → `ZenoError(400)` conversion in `store.py` (driver-agnostic, works across SQLite, PostgreSQL, and MySQL).
   - Database backend dispatch — `test_db.py` covers `table_exists`, `get_columns`, `resolve_backend` URL dispatch for all three drivers, env-var priority chain (`ZENO_DATABASE_URL` > `DATABASE_URL` > programmatic), and `DatabaseIntegrityError` surfacing through the `Database` shim.
   - Multiple required fields missing — `TestFieldConstraintsAtHTTPLayer` covers partial and fully missing required fields, `IntField` min constraint, and `FloatField` max constraint at the HTTP layer.
 
@@ -304,4 +304,6 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
 3. **Pluggable Everything** — Every subsystem that touches external infrastructure has an ABC and ships with concrete implementations and provider presets. Database backends (SQLite / PostgreSQL / MySQL / custom), storage backends, email backends, cache backends, rate-limit backends, and realtime brokers are all swappable with a single `app.configure_*(...)` or `app.*.use(...)` call.
 4. **Non-Blocking by Default** — Email dispatch uses `asyncio.create_task`; storage operations on remote backends run in thread executors; cache and rate-limit failures are fail-open. No user-facing request is blocked by infrastructure.
 5. **Reactive by Default** — Hooking the Collections pipeline to the Realtime Broker via the Bridge means any mutation on a Collection accurately emits an event to subscribed frontend clients.
-6. **Minimal Dependency Footprint** — Core Cinder uses standard libraries, SQLite, and an ASGI server. S3 support (`boto3`), email delivery (`aiosmtplib`), Redis (`redis`), PostgreSQL (`asyncpg`), and MySQL (`aiomysql`) are all optional extras that are lazily imported with clear `ImportError` messages. SQLite-only users never need any database driver installed beyond the built-in `aiosqlite`.
+6. **Minimal Dependency Footprint** — Core Zeno uses standard libraries, SQLite, and an ASGI server. S3 support (`boto3`), email delivery (`aiosmtplib`), Redis (`redis`), PostgreSQL (`asyncpg`), and MySQL (`aiomysql`) are all optional extras that are lazily imported with clear `ImportError` messages. SQLite-only users never need any database driver installed beyond the built-in `aiosqlite`.
+
+(End of file - total 307 lines)
