@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from zeno.migrations.engine import MigrationEngine, MigrationFile
+from zork.migrations.engine import MigrationEngine, MigrationFile
 
 
 @pytest.fixture
@@ -14,15 +14,22 @@ def migrations_dir(tmp_path):
 # discover
 # ---------------------------------------------------------------------------
 
+
 async def test_discover_empty(mem_db, migrations_dir):
     engine = MigrationEngine(mem_db, migrations_dir)
     assert engine.discover() == []
 
 
 async def test_discover_sorted(mem_db, migrations_dir):
-    (migrations_dir / "20260409_120000_alpha.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
-    (migrations_dir / "20260409_130000_bravo.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
-    (migrations_dir / "20260409_140000_charlie.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
+    (migrations_dir / "20260409_120000_alpha.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
+    (migrations_dir / "20260409_130000_bravo.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
+    (migrations_dir / "20260409_140000_charlie.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
     engine = MigrationEngine(mem_db, migrations_dir)
     found = engine.discover()
     assert [m.id for m in found] == [
@@ -35,7 +42,9 @@ async def test_discover_sorted(mem_db, migrations_dir):
 async def test_discover_skips_underscore_files(mem_db, migrations_dir):
     (migrations_dir / "__init__.py").write_text("")
     (migrations_dir / "_helpers.py").write_text("")
-    (migrations_dir / "20260409_100000_real.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
+    (migrations_dir / "20260409_100000_real.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
     engine = MigrationEngine(mem_db, migrations_dir)
     found = engine.discover()
     assert len(found) == 1
@@ -45,6 +54,7 @@ async def test_discover_skips_underscore_files(mem_db, migrations_dir):
 # ---------------------------------------------------------------------------
 # ensure_table / get_applied
 # ---------------------------------------------------------------------------
+
 
 async def test_ensure_table_creates_table(mem_db, migrations_dir):
     engine = MigrationEngine(mem_db, migrations_dir)
@@ -62,8 +72,11 @@ async def test_get_applied_empty(mem_db, migrations_dir):
 # get_pending
 # ---------------------------------------------------------------------------
 
+
 async def test_get_pending_all_when_none_applied(mem_db, migrations_dir):
-    (migrations_dir / "20260409_100000_first.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
+    (migrations_dir / "20260409_100000_first.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
     engine = MigrationEngine(mem_db, migrations_dir)
     pending = await engine.get_pending()
     assert len(pending) == 1
@@ -71,8 +84,12 @@ async def test_get_pending_all_when_none_applied(mem_db, migrations_dir):
 
 
 async def test_get_pending_filters_applied(mem_db, migrations_dir):
-    (migrations_dir / "20260409_100000_first.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
-    (migrations_dir / "20260409_110000_second.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
+    (migrations_dir / "20260409_100000_first.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
+    (migrations_dir / "20260409_110000_second.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
     engine = MigrationEngine(mem_db, migrations_dir)
     await engine.ensure_table()
     await mem_db.execute(
@@ -88,6 +105,7 @@ async def test_get_pending_filters_applied(mem_db, migrations_dir):
 # apply
 # ---------------------------------------------------------------------------
 
+
 async def test_apply_calls_up_and_records(mem_db, migrations_dir):
     mig_file = migrations_dir / "20260409_100000_create_test.py"
     mig_file.write_text(
@@ -102,7 +120,9 @@ async def test_apply_calls_up_and_records(mem_db, migrations_dir):
     mig = MigrationFile(id=mig_file.stem, path=mig_file)
     await engine.apply(mig)
     assert await mem_db.table_exists("test_apply") is True
-    row = await mem_db.fetch_one("SELECT id FROM _schema_migrations WHERE id = ?", (mig_file.stem,))
+    row = await mem_db.fetch_one(
+        "SELECT id FROM _schema_migrations WHERE id = ?", (mig_file.stem,)
+    )
     assert row is not None
 
 
@@ -136,6 +156,7 @@ async def test_apply_validates_up_function(mem_db, migrations_dir):
 # rollback
 # ---------------------------------------------------------------------------
 
+
 async def test_rollback_calls_down_and_removes_record(mem_db, migrations_dir):
     mig_file = migrations_dir / "20260409_100000_create_rb.py"
     mig_file.write_text(
@@ -155,7 +176,9 @@ async def test_rollback_calls_down_and_removes_record(mem_db, migrations_dir):
     assert result is not None
     assert result.id == mig_file.stem
     assert await mem_db.table_exists("rb_table") is False
-    row = await mem_db.fetch_one("SELECT id FROM _schema_migrations WHERE id = ?", (mig_file.stem,))
+    row = await mem_db.fetch_one(
+        "SELECT id FROM _schema_migrations WHERE id = ?", (mig_file.stem,)
+    )
     assert row is None
 
 
@@ -198,14 +221,17 @@ async def test_rollback_uses_applied_at_order(mem_db, tmp_path):
     )
     await mem_db.execute(
         "INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)",
-        ("20260101_000001_a", "2026-01-01T00:00:02+00:00"),  # later timestamp = rolled back first
+        (
+            "20260101_000001_a",
+            "2026-01-01T00:00:02+00:00",
+        ),  # later timestamp = rolled back first
     )
 
     # Rollback should pick mig_a (later applied_at), not mig_b (alphabetically last)
     result = await engine.rollback()
     assert result is not None
     assert result.id == "20260101_000001_a"  # most recently applied
-    assert not await mem_db.table_exists("rb_a")   # down() ran on mig_a
+    assert not await mem_db.table_exists("rb_a")  # down() ran on mig_a
     assert await mem_db.table_exists("rb_b")  # mig_b untouched
 
     # mig_a record removed, mig_b still present
@@ -217,6 +243,7 @@ async def test_rollback_uses_applied_at_order(mem_db, tmp_path):
 # ---------------------------------------------------------------------------
 # run_pending
 # ---------------------------------------------------------------------------
+
 
 async def test_run_pending_multiple(mem_db, migrations_dir):
     for i in range(1, 4):
@@ -239,9 +266,14 @@ async def test_run_pending_multiple(mem_db, migrations_dir):
 # status
 # ---------------------------------------------------------------------------
 
+
 async def test_status_all_pending(mem_db, migrations_dir):
-    (migrations_dir / "20260409_100000_a.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
-    (migrations_dir / "20260409_110000_b.py").write_text("async def up(db): pass\nasync def down(db): pass\n")
+    (migrations_dir / "20260409_100000_a.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
+    (migrations_dir / "20260409_110000_b.py").write_text(
+        "async def up(db): pass\nasync def down(db): pass\n"
+    )
     engine = MigrationEngine(mem_db, migrations_dir)
     statuses = await engine.status()
     assert len(statuses) == 2

@@ -1,9 +1,14 @@
 import pytest
-from zeno.db.connection import Database
-from zeno.collections.schema import (
-    Collection, TextField, IntField, BoolField, FloatField, JSONField,
+from zork.db.connection import Database
+from zork.collections.schema import (
+    Collection,
+    TextField,
+    IntField,
+    BoolField,
+    FloatField,
+    JSONField,
 )
-from zeno.collections.store import CollectionStore
+from zork.collections.store import CollectionStore
 
 
 @pytest.fixture
@@ -21,11 +26,14 @@ async def store(db):
 
 @pytest.fixture
 def posts_collection():
-    return Collection("posts", fields=[
-        TextField("title", required=True),
-        TextField("body"),
-        IntField("views", default=0),
-    ])
+    return Collection(
+        "posts",
+        fields=[
+            TextField("title", required=True),
+            TextField("body"),
+            IntField("views", default=0),
+        ],
+    )
 
 
 class TestSchemaSync:
@@ -52,10 +60,13 @@ class TestSchemaSync:
         v1 = Collection("items", fields=[TextField("name")])
         await store.sync_schema(v1)
 
-        v2 = Collection("items", fields=[
-            TextField("name"),
-            IntField("quantity"),
-        ])
+        v2 = Collection(
+            "items",
+            fields=[
+                TextField("name"),
+                IntField("quantity"),
+            ],
+        )
         await store.sync_schema(v2)
 
         columns = await db.fetch_all("PRAGMA table_info(items)")
@@ -65,10 +76,14 @@ class TestSchemaSync:
     @pytest.mark.asyncio
     async def test_warns_on_removed_columns(self, store, db, caplog):
         import logging
-        v1 = Collection("items", fields=[
-            TextField("name"),
-            IntField("old_field"),
-        ])
+
+        v1 = Collection(
+            "items",
+            fields=[
+                TextField("name"),
+                IntField("old_field"),
+            ],
+        )
         await store.sync_schema(v1)
 
         v2 = Collection("items", fields=[TextField("name")])
@@ -81,7 +96,9 @@ class TestCRUD:
     @pytest.mark.asyncio
     async def test_create_record(self, store, posts_collection):
         await store.sync_schema(posts_collection)
-        record = await store.create(posts_collection, {"title": "Hello", "body": "World"})
+        record = await store.create(
+            posts_collection, {"title": "Hello", "body": "World"}
+        )
         assert record["title"] == "Hello"
         assert record["body"] == "World"
         assert record["views"] == 0
@@ -93,6 +110,7 @@ class TestCRUD:
     async def test_create_validates_required(self, store, posts_collection):
         await store.sync_schema(posts_collection)
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             await store.create(posts_collection, {"body": "no title"})
 

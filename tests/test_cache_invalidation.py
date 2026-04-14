@@ -2,11 +2,11 @@
 
 import pytest
 
-from zeno.cache.backends import MemoryCacheBackend
-from zeno.cache.invalidation import _get_key, _list_tag, install_invalidation
-from zeno.hooks.context import ZenoContext
-from zeno.hooks.registry import HookRegistry
-from zeno.hooks.runner import HookRunner
+from zork.cache.backends import MemoryCacheBackend
+from zork.cache.invalidation import _get_key, _list_tag, install_invalidation
+from zork.hooks.context import ZorkContext
+from zork.hooks.registry import HookRegistry
+from zork.hooks.runner import HookRunner
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ async def test_after_create_invalidates_list(setup):
     await backend.set(key, b"cached")
     await backend.sadd(_list_tag("posts"), key)
 
-    ctx = ZenoContext.system()
+    ctx = ZorkContext.system()
     await runner.fire("posts:after_create", {"id": 1}, ctx)
 
     # List key should be gone
@@ -46,7 +46,7 @@ async def test_after_update_invalidates_list_and_get(setup):
     await backend.set(get_key, b"get")
     await backend.sadd(_list_tag("posts"), list_key)
 
-    ctx = ZenoContext.system()
+    ctx = ZorkContext.system()
     await runner.fire("posts:after_update", {"id": 42}, ctx)
 
     assert await backend.get(list_key) is None
@@ -63,7 +63,7 @@ async def test_after_delete_invalidates_list_and_get(setup):
     await backend.set(get_key, b"g")
     await backend.sadd(_list_tag("posts"), list_key)
 
-    ctx = ZenoContext.system()
+    ctx = ZorkContext.system()
     await runner.fire("posts:after_delete", {"id": 7}, ctx)
 
     assert await backend.get(list_key) is None
@@ -81,7 +81,7 @@ async def test_invalidation_does_not_affect_other_collections(setup):
     await backend.sadd(_list_tag("posts"), posts_key)
     await backend.sadd(_list_tag("tags"), tags_key)
 
-    ctx = ZenoContext.system()
+    ctx = ZorkContext.system()
     await runner.fire("posts:after_create", {"id": 1}, ctx)
 
     assert await backend.get(posts_key) is None
@@ -97,6 +97,6 @@ async def test_invalidation_backend_error_does_not_raise(setup, monkeypatch):
 
     monkeypatch.setattr(backend, "smembers", boom)
 
-    ctx = ZenoContext.system()
+    ctx = ZorkContext.system()
     # Should not propagate the exception
     await runner.fire("posts:after_create", {"id": 1}, ctx)

@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from typer.testing import CliRunner
 
-from zeno.cli import app
+from zork.cli import app
 
 runner = CliRunner()
 
@@ -21,14 +21,14 @@ class TestInit:
     def test_init_main_py_content(self, tmp_path):
         runner.invoke(app, ["init", str(tmp_path / "myproject")])
         content = (tmp_path / "myproject" / "main.py").read_text()
-        assert "from zeno" in content
-        assert "Zeno" in content
+        assert "from zork" in content
+        assert "Zork" in content
 
 
 class TestPromote:
     def test_promote_user(self, db_path):
-        from zeno.auth.models import create_auth_tables
-        from zeno.db.connection import Database
+        from zork.auth.models import create_auth_tables
+        from zork.db.connection import Database
 
         async def setup():
             db = Database(db_path)

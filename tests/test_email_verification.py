@@ -8,6 +8,7 @@ Tests cover:
 - Forgot-password: console log fires when email_config=None (existing behaviour preserved)
 - All existing auth routes still work with email_config=None (non-breaking)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -18,16 +19,16 @@ import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
-from zeno.auth import Auth
-from zeno.auth.models import (
+from zork.auth import Auth
+from zork.auth.models import (
     EMAIL_VERIFICATIONS_TABLE,
     USERS_TABLE,
     create_auth_tables,
     create_verification_token,
 )
-from zeno.auth.routes import build_auth_routes
-from zeno.db.connection import Database
-from zeno.pipeline import build_middleware_stack
+from zork.auth.routes import build_auth_routes
+from zork.db.connection import Database
+from zork.pipeline import build_middleware_stack
 
 SECRET = "test-secret-email-verification"
 
@@ -39,7 +40,7 @@ SECRET = "test-secret-email-verification"
 
 def _make_email_config(send_mock=None):
     """Create a minimal _EmailConfig-like object for testing."""
-    from zeno.app import _EmailConfig
+    from zork.app import _EmailConfig
 
     cfg = _EmailConfig()
     cfg.configure(
@@ -79,10 +80,13 @@ class TestNoEmailConfig:
         app = _build_test_app(db_with_auth, auth, email_config=None)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "user@example.com",
-            "password": "password123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "user@example.com",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 201
         assert "token" in resp.json()
 
@@ -92,29 +96,46 @@ class TestNoEmailConfig:
         app = _build_test_app(db_with_auth, auth, email_config=None)
         client = TestClient(app)
 
-        client.post("/api/auth/register", json={
-            "email": "user@example.com", "password": "pass123",
-        })
-        resp = client.post("/api/auth/login", json={
-            "email": "user@example.com", "password": "pass123",
-        })
+        client.post(
+            "/api/auth/register",
+            json={
+                "email": "user@example.com",
+                "password": "pass123",
+            },
+        )
+        resp = client.post(
+            "/api/auth/login",
+            json={
+                "email": "user@example.com",
+                "password": "pass123",
+            },
+        )
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_forgot_password_logs_when_no_email_config(self, db_with_auth, caplog):
+    async def test_forgot_password_logs_when_no_email_config(
+        self, db_with_auth, caplog
+    ):
         """Forgot-password should fall back to logger.info when email_config=None."""
         import logging
+
         auth = Auth(allow_registration=True)
         app = _build_test_app(db_with_auth, auth, email_config=None)
         client = TestClient(app)
 
         # Register a user first
-        client.post("/api/auth/register", json={
-            "email": "reset@example.com", "password": "pass123",
-        })
+        client.post(
+            "/api/auth/register",
+            json={
+                "email": "reset@example.com",
+                "password": "pass123",
+            },
+        )
 
-        with caplog.at_level(logging.INFO, logger="zeno.auth"):
-            resp = client.post("/api/auth/forgot-password", json={"email": "reset@example.com"})
+        with caplog.at_level(logging.INFO, logger="zork.auth"):
+            resp = client.post(
+                "/api/auth/forgot-password", json={"email": "reset@example.com"}
+            )
 
         assert resp.status_code == 200
         # The reset token should have been logged
@@ -141,14 +162,18 @@ class TestWithEmailConfig:
         app = _build_test_app(db_with_auth, auth, email_config=cfg)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "newuser@example.com",
-            "password": "password123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "newuser@example.com",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 201
 
         # Allow any pending tasks to complete
         import asyncio
+
         await asyncio.sleep(0)
 
         # Verify token was stored in DB
@@ -169,10 +194,13 @@ class TestWithEmailConfig:
         app = _build_test_app(db_with_auth, auth, email_config=cfg)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "unverified@example.com",
-            "password": "password123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "unverified@example.com",
+                "password": "password123",
+            },
+        )
         assert resp.status_code == 201
         user_id = resp.json()["user"]["id"]
 
@@ -191,13 +219,19 @@ class TestVerifyEmailEndpoint:
         client = TestClient(app)
 
         # Create a user
-        resp = client.post("/api/auth/register", json={
-            "email": "verify@example.com", "password": "pw123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "verify@example.com",
+                "password": "pw123",
+            },
+        )
         user_id = resp.json()["user"]["id"]
 
         # Insert a valid verification token directly
-        token = await create_verification_token(db_with_auth, user_id, "verify@example.com")
+        token = await create_verification_token(
+            db_with_auth, user_id, "verify@example.com"
+        )
 
         resp = client.get(f"/api/auth/verify-email?token={token}")
         assert resp.status_code == 200
@@ -216,11 +250,17 @@ class TestVerifyEmailEndpoint:
         app = _build_test_app(db_with_auth, auth)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "once@example.com", "password": "pw123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "once@example.com",
+                "password": "pw123",
+            },
+        )
         user_id = resp.json()["user"]["id"]
-        token = await create_verification_token(db_with_auth, user_id, "once@example.com")
+        token = await create_verification_token(
+            db_with_auth, user_id, "once@example.com"
+        )
 
         client.get(f"/api/auth/verify-email?token={token}")
 
@@ -256,11 +296,17 @@ class TestVerifyEmailEndpoint:
         app = _build_test_app(db_with_auth, auth)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "twice@example.com", "password": "pw123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "twice@example.com",
+                "password": "pw123",
+            },
+        )
         user_id = resp.json()["user"]["id"]
-        token = await create_verification_token(db_with_auth, user_id, "twice@example.com")
+        token = await create_verification_token(
+            db_with_auth, user_id, "twice@example.com"
+        )
 
         # First use — ok
         r1 = client.get(f"/api/auth/verify-email?token={token}")
@@ -277,9 +323,13 @@ class TestVerifyEmailEndpoint:
         app = _build_test_app(db_with_auth, auth)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/register", json={
-            "email": "expired@example.com", "password": "pw123",
-        })
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "email": "expired@example.com",
+                "password": "pw123",
+            },
+        )
         user_id = resp.json()["user"]["id"]
 
         # Insert an already-expired token directly
@@ -322,15 +372,22 @@ class TestForgotPasswordWithEmail:
         client = TestClient(app)
 
         # Register first
-        client.post("/api/auth/register", json={
-            "email": "forgot@example.com", "password": "pw123",
-        })
+        client.post(
+            "/api/auth/register",
+            json={
+                "email": "forgot@example.com",
+                "password": "pw123",
+            },
+        )
 
-        resp = client.post("/api/auth/forgot-password", json={"email": "forgot@example.com"})
+        resp = client.post(
+            "/api/auth/forgot-password", json={"email": "forgot@example.com"}
+        )
         assert resp.status_code == 200
 
         # Allow any scheduled coroutine to run
         import asyncio
+
         await asyncio.sleep(0)
 
         assert len(sent) >= 1
@@ -344,7 +401,9 @@ class TestForgotPasswordWithEmail:
         app = _build_test_app(db_with_auth, auth, email_config=cfg)
         client = TestClient(app)
 
-        resp = client.post("/api/auth/forgot-password", json={"email": "nobody@example.com"})
+        resp = client.post(
+            "/api/auth/forgot-password", json={"email": "nobody@example.com"}
+        )
         assert resp.status_code == 200
 
 

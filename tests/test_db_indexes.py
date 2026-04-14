@@ -1,5 +1,5 @@
 import pytest
-from zeno.collections.schema import Collection, TextField
+from zork.collections.schema import Collection, TextField
 
 
 class TestDbIndexes:

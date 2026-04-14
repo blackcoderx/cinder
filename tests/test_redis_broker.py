@@ -3,17 +3,19 @@
 Verifies pub/sub round-trips, multiple subscribers, filter application,
 unsubscribe cleanup, and close() cancels background tasks.
 """
+
 import asyncio
 import json
 import pytest
 
-from zeno.realtime.broker import BrokerProtocol, RealtimeBroker, Subscription
-from zeno.realtime.redis_broker import RedisBroker
+from zork.realtime.broker import BrokerProtocol, RealtimeBroker, Subscription
+from zork.realtime.redis_broker import RedisBroker
 
 
 # ---------------------------------------------------------------------------
 # BrokerProtocol structural compliance
 # ---------------------------------------------------------------------------
+
 
 def test_in_process_broker_satisfies_protocol():
     assert isinstance(RealtimeBroker(), BrokerProtocol)
@@ -26,6 +28,7 @@ def test_redis_broker_satisfies_protocol():
 # ---------------------------------------------------------------------------
 # RedisBroker with fakeredis
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def fake_redis():
@@ -43,8 +46,10 @@ def broker(fake_redis, monkeypatch):
     async def _get_client():
         return fake_redis
 
-    monkeypatch.setattr("zeno.cache.redis_client.get_client", _get_client)
-    monkeypatch.setattr("zeno.realtime.redis_broker.RedisBroker._redis", lambda self: _get_client())
+    monkeypatch.setattr("zork.cache.redis_client.get_client", _get_client)
+    monkeypatch.setattr(
+        "zork.realtime.redis_broker.RedisBroker._redis", lambda self: _get_client()
+    )
     b = RedisBroker()
     return b
 
@@ -83,6 +88,7 @@ async def test_multiple_subscribers_all_receive(broker, fake_redis):
 @pytest.mark.asyncio
 async def test_filter_applied(broker, fake_redis):
     """Subscriber with a filter that rejects the envelope should not receive it."""
+
     def reject_all(envelope, user):
         return False
 

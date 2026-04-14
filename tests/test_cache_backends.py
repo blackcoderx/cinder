@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from zeno.cache.backends import MemoryCacheBackend, RedisCacheBackend
+from zork.cache.backends import MemoryCacheBackend, RedisCacheBackend
 
 # ---------------------------------------------------------------------------
 # MemoryCacheBackend

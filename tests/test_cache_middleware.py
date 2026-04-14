@@ -9,8 +9,8 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from zeno.cache.backends import MemoryCacheBackend
-from zeno.cache.middleware import CacheMiddleware
+from zork.cache.backends import MemoryCacheBackend
+from zork.cache.middleware import CacheMiddleware
 
 
 def build_app(backend, excluded_paths=None, per_user=True):

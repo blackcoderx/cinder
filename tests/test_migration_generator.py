@@ -1,9 +1,9 @@
 import re
 import pytest
 from datetime import datetime, timezone
-from zeno.collections.schema import Collection, TextField, IntField
-from zeno.migrations.diff import AddTable, AddColumn, DropColumn
-from zeno.migrations.generator import (
+from zork.collections.schema import Collection, TextField, IntField
+from zork.migrations.diff import AddTable, AddColumn, DropColumn
+from zork.migrations.generator import (
     generate_migration_id,
     generate_migration_content,
     write_migration_file,
@@ -13,6 +13,7 @@ from zeno.migrations.generator import (
 # ---------------------------------------------------------------------------
 # generate_migration_id
 # ---------------------------------------------------------------------------
+
 
 def test_generate_migration_id_format():
     mid = generate_migration_id("Add users table")
@@ -34,6 +35,7 @@ def test_generate_migration_id_special_chars():
 # generate_migration_content — blank template
 # ---------------------------------------------------------------------------
 
+
 def test_blank_template_no_ops():
     content = generate_migration_content()
     assert "async def up(db):" in content
@@ -50,6 +52,7 @@ def test_blank_template_with_name():
 # ---------------------------------------------------------------------------
 # generate_migration_content — specific operations
 # ---------------------------------------------------------------------------
+
 
 def test_add_column_op():
     ops = [AddColumn("posts", "category", "category TEXT")]
@@ -88,6 +91,7 @@ def test_drop_column_op():
 # ---------------------------------------------------------------------------
 # write_migration_file
 # ---------------------------------------------------------------------------
+
 
 def test_write_migration_file_creates_dir(tmp_path):
     mig_dir = tmp_path / "mig"

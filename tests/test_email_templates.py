@@ -1,9 +1,10 @@
-"""Tests for zeno.email.templates — built-in email template functions."""
+"""Tests for zork.email.templates — built-in email template functions."""
+
 from __future__ import annotations
 
 import pytest
 
-from zeno.email.templates import (
+from zork.email.templates import (
     email_verification_email,
     password_reset_email,
     welcome_email,
@@ -143,11 +144,13 @@ class TestEmailConfigTemplateOverrides:
     """Verify that _EmailConfig's on_* methods route to the override callable."""
 
     def _make_email_config(self):
-        # Import lazily so test file doesn't depend on full Zeno app init
+        # Import lazily so test file doesn't depend on full Zork app init
         import os
+
         # Temporarily clear env so defaults are predictable
-        os.environ.setdefault("ZENO_APP_NAME", "TestApp")
-        from zeno.app import _EmailConfig
+        os.environ.setdefault("ZORK_APP_NAME", "TestApp")
+        from zork.app import _EmailConfig
+
         return _EmailConfig()
 
     def test_render_password_reset_default(self):
@@ -160,7 +163,11 @@ class TestEmailConfigTemplateOverrides:
         cfg = self._make_email_config()
 
         def my_template(ctx):
-            return ("custom subject", f"<a href='{ctx['reset_url']}'>reset</a>", ctx["reset_url"])
+            return (
+                "custom subject",
+                f"<a href='{ctx['reset_url']}'>reset</a>",
+                ctx["reset_url"],
+            )
 
         cfg.on_password_reset(my_template)
         subject, html, text = cfg._render_password_reset("https://x.com/r")
@@ -201,19 +208,23 @@ class TestEmailConfigTemplateOverrides:
 
     def test_configure_sets_fields(self):
         cfg = self._make_email_config()
-        cfg.configure(from_address="hi@app.com", app_name="App", base_url="https://app.com")
+        cfg.configure(
+            from_address="hi@app.com", app_name="App", base_url="https://app.com"
+        )
         assert cfg._from_address == "hi@app.com"
         assert cfg._app_name == "App"
         assert cfg._base_url == "https://app.com"
 
     def test_use_sets_backend(self):
-        from zeno.email.backends import ConsoleEmailBackend
+        from zork.email.backends import ConsoleEmailBackend
+
         cfg = self._make_email_config()
         backend = ConsoleEmailBackend()
         cfg.use(backend)
         assert cfg._resolve_backend() is backend
 
     def test_resolve_backend_defaults_to_console(self):
-        from zeno.email.backends import ConsoleEmailBackend
+        from zork.email.backends import ConsoleEmailBackend
+
         cfg = self._make_email_config()
         assert isinstance(cfg._resolve_backend(), ConsoleEmailBackend)

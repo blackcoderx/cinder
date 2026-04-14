@@ -1,8 +1,8 @@
 import pytest
 from starlette.testclient import TestClient
 
-from zeno.app import Zeno
-from zeno.collections.schema import (
+from zork.app import Zork
+from zork.collections.schema import (
     BoolField,
     Collection,
     DateTimeField,
@@ -11,14 +11,14 @@ from zeno.collections.schema import (
     IntField,
     TextField,
 )
-from zeno.auth import Auth
-from zeno.openapi import ZenoOpenAPI
-from zeno.storage.backends import LocalFileBackend
+from zork.auth import Auth
+from zork.openapi import ZorkOpenAPI
+from zork.storage.backends import LocalFileBackend
 
 
 @pytest.fixture
 def app(db_path):
-    zeno = Zeno(
+    zork = Zork(
         database=db_path,
         title="Test API",
         version="2.0.0",
@@ -35,13 +35,13 @@ def app(db_path):
             DateTimeField("published_at"),
         ],
     )
-    zeno.register(posts, auth=["read:public", "write:public"])
-    return zeno
+    zork.register(posts, auth=["read:public", "write:public"])
+    return zork
 
 
 @pytest.fixture
 def app_with_file_field(db_path, tmp_path):
-    zeno = Zeno(
+    zork = Zork(
         database=db_path,
         title="Test API with Files",
         version="2.0.0",
@@ -54,14 +54,14 @@ def app_with_file_field(db_path, tmp_path):
             FileField("cover"),
         ],
     )
-    zeno.configure_storage(LocalFileBackend(str(tmp_path / "uploads")))
-    zeno.register(posts, auth=["read:public", "write:public"])
-    return zeno
+    zork.configure_storage(LocalFileBackend(str(tmp_path / "uploads")))
+    zork.register(posts, auth=["read:public", "write:public"])
+    return zork
 
 
 @pytest.fixture
 def app_with_auth(db_path):
-    zeno = Zeno(
+    zork = Zork(
         database=db_path,
         title="Auth API",
         version="1.0.0",
@@ -75,20 +75,20 @@ def app_with_auth(db_path):
     )
     auth = Auth(token_expiry=3600, allow_registration=True)
 
-    zeno.register(posts, auth=["read:authenticated", "write:authenticated"])
-    zeno.use_auth(auth)
-    return zeno
+    zork.register(posts, auth=["read:authenticated", "write:authenticated"])
+    zork.use_auth(auth)
+    return zork
 
 
 @pytest.fixture
 def app_no_auth(db_path):
-    zeno = Zeno(database=db_path)
+    zork = Zork(database=db_path)
     posts = Collection("posts", fields=[TextField("title", required=True)])
-    zeno.register(posts, auth=["read:public", "write:public"])
-    return zeno
+    zork.register(posts, auth=["read:public", "write:public"])
+    return zork
 
 
-class TestZenoOpenAPI:
+class TestZorkOpenAPI:
     def test_openapi_endpoint_returns_json(self, app):
         starlette_app = app.build()
         client = TestClient(starlette_app)
@@ -264,17 +264,17 @@ class TestZenoOpenAPI:
         assert "PostsUpdateRequest" in schemas
 
     def test_default_title_and_version(self, db_path):
-        zeno = Zeno(database=db_path)
+        zork = Zork(database=db_path)
         posts = Collection("posts", fields=[TextField("title")])
-        zeno.register(posts)
+        zork.register(posts)
 
-        starlette_app = zeno.build()
+        starlette_app = zork.build()
         client = TestClient(starlette_app)
 
         resp = client.get("/openapi.json")
         data = resp.json()
 
-        assert data["info"]["title"] == "Zeno API"
+        assert data["info"]["title"] == "Zork API"
         assert data["info"]["version"] == "1.0.0"
 
     def test_schema_with_int_constraints(self, app):
@@ -318,7 +318,7 @@ class TestZenoOpenAPI:
         assert "offset" in list_schema["properties"]
 
 
-class TestZenoOpenAPIStandalone:
+class TestZorkOpenAPIStandalone:
     def test_standalone_openapi_generator(self):
         posts = Collection(
             "posts",
@@ -330,7 +330,7 @@ class TestZenoOpenAPIStandalone:
 
         collections = {"posts": (posts, {"read": "public", "write": "public"})}
 
-        openapi = ZenoOpenAPI(
+        openapi = ZorkOpenAPI(
             title="My API",
             version="3.0.0",
             collections=collections,
@@ -348,7 +348,7 @@ class TestZenoOpenAPIStandalone:
         posts = Collection("posts", fields=[TextField("title")])
         collections = {"posts": (posts, {"read": "public", "write": "public"})}
 
-        openapi = ZenoOpenAPI(
+        openapi = ZorkOpenAPI(
             title="Public API",
             version="1.0.0",
             collections=collections,

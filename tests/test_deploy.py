@@ -1,4 +1,4 @@
-"""Tests for the zeno deploy command and deployment generators."""
+"""Tests for the zork deploy command and deployment generators."""
 
 import os
 from pathlib import Path
@@ -6,14 +6,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from zeno.cli import app
-from zeno.deploy.config import generate_zeno_toml
-from zeno.deploy.introspect import AppProfile
-from zeno.deploy.platforms.base import GeneratedFile
-from zeno.deploy.platforms.docker import DockerGenerator
-from zeno.deploy.platforms.fly import FlyGenerator
-from zeno.deploy.platforms.railway import RailwayGenerator
-from zeno.deploy.platforms.render import RenderGenerator
+from zork.cli import app
+from zork.deploy.config import generate_zork_toml
+from zork.deploy.introspect import AppProfile
+from zork.deploy.platforms.base import GeneratedFile
+from zork.deploy.platforms.docker import DockerGenerator
+from zork.deploy.platforms.fly import FlyGenerator
+from zork.deploy.platforms.railway import RailwayGenerator
+from zork.deploy.platforms.render import RenderGenerator
 
 runner = CliRunner()
 
@@ -21,6 +21,7 @@ runner = CliRunner()
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def basic_profile():
@@ -48,11 +49,10 @@ def sqlite_profile():
 
 @pytest.fixture
 def sample_app(tmp_path):
-    """Create a minimal Zeno app file for CLI tests."""
+    """Create a minimal Zork app file for CLI tests."""
     app_file = tmp_path / "main.py"
     app_file.write_text(
-        'from zeno import Zeno\n'
-        'app = Zeno(database="app.db", title="Test")\n'
+        'from zork import Zork\napp = Zork(database="app.db", title="Test")\n'
     )
     return app_file
 
@@ -60,6 +60,7 @@ def sample_app(tmp_path):
 # ---------------------------------------------------------------------------
 # Docker Generator
 # ---------------------------------------------------------------------------
+
 
 class TestDockerGenerator:
     def test_generates_three_files(self, basic_profile, tmp_path):
@@ -79,7 +80,7 @@ class TestDockerGenerator:
         gen = DockerGenerator(basic_profile, tmp_path)
         files = {f.path: f.content for f in gen.generate()}
         assert "useradd" in files["Dockerfile"]
-        assert "USER zeno" in files["Dockerfile"]
+        assert "USER zork" in files["Dockerfile"]
 
     def test_dockerfile_has_uv(self, basic_profile, tmp_path):
         gen = DockerGenerator(basic_profile, tmp_path)
@@ -110,12 +111,13 @@ class TestDockerGenerator:
     def test_dockerfile_has_migrate(self, basic_profile, tmp_path):
         gen = DockerGenerator(basic_profile, tmp_path)
         files = {f.path: f.content for f in gen.generate()}
-        assert "zeno migrate run" in files["Dockerfile"]
+        assert "zork migrate run" in files["Dockerfile"]
 
 
 # ---------------------------------------------------------------------------
 # Railway Generator
 # ---------------------------------------------------------------------------
+
 
 class TestRailwayGenerator:
     def test_generates_railway_toml(self, basic_profile, tmp_path):
@@ -142,7 +144,7 @@ class TestRailwayGenerator:
     def test_start_command_includes_migrate(self, basic_profile, tmp_path):
         gen = RailwayGenerator(basic_profile, tmp_path)
         content = gen.generate()[0].content
-        assert "zeno migrate run" in content
+        assert "zork migrate run" in content
 
     def test_post_instructions_mention_postgres(self, basic_profile, tmp_path):
         gen = RailwayGenerator(basic_profile, tmp_path)
@@ -158,6 +160,7 @@ class TestRailwayGenerator:
 # ---------------------------------------------------------------------------
 # Render Generator
 # ---------------------------------------------------------------------------
+
 
 class TestRenderGenerator:
     def test_generates_render_yaml(self, basic_profile, tmp_path):
@@ -197,6 +200,7 @@ class TestRenderGenerator:
 # Fly.io Generator
 # ---------------------------------------------------------------------------
 
+
 class TestFlyGenerator:
     def test_generates_three_files(self, basic_profile, tmp_path):
         gen = FlyGenerator(basic_profile, tmp_path)
@@ -215,7 +219,7 @@ class TestFlyGenerator:
         gen = FlyGenerator(basic_profile, tmp_path)
         files = {f.path: f.content for f in gen.generate()}
         assert "release_command" in files["fly.toml"]
-        assert "zeno migrate run" in files["fly.toml"]
+        assert "zork migrate run" in files["fly.toml"]
 
     def test_fly_toml_force_https(self, basic_profile, tmp_path):
         gen = FlyGenerator(basic_profile, tmp_path)
@@ -234,30 +238,31 @@ class TestFlyGenerator:
 
 
 # ---------------------------------------------------------------------------
-# zeno.toml Config
+# zork.toml Config
 # ---------------------------------------------------------------------------
 
-class TestZenoToml:
+
+class TestZorkToml:
     def test_generates_valid_toml(self, basic_profile):
-        content = generate_zeno_toml(basic_profile, "railway")
-        assert '[project]' in content
+        content = generate_zork_toml(basic_profile, "railway")
+        assert "[project]" in content
         assert 'name = "myapp"' in content
         assert 'platform = "railway"' in content
 
     def test_database_type_postgresql(self, basic_profile):
-        content = generate_zeno_toml(basic_profile, "docker")
+        content = generate_zork_toml(basic_profile, "docker")
         assert 'database = "postgresql"' in content
 
     def test_database_type_sqlite(self, sqlite_profile):
-        content = generate_zeno_toml(sqlite_profile, "docker")
+        content = generate_zork_toml(sqlite_profile, "docker")
         assert 'database = "sqlite"' in content
 
     def test_redis_true(self, basic_profile):
-        content = generate_zeno_toml(basic_profile, "docker")
+        content = generate_zork_toml(basic_profile, "docker")
         assert "redis = true" in content
 
     def test_redis_false(self, sqlite_profile):
-        content = generate_zeno_toml(sqlite_profile, "docker")
+        content = generate_zork_toml(sqlite_profile, "docker")
         assert "redis = false" in content
 
 
@@ -265,24 +270,29 @@ class TestZenoToml:
 # Platform Auto-Detection
 # ---------------------------------------------------------------------------
 
+
 class TestPlatformDetection:
     def test_detect_railway(self, monkeypatch):
-        from zeno.cli import _detect_platform
+        from zork.cli import _detect_platform
+
         monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
         assert _detect_platform() == "railway"
 
     def test_detect_render(self, monkeypatch):
-        from zeno.cli import _detect_platform
+        from zork.cli import _detect_platform
+
         monkeypatch.setenv("RENDER", "true")
         assert _detect_platform() == "render"
 
     def test_detect_fly(self, monkeypatch):
-        from zeno.cli import _detect_platform
+        from zork.cli import _detect_platform
+
         monkeypatch.setenv("FLY_APP_NAME", "myapp")
         assert _detect_platform() == "fly"
 
     def test_default_docker(self, monkeypatch):
-        from zeno.cli import _detect_platform
+        from zork.cli import _detect_platform
+
         monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
         monkeypatch.delenv("RENDER", raising=False)
         monkeypatch.delenv("FLY_APP_NAME", raising=False)
@@ -293,60 +303,108 @@ class TestPlatformDetection:
 # CLI Integration (dry-run)
 # ---------------------------------------------------------------------------
 
+
 class TestDeployCLI:
     def test_dry_run_docker(self, sample_app):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "docker",
-            "--app", str(sample_app), "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "docker",
+                "--app",
+                str(sample_app),
+                "--dry-run",
+            ],
+        )
         assert result.exit_code == 0
         assert "Dockerfile" in result.stdout
         assert "docker-compose.yml" in result.stdout
-        assert "zeno.toml" in result.stdout
+        assert "zork.toml" in result.stdout
 
     def test_dry_run_railway(self, sample_app):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "railway",
-            "--app", str(sample_app), "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "railway",
+                "--app",
+                str(sample_app),
+                "--dry-run",
+            ],
+        )
         assert result.exit_code == 0
         assert "railway.toml" in result.stdout
 
     def test_dry_run_render(self, sample_app):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "render",
-            "--app", str(sample_app), "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "render",
+                "--app",
+                str(sample_app),
+                "--dry-run",
+            ],
+        )
         assert result.exit_code == 0
         assert "render.yaml" in result.stdout
 
     def test_dry_run_fly(self, sample_app):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "fly",
-            "--app", str(sample_app), "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "fly",
+                "--app",
+                str(sample_app),
+                "--dry-run",
+            ],
+        )
         assert result.exit_code == 0
         assert "fly.toml" in result.stdout
 
     def test_unknown_platform_fails(self, sample_app):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "heroku",
-            "--app", str(sample_app),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "heroku",
+                "--app",
+                str(sample_app),
+            ],
+        )
         assert result.exit_code == 1
 
     def test_missing_app_file_fails(self):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "docker",
-            "--app", "nonexistent.py",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "docker",
+                "--app",
+                "nonexistent.py",
+            ],
+        )
         assert result.exit_code == 1
 
     def test_sqlite_warning_on_paas(self, sample_app, capsys):
-        result = runner.invoke(app, [
-            "deploy", "--platform", "railway",
-            "--app", str(sample_app), "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "railway",
+                "--app",
+                str(sample_app),
+                "--dry-run",
+            ],
+        )
         # SQLite app on railway should produce a warning
         assert "SQLite" in (result.stdout + (result.stderr or ""))
 
@@ -354,10 +412,17 @@ class TestDeployCLI:
         output_dir = sample_app.parent
         # Pre-create a file
         (output_dir / "railway.toml").write_text("old content")
-        result = runner.invoke(app, [
-            "deploy", "--platform", "railway",
-            "--app", str(sample_app), "--force",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "--platform",
+                "railway",
+                "--app",
+                str(sample_app),
+                "--force",
+            ],
+        )
         assert result.exit_code == 0
         new_content = (output_dir / "railway.toml").read_text()
         assert "old content" not in new_content

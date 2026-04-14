@@ -1,4 +1,5 @@
 """Integration tests for file upload / download / delete routes."""
+
 from __future__ import annotations
 
 import io
@@ -7,22 +8,27 @@ import json
 import pytest
 from starlette.testclient import TestClient
 
-from zeno.app import Zeno
-from zeno.auth import Auth
-from zeno.collections.schema import Collection, TextField, FileField
-from zeno.storage.backends import LocalFileBackend
+from zork.app import Zork
+from zork.auth import Auth
+from zork.collections.schema import Collection, TextField, FileField
+from zork.storage.backends import LocalFileBackend
 
 
 @pytest.fixture
 def app_with_files(db_path, tmp_path):
-    """A Zeno app with a Posts collection that has a FileField."""
-    app = Zeno(database=db_path)
+    """A Zork app with a Posts collection that has a FileField."""
+    app = Zork(database=db_path)
 
-    posts = Collection("posts", fields=[
-        TextField("title", required=True),
-        FileField("cover", max_size=1_000_000, allowed_types=["image/*"], public=True),
-        FileField("attachments", multiple=True, allowed_types=["application/pdf"]),
-    ])
+    posts = Collection(
+        "posts",
+        fields=[
+            TextField("title", required=True),
+            FileField(
+                "cover", max_size=1_000_000, allowed_types=["image/*"], public=True
+            ),
+            FileField("attachments", multiple=True, allowed_types=["application/pdf"]),
+        ],
+    )
 
     app.register(posts, auth=["read:public", "write:authenticated"])
     app.use_auth(Auth(allow_registration=True))
@@ -36,7 +42,9 @@ def app_with_files(db_path, tmp_path):
 def token_and_post(app_with_files):
     """Register a user, create a post, return (client, token, post_id)."""
     client = app_with_files
-    reg = client.post("/api/auth/register", json={"email": "u@x.com", "password": "pass1234"})
+    reg = client.post(
+        "/api/auth/register", json={"email": "u@x.com", "password": "pass1234"}
+    )
     assert reg.status_code == 201
     token = reg.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -76,7 +84,9 @@ class TestUpload:
         client, headers, post_id = token_and_post
         resp = client.post(
             f"/api/posts/{post_id}/files/cover",
-            files={"file": ("doc.pdf", io.BytesIO(b"%PDF-1.4 content"), "application/pdf")},
+            files={
+                "file": ("doc.pdf", io.BytesIO(b"%PDF-1.4 content"), "application/pdf")
+            },
             headers=headers,
         )
         assert resp.status_code == 422
@@ -185,7 +195,9 @@ class TestDownload:
             files={"file": ("a.pdf", io.BytesIO(pdf), "application/pdf")},
             headers=headers,
         )
-        resp = client.get(f"/api/posts/{post_id}/files/attachments?index=0", headers=headers)
+        resp = client.get(
+            f"/api/posts/{post_id}/files/attachments?index=0", headers=headers
+        )
         assert resp.status_code == 200
         assert resp.content == pdf
 
@@ -286,11 +298,14 @@ class TestCleanup:
 
 class TestBuildValidation:
     def test_build_fails_without_storage_backend(self, db_path):
-        app = Zeno(database=db_path)
-        posts = Collection("posts", fields=[
-            TextField("title"),
-            FileField("cover"),
-        ])
+        app = Zork(database=db_path)
+        posts = Collection(
+            "posts",
+            fields=[
+                TextField("title"),
+                FileField("cover"),
+            ],
+        )
         app.register(posts)
         with pytest.raises(Exception, match="storage backend"):
             app.build()

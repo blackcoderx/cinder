@@ -1,9 +1,10 @@
 """Tests for S3CompatibleBackend provider presets (no real network calls)."""
+
 from __future__ import annotations
 
 import pytest
 
-from zeno.storage.s3 import S3CompatibleBackend
+from zork.storage.s3 import S3CompatibleBackend
 
 
 class TestS3CompatibleBackendPresets:
@@ -19,7 +20,9 @@ class TestS3CompatibleBackendPresets:
         assert b._region_name == "auto"
 
     def test_minio_preset(self):
-        b = S3CompatibleBackend.minio("http://localhost:9000", "bucket", "key", "secret")
+        b = S3CompatibleBackend.minio(
+            "http://localhost:9000", "bucket", "key", "secret"
+        )
         assert b._endpoint_url == "http://localhost:9000"
         assert b._region_name == "us-east-1"
         assert b._extra_config.get("signature_version") == "s3v4"
@@ -58,6 +61,7 @@ class TestS3CompatibleBackendPresets:
 
     def test_missing_boto3_raises_import_error(self, monkeypatch):
         import builtins
+
         real_import = builtins.__import__
 
         def mock_import(name, *args, **kwargs):

@@ -1,30 +1,42 @@
-"""End-to-end integration test matching the example from the Zeno spec."""
+"""End-to-end integration test matching the example from the Zork spec."""
+
 import pytest
 from starlette.testclient import TestClient
 
-from zeno.app import Zeno
-from zeno.auth import Auth
-from zeno.collections.schema import (
-    Collection, TextField, IntField, FloatField, RelationField, BoolField,
+from zork.app import Zork
+from zork.auth import Auth
+from zork.collections.schema import (
+    Collection,
+    TextField,
+    IntField,
+    FloatField,
+    RelationField,
+    BoolField,
 )
 
 
 @pytest.fixture
 def e2e_app(db_path):
-    app = Zeno(database=db_path)
+    app = Zork(database=db_path)
 
-    categories = Collection("categories", fields=[
-        TextField("name", required=True),
-    ])
+    categories = Collection(
+        "categories",
+        fields=[
+            TextField("name", required=True),
+        ],
+    )
 
-    products = Collection("products", fields=[
-        TextField("name", required=True),
-        TextField("description"),
-        FloatField("price", required=True),
-        IntField("stock", default=0),
-        BoolField("is_published", default=False),
-        RelationField("category", collection="categories"),
-    ])
+    products = Collection(
+        "products",
+        fields=[
+            TextField("name", required=True),
+            TextField("description"),
+            FloatField("price", required=True),
+            IntField("stock", default=0),
+            BoolField("is_published", default=False),
+            RelationField("category", collection="categories"),
+        ],
+    )
 
     auth = Auth(token_expiry=3600, allow_registration=True)
 
@@ -41,10 +53,13 @@ class TestEndToEnd:
         client = e2e_app
 
         # 1. Register a user
-        reg = client.post("/api/auth/register", json={
-            "email": "shop@example.com",
-            "password": "secure123",
-        })
+        reg = client.post(
+            "/api/auth/register",
+            json={
+                "email": "shop@example.com",
+                "password": "secure123",
+            },
+        )
         assert reg.status_code == 201
         token = reg.json()["token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -55,19 +70,25 @@ class TestEndToEnd:
         assert resp.json()["total"] == 0
 
         # 3. Create a category (requires auth)
-        cat = client.post("/api/categories", json={"name": "Electronics"}, headers=headers)
+        cat = client.post(
+            "/api/categories", json={"name": "Electronics"}, headers=headers
+        )
         assert cat.status_code == 201
         cat_id = cat.json()["id"]
 
         # 4. Create a product
-        prod = client.post("/api/products", json={
-            "name": "Phone",
-            "description": "A smartphone",
-            "price": 999.99,
-            "stock": 50,
-            "is_published": True,
-            "category": cat_id,
-        }, headers=headers)
+        prod = client.post(
+            "/api/products",
+            json={
+                "name": "Phone",
+                "description": "A smartphone",
+                "price": 999.99,
+                "stock": 50,
+                "is_published": True,
+                "category": cat_id,
+            },
+            headers=headers,
+        )
         assert prod.status_code == 201
         prod_id = prod.json()["id"]
         assert prod.json()["price"] == 999.99
@@ -81,14 +102,18 @@ class TestEndToEnd:
         assert data["expand"]["category"]["name"] == "Electronics"
 
         # 6. Update product
-        resp = client.patch(f"/api/products/{prod_id}", json={"stock": 49}, headers=headers)
+        resp = client.patch(
+            f"/api/products/{prod_id}", json={"stock": 49}, headers=headers
+        )
         assert resp.status_code == 200
         assert resp.json()["stock"] == 49
 
         # 7. List with filters
-        client.post("/api/products", json={
-            "name": "Laptop", "price": 1499.99, "stock": 10
-        }, headers=headers)
+        client.post(
+            "/api/products",
+            json={"name": "Laptop", "price": 1499.99, "stock": 10},
+            headers=headers,
+        )
         resp = client.get("/api/products?stock=49")
         assert resp.json()["total"] == 1
         assert resp.json()["items"][0]["name"] == "Phone"
@@ -105,22 +130,31 @@ class TestEndToEnd:
         assert resp.status_code == 404
 
         # 10. Auth flow: login, me, logout
-        login = client.post("/api/auth/login", json={
-            "email": "shop@example.com",
-            "password": "secure123",
-        })
+        login = client.post(
+            "/api/auth/login",
+            json={
+                "email": "shop@example.com",
+                "password": "secure123",
+            },
+        )
         assert login.status_code == 200
         new_token = login.json()["token"]
 
-        me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_token}"})
+        me = client.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {new_token}"}
+        )
         assert me.status_code == 200
         assert me.json()["email"] == "shop@example.com"
 
-        logout = client.post("/api/auth/logout", headers={"Authorization": f"Bearer {new_token}"})
+        logout = client.post(
+            "/api/auth/logout", headers={"Authorization": f"Bearer {new_token}"}
+        )
         assert logout.status_code == 200
 
         # Token should be revoked
-        me2 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_token}"})
+        me2 = client.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {new_token}"}
+        )
         assert me2.status_code == 401
 
         # 11. Health check

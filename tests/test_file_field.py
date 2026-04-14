@@ -1,11 +1,12 @@
 """Tests for FileField schema definition."""
+
 from __future__ import annotations
 
 import json
 
 import pytest
 
-from zeno.collections.schema import FileField
+from zork.collections.schema import FileField
 
 
 class TestFileField:
@@ -22,7 +23,12 @@ class TestFileField:
 
     def test_serialize_single(self):
         f = FileField("cover")
-        meta = {"key": "posts/1/cover/abc.jpg", "name": "abc.jpg", "size": 100, "mime": "image/jpeg"}
+        meta = {
+            "key": "posts/1/cover/abc.jpg",
+            "name": "abc.jpg",
+            "size": 100,
+            "mime": "image/jpeg",
+        }
         serialized = f.serialize(meta)
         assert json.loads(serialized) == meta
 

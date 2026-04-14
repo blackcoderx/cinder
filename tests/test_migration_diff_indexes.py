@@ -1,6 +1,6 @@
 import pytest
-from zeno.collections.schema import Collection, TextField
-from zeno.migrations.diff import SchemaComparator, AddIndex, DropIndex
+from zork.collections.schema import Collection, TextField
+from zork.migrations.diff import SchemaComparator, AddIndex, DropIndex
 
 
 class TestMigrationDiffIndexes:

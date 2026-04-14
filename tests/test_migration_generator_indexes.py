@@ -1,6 +1,6 @@
 import pytest
-from zeno.migrations.diff import AddIndex, DropIndex
-from zeno.migrations.generator import generate_migration_content
+from zork.migrations.diff import AddIndex, DropIndex
+from zork.migrations.generator import generate_migration_content
 
 
 class TestMigrationGeneratorIndexes:
@@ -37,7 +37,7 @@ class TestMigrationGeneratorIndexes:
         assert "DROP INDEX IF EXISTS idx_posts_title" in content
 
     def test_mixed_operations_with_indexes(self):
-        from zeno.migrations.diff import AddColumn
+        from zork.migrations.diff import AddColumn
 
         ops = [
             AddColumn(table="posts", field_name="category", col_sql="category TEXT"),

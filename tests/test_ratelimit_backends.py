@@ -1,7 +1,8 @@
 """Tests for rate-limit backends."""
+
 import asyncio
 import pytest
-from zeno.ratelimit.backends import MemoryRateLimitBackend
+from zork.ratelimit.backends import MemoryRateLimitBackend
 
 
 class TestMemoryRateLimitBackend:
@@ -48,14 +49,15 @@ class TestMemoryRateLimitBackend:
 
     async def test_reset_at_is_future(self, backend):
         import time
+
         result = await backend.check("k", limit=10, window_seconds=60)
         assert result.reset_at > time.time()
 
     async def test_concurrent_requests_atomic(self, backend):
         """Multiple concurrent checks should not allow more than limit."""
-        results = await asyncio.gather(*[
-            backend.check("k", limit=5, window_seconds=60) for _ in range(10)
-        ])
+        results = await asyncio.gather(
+            *[backend.check("k", limit=5, window_seconds=60) for _ in range(10)]
+        )
         allowed = [r for r in results if r.allowed]
         assert len(allowed) == 5
 

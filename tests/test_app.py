@@ -1,14 +1,14 @@
 import pytest
 from starlette.testclient import TestClient
 
-from zeno.app import Zeno
-from zeno.auth import Auth
-from zeno.collections.schema import Collection, IntField, TextField
+from zork.app import Zork
+from zork.auth import Auth
+from zork.collections.schema import Collection, IntField, TextField
 
 
 @pytest.fixture
 def app(db_path):
-    zeno = Zeno(database=db_path)
+    zork = Zork(database=db_path)
 
     posts = Collection(
         "posts",
@@ -18,13 +18,13 @@ def app(db_path):
             IntField("views", default=0),
         ],
     )
-    zeno.register(posts, auth=["read:public", "write:public"])
-    return zeno
+    zork.register(posts, auth=["read:public", "write:public"])
+    return zork
 
 
 @pytest.fixture
 def app_with_auth(db_path):
-    zeno = Zeno(database=db_path)
+    zork = Zork(database=db_path)
 
     posts = Collection(
         "posts",
@@ -34,12 +34,12 @@ def app_with_auth(db_path):
     )
     auth = Auth(token_expiry=3600, allow_registration=True)
 
-    zeno.register(posts, auth=["read:public", "write:authenticated"])
-    zeno.use_auth(auth)
-    return zeno
+    zork.register(posts, auth=["read:public", "write:authenticated"])
+    zork.use_auth(auth)
+    return zork
 
 
-class TestZenoApp:
+class TestZorkApp:
     def test_build_creates_working_app(self, app):
         starlette_app = app.build()
         client = TestClient(starlette_app)
@@ -62,7 +62,7 @@ class TestZenoApp:
         assert resp.json() == {"status": "ok"}
 
 
-class TestZenoWithAuth:
+class TestZorkWithAuth:
     def test_auth_routes_available(self, app_with_auth):
         starlette_app = app_with_auth.build()
         client = TestClient(starlette_app)

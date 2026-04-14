@@ -5,10 +5,10 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from zeno.auth.models import block_token, create_auth_tables
-from zeno.auth.tokens import create_token, decode_token
-from zeno.db.connection import Database
-from zeno.pipeline import AuthMiddleware, build_middleware_stack
+from zork.auth.models import block_token, create_auth_tables
+from zork.auth.tokens import create_token, decode_token
+from zork.db.connection import Database
+from zork.pipeline import AuthMiddleware, build_middleware_stack
 
 SECRET = "test-middleware-secret"
 

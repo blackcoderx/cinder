@@ -1,4 +1,5 @@
 """Tests for RateLimitMiddleware."""
+
 import json
 import pytest
 from starlette.applications import Starlette
@@ -7,11 +8,19 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from zeno.ratelimit.backends import MemoryRateLimitBackend
-from zeno.ratelimit.middleware import RateLimitMiddleware, RateLimitRule
+from zork.ratelimit.backends import MemoryRateLimitBackend
+from zork.ratelimit.middleware import RateLimitMiddleware, RateLimitRule
 
 
-def build_app(backend, *, anon_limit=5, anon_window=60, user_limit=10, user_window=60, enabled=True):
+def build_app(
+    backend,
+    *,
+    anon_limit=5,
+    anon_window=60,
+    user_limit=10,
+    user_window=60,
+    enabled=True,
+):
     async def hello(request: Request):
         return JSONResponse({"ok": True})
 

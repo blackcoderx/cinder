@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from zeno.db.connection import Database
+from zork.db.connection import Database
 
 
 @pytest.fixture
@@ -16,6 +16,7 @@ async def db(db_path):
 @pytest.mark.asyncio
 async def test_connect_creates_file(db, db_path):
     import os
+
     assert os.path.exists(db_path)
 
 
@@ -56,12 +57,15 @@ async def test_foreign_keys_enabled(db):
     await db.execute("INSERT INTO parent (id) VALUES ('p1')")
     await db.execute("INSERT INTO child (id, parent_id) VALUES ('c1', 'p1')")
     with pytest.raises(Exception):
-        await db.execute("INSERT INTO child (id, parent_id) VALUES ('c2', 'nonexistent')")
+        await db.execute(
+            "INSERT INTO child (id, parent_id) VALUES ('c2', 'nonexistent')"
+        )
 
 
 # ---------------------------------------------------------------------------
 # table_exists
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_table_exists_true(db):
@@ -77,6 +81,7 @@ async def test_table_exists_false(db):
 # ---------------------------------------------------------------------------
 # get_columns
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_columns_returns_name_key(db):
@@ -99,17 +104,18 @@ async def test_get_columns_empty_after_no_table(db):
 # resolve_backend — dispatch logic (no real connections needed)
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_backend_bare_path():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.sqlite import SQLiteBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.sqlite import SQLiteBackend
 
     b = resolve_backend("app.db")
     assert isinstance(b, SQLiteBackend)
 
 
 def test_resolve_backend_sqlite_url():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.sqlite import SQLiteBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.sqlite import SQLiteBackend
 
     b = resolve_backend("sqlite:///data/app.db")
     assert isinstance(b, SQLiteBackend)
@@ -117,32 +123,32 @@ def test_resolve_backend_sqlite_url():
 
 
 def test_resolve_backend_postgres():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.postgresql import PostgreSQLBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.postgresql import PostgreSQLBackend
 
     b = resolve_backend("postgresql://user:pass@localhost/db")
     assert isinstance(b, PostgreSQLBackend)
 
 
 def test_resolve_backend_postgres_alias():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.postgresql import PostgreSQLBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.postgresql import PostgreSQLBackend
 
     b = resolve_backend("postgres://user:pass@localhost/db")
     assert isinstance(b, PostgreSQLBackend)
 
 
 def test_resolve_backend_mysql():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.mysql import MySQLBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.mysql import MySQLBackend
 
     b = resolve_backend("mysql://user:pass@localhost/db")
     assert isinstance(b, MySQLBackend)
 
 
 def test_resolve_backend_mysql_aiomysql_scheme():
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.mysql import MySQLBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.mysql import MySQLBackend
 
     b = resolve_backend("mysql+aiomysql://user:pass@localhost/db")
     assert isinstance(b, MySQLBackend)
@@ -152,12 +158,13 @@ def test_resolve_backend_mysql_aiomysql_scheme():
 # resolve_backend — env-var priority chain
 # ---------------------------------------------------------------------------
 
-def test_resolve_backend_env_zeno_database_url_overrides(monkeypatch):
-    """ZENO_DATABASE_URL takes highest priority over all other sources."""
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.sqlite import SQLiteBackend
 
-    monkeypatch.setenv("ZENO_DATABASE_URL", "sqlite:///override.db")
+def test_resolve_backend_env_zork_database_url_overrides(monkeypatch):
+    """ZORK_DATABASE_URL takes highest priority over all other sources."""
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.sqlite import SQLiteBackend
+
+    monkeypatch.setenv("ZORK_DATABASE_URL", "sqlite:///override.db")
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     b = resolve_backend("postgresql://user:pass@localhost/db")  # ignored
@@ -165,12 +172,12 @@ def test_resolve_backend_env_zeno_database_url_overrides(monkeypatch):
     assert b._path == "override.db"
 
 
-def test_resolve_backend_env_database_url_used_when_no_zeno_url(monkeypatch):
-    """DATABASE_URL is used when ZENO_DATABASE_URL is not set."""
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.sqlite import SQLiteBackend
+def test_resolve_backend_env_database_url_used_when_no_zork_url(monkeypatch):
+    """DATABASE_URL is used when ZORK_DATABASE_URL is not set."""
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.sqlite import SQLiteBackend
 
-    monkeypatch.delenv("ZENO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("ZORK_DATABASE_URL", raising=False)
     monkeypatch.setenv("DATABASE_URL", "sqlite:///from_env.db")
 
     b = resolve_backend("app.db")  # ignored
@@ -180,10 +187,10 @@ def test_resolve_backend_env_database_url_used_when_no_zeno_url(monkeypatch):
 
 def test_resolve_backend_programmatic_value_used_when_no_env(monkeypatch):
     """Programmatic URL is used when no env vars are set."""
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.sqlite import SQLiteBackend
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.sqlite import SQLiteBackend
 
-    monkeypatch.delenv("ZENO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("ZORK_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     b = resolve_backend("sqlite:///programmatic.db")
@@ -191,13 +198,13 @@ def test_resolve_backend_programmatic_value_used_when_no_env(monkeypatch):
     assert b._path == "programmatic.db"
 
 
-def test_resolve_backend_zeno_url_beats_database_url(monkeypatch):
-    """ZENO_DATABASE_URL beats DATABASE_URL when both are set."""
-    from zeno.db.backends import resolve_backend
-    from zeno.db.backends.postgresql import PostgreSQLBackend
-    from zeno.db.backends.sqlite import SQLiteBackend
+def test_resolve_backend_zork_url_beats_database_url(monkeypatch):
+    """ZORK_DATABASE_URL beats DATABASE_URL when both are set."""
+    from zork.db.backends import resolve_backend
+    from zork.db.backends.postgresql import PostgreSQLBackend
+    from zork.db.backends.sqlite import SQLiteBackend
 
-    monkeypatch.setenv("ZENO_DATABASE_URL", "postgresql://a:b@host/prod")
+    monkeypatch.setenv("ZORK_DATABASE_URL", "postgresql://a:b@host/prod")
     monkeypatch.setenv("DATABASE_URL", "sqlite:///dev.db")
 
     b = resolve_backend("app.db")  # ignored
@@ -208,9 +215,10 @@ def test_resolve_backend_zeno_url_beats_database_url(monkeypatch):
 # DatabaseIntegrityError exposed via Database shim
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_integrity_error_raised_on_unique_violation(db):
-    from zeno.db.backends.base import DatabaseIntegrityError
+    from zork.db.backends.base import DatabaseIntegrityError
 
     await db.execute("CREATE TABLE uniq (id TEXT PRIMARY KEY)")
     await db.execute("INSERT INTO uniq (id) VALUES (?)", ("dup",))

@@ -1,6 +1,7 @@
-"""Tests for zeno.email.backends (EmailMessage, EmailBackend, ConsoleEmailBackend)
-and zeno.email.smtp (SMTPBackend — provider presets + retry logic).
+"""Tests for zork.email.backends (EmailMessage, EmailBackend, ConsoleEmailBackend)
+and zork.email.smtp (SMTPBackend — provider presets + retry logic).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -8,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
-from zeno.email.backends import ConsoleEmailBackend, EmailMessage
-from zeno.email.smtp import SMTPBackend
+from zork.email.backends import ConsoleEmailBackend, EmailMessage
+from zork.email.smtp import SMTPBackend
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +64,7 @@ class TestConsoleEmailBackend:
     @pytest.mark.asyncio
     async def test_send_logs_message(self, caplog):
         import logging
+
         backend = ConsoleEmailBackend()
         msg = EmailMessage(
             to="dev@example.com",
@@ -71,7 +73,7 @@ class TestConsoleEmailBackend:
             text_body="please verify",
             from_address="no-reply@app.com",
         )
-        with caplog.at_level(logging.INFO, logger="zeno.email"):
+        with caplog.at_level(logging.INFO, logger="zork.email"):
             await backend.send(msg)
 
         combined = "\n".join(caplog.messages)
@@ -156,7 +158,7 @@ class TestSMTPBackendPresets:
         assert b._hostname == "smtp.myhost.com"
         assert b._port == 2525
         assert b._max_retries == 3  # default
-        assert b._timeout == 30      # default
+        assert b._timeout == 30  # default
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +189,9 @@ class TestSMTPBackendMIME:
     def test_html_part_is_last(self):
         """RFC 2046: preferred (richest) alternative must come last."""
         b = SMTPBackend.gmail(username="a@g.com", app_password="pw")
-        msg = EmailMessage(to="b@ex.com", subject="S", html_body="<i>x</i>", text_body="x")
+        msg = EmailMessage(
+            to="b@ex.com", subject="S", html_body="<i>x</i>", text_body="x"
+        )
         mime = b._build_mime(msg)
         payloads = mime.get_payload()
         assert payloads[-1].get_content_type() == "text/html"

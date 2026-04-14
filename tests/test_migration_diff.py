@@ -1,11 +1,12 @@
 import pytest
-from zeno.collections.schema import Collection, TextField, IntField
-from zeno.migrations.diff import SchemaComparator, AddTable, AddColumn, DropColumn
+from zork.collections.schema import Collection, TextField, IntField
+from zork.migrations.diff import SchemaComparator, AddTable, AddColumn, DropColumn
 
 
 # ---------------------------------------------------------------------------
 # diff tests
 # ---------------------------------------------------------------------------
+
 
 async def test_diff_new_table(mem_db):
     collection = Collection("items", fields=[TextField("title")])

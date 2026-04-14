@@ -1,8 +1,16 @@
 import pytest
 from datetime import datetime
-from zeno.collections.schema import (
-    Field, TextField, IntField, FloatField, BoolField,
-    DateTimeField, URLField, JSONField, RelationField, Collection,
+from zork.collections.schema import (
+    Field,
+    TextField,
+    IntField,
+    FloatField,
+    BoolField,
+    DateTimeField,
+    URLField,
+    JSONField,
+    RelationField,
+    Collection,
 )
 
 
@@ -68,10 +76,13 @@ class TestFieldTypes:
 
 class TestCollection:
     def test_collection_creation(self):
-        c = Collection("posts", fields=[
-            TextField("title", required=True),
-            TextField("body"),
-        ])
+        c = Collection(
+            "posts",
+            fields=[
+                TextField("title", required=True),
+                TextField("body"),
+            ],
+        )
         assert c.name == "posts"
         assert len(c.fields) == 2
 
@@ -83,11 +94,14 @@ class TestCollection:
         assert c._registry.get("posts:before_create")[0] is handler
 
     def test_build_create_table_sql(self):
-        c = Collection("posts", fields=[
-            TextField("title", required=True),
-            IntField("views", default=0),
-            BoolField("published", default=False),
-        ])
+        c = Collection(
+            "posts",
+            fields=[
+                TextField("title", required=True),
+                IntField("views", default=0),
+                BoolField("published", default=False),
+            ],
+        )
         sql = c.build_create_table_sql()
         assert "CREATE TABLE IF NOT EXISTS posts" in sql
         assert "id TEXT PRIMARY KEY" in sql
@@ -98,17 +112,23 @@ class TestCollection:
         assert "updated_at TEXT NOT NULL" in sql
 
     def test_build_create_table_sql_with_unique(self):
-        c = Collection("users", fields=[
-            TextField("email", required=True, unique=True),
-        ])
+        c = Collection(
+            "users",
+            fields=[
+                TextField("email", required=True, unique=True),
+            ],
+        )
         sql = c.build_create_table_sql()
         assert "email TEXT NOT NULL UNIQUE" in sql
 
     def test_build_pydantic_model_validates_required(self):
-        c = Collection("posts", fields=[
-            TextField("title", required=True),
-            TextField("body"),
-        ])
+        c = Collection(
+            "posts",
+            fields=[
+                TextField("title", required=True),
+                TextField("body"),
+            ],
+        )
         Model = c.build_pydantic_model()
         instance = Model(title="Hello")
         assert instance.title == "Hello"
@@ -116,26 +136,37 @@ class TestCollection:
 
     def test_build_pydantic_model_rejects_missing_required(self):
         from pydantic import ValidationError
-        c = Collection("posts", fields=[
-            TextField("title", required=True),
-        ])
+
+        c = Collection(
+            "posts",
+            fields=[
+                TextField("title", required=True),
+            ],
+        )
         Model = c.build_pydantic_model()
         with pytest.raises(ValidationError):
             Model()
 
     def test_build_pydantic_model_applies_defaults(self):
-        c = Collection("posts", fields=[
-            IntField("views", default=0),
-        ])
+        c = Collection(
+            "posts",
+            fields=[
+                IntField("views", default=0),
+            ],
+        )
         Model = c.build_pydantic_model()
         instance = Model()
         assert instance.views == 0
 
     def test_build_pydantic_model_url_validation(self):
         from pydantic import ValidationError
-        c = Collection("links", fields=[
-            URLField("url", required=True),
-        ])
+
+        c = Collection(
+            "links",
+            fields=[
+                URLField("url", required=True),
+            ],
+        )
         Model = c.build_pydantic_model()
         instance = Model(url="https://example.com")
         assert "example.com" in str(instance.url)
@@ -144,9 +175,13 @@ class TestCollection:
 
     def test_build_pydantic_model_int_constraints(self):
         from pydantic import ValidationError
-        c = Collection("items", fields=[
-            IntField("qty", min_value=0, max_value=100),
-        ])
+
+        c = Collection(
+            "items",
+            fields=[
+                IntField("qty", min_value=0, max_value=100),
+            ],
+        )
         Model = c.build_pydantic_model()
         instance = Model(qty=50)
         assert instance.qty == 50
@@ -157,9 +192,13 @@ class TestCollection:
 
     def test_build_pydantic_model_float_constraints(self):
         from pydantic import ValidationError
-        c = Collection("reviews", fields=[
-            FloatField("rating", min_value=0.0, max_value=5.0),
-        ])
+
+        c = Collection(
+            "reviews",
+            fields=[
+                FloatField("rating", min_value=0.0, max_value=5.0),
+            ],
+        )
         Model = c.build_pydantic_model()
         instance = Model(rating=4.5)
         assert instance.rating == 4.5
@@ -170,9 +209,13 @@ class TestCollection:
 
     def test_build_pydantic_model_required_float(self):
         from pydantic import ValidationError
-        c = Collection("products", fields=[
-            FloatField("price", required=True),
-        ])
+
+        c = Collection(
+            "products",
+            fields=[
+                FloatField("price", required=True),
+            ],
+        )
         Model = c.build_pydantic_model()
         assert Model(price=9.99).price == 9.99
         with pytest.raises(ValidationError):

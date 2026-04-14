@@ -3,11 +3,11 @@ from starlette.applications import Starlette
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from zeno.auth import Auth
-from zeno.auth.models import create_auth_tables
-from zeno.auth.routes import build_auth_routes
-from zeno.db.connection import Database
-from zeno.pipeline import build_middleware_stack
+from zork.auth import Auth
+from zork.auth.models import create_auth_tables
+from zork.auth.routes import build_auth_routes
+from zork.db.connection import Database
+from zork.pipeline import build_middleware_stack
 
 SECRET = "test-secret-for-auth-tests"
 

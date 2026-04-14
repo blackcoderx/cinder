@@ -1,8 +1,8 @@
 import pytest
 
-from zeno.auth.passwords import hash_password, verify_password
-from zeno.auth.tokens import create_token, decode_token
-from zeno.errors import ZenoError
+from zork.auth.passwords import hash_password, verify_password
+from zork.auth.tokens import create_token, decode_token
+from zork.errors import ZorkError
 
 
 class TestPasswordHashing:
@@ -35,18 +35,18 @@ class TestJWT:
 
     def test_expired_token_raises(self):
         token = create_token("user-123", "user", -1, self.SECRET)
-        with pytest.raises(ZenoError) as exc_info:
+        with pytest.raises(ZorkError) as exc_info:
             decode_token(token, self.SECRET)
         assert exc_info.value.status_code == 401
 
     def test_invalid_token_raises(self):
-        with pytest.raises(ZenoError) as exc_info:
+        with pytest.raises(ZorkError) as exc_info:
             decode_token("garbage.token.here", self.SECRET)
         assert exc_info.value.status_code == 401
 
     def test_wrong_secret_raises(self):
         token = create_token("user-123", "user", 3600, self.SECRET)
-        with pytest.raises(ZenoError):
+        with pytest.raises(ZorkError):
             decode_token(token, "wrong-secret")
 
     def test_tokens_have_unique_jti(self):

@@ -1,6 +1,6 @@
 import pytest
-from zeno.collections.schema import Collection, TextField
-from zeno.collections.store import CollectionStore
+from zork.collections.schema import Collection, TextField
+from zork.collections.store import CollectionStore
 
 
 class TestStoreIndexes:

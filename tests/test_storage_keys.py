@@ -1,11 +1,12 @@
 """Tests for key generation and filename sanitization."""
+
 from __future__ import annotations
 
 import re
 
 import pytest
 
-from zeno.storage.keys import generate_key, sanitize_filename
+from zork.storage.keys import generate_key, sanitize_filename
 
 
 class TestSanitizeFilename:
@@ -36,7 +37,7 @@ class TestSanitizeFilename:
         assert result == "noextension"
 
     def test_special_chars_replaced(self):
-        result = sanitize_filename("file<>:\"?*.jpg")
+        result = sanitize_filename('file<>:"?*.jpg')
         assert "<" not in result
         assert ">" not in result
         assert "?" not in result

@@ -1,5 +1,5 @@
 import pytest
-from zeno.collections.schema import (
+from zork.collections.schema import (
     Collection,
     TextField,
     IntField,
