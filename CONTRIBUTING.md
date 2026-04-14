@@ -1,6 +1,6 @@
-# Contributing to Cinder
+# Contributing to Zeno
 
-Thanks for taking the time to contribute. Cinder is a small, focused project and contributions of all sizes are welcome — bug fixes, new features, docs improvements, or test coverage.
+Thanks for taking the time to contribute. Zeno is a small, focused project and contributions of all sizes are welcome — bug fixes, new features, docs improvements, or test coverage.
 
 ---
 
@@ -18,12 +18,12 @@ Thanks for taking the time to contribute. Cinder is a small, focused project and
 
 ## Getting Started
 
-Cinder uses [uv](https://docs.astral.sh/uv/) for dependency management.
+Zeno uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
 # 1. Fork and clone the repo
-git clone https://github.com/your-username/cinder
-cd cinder
+git clone https://github.com/your-username/zeno-api
+cd zeno-api
 
 # 2. Install dependencies (including dev extras)
 uv sync --all-extras
@@ -37,9 +37,9 @@ uv run pytest
 ## Project Structure
 
 ```
-cinder/
+zeno-api/
 ├── src/zeno/           # Framework source code
-│   ├── app.py          # Cinder app entry point
+│   ├── app.py          # Zeno app entry point
 │   ├── collections/    # Collection and field definitions
 │   ├── auth/           # JWT auth, user model, endpoints
 │   ├── db/             # Database adapters (SQLite, PostgreSQL, MySQL)
@@ -126,7 +126,7 @@ Open an issue and include:
 - Follow existing patterns in the codebase — consistency matters more than personal preference.
 - Use type hints.
 - Keep functions small and focused.
-- Async all the way down — Cinder is fully async; avoid blocking calls.
+- Async all the way down — Zeno is fully async; avoid blocking calls.
 
 ---
 
