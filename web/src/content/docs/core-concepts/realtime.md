@@ -3,11 +3,11 @@ title: Realtime
 description: Live updates via WebSocket and Server-Sent Events
 ---
 
-Cinder automatically broadcasts events for every CRUD operation. Clients connect over WebSocket or SSE and receive filtered updates in real time.
+Zeno automatically broadcasts events for every CRUD operation. Clients connect over WebSocket or SSE and receive filtered updates in real time.
 
 ## How it works
 
-When a record is created, updated, or deleted, Cinder fires an event through the realtime broker. Connected clients receive the event if they pass the access control check for that collection.
+When a record is created, updated, or deleted, Zeno fires an event through the realtime broker. Connected clients receive the event if they pass the access control check for that collection.
 
 ## Connecting
 
@@ -78,7 +78,7 @@ app.configure_redis(url="redis://localhost:6379")
 Or set the environment variable:
 
 ```
-CINDER_REDIS_URL=redis://localhost:6379
+ZENO_REDIS_URL=redis://localhost:6379
 ```
 
 See [Realtime with Redis](/realtime/redis/) for details.

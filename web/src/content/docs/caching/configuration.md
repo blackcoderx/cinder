@@ -10,26 +10,26 @@ sidebar:
 ### Redis (recommended for production)
 
 ```python
-from cinder.cache.backends import RedisCacheBackend
+from zeno.cache.backends import RedisCacheBackend
 
 app.cache.use(RedisCacheBackend())
 app.cache.use(RedisCacheBackend(prefix="myapp"))  # custom key prefix
 ```
 
-Requires `pip install "cinder[redis]"`. Reads the Redis URL from `CINDER_REDIS_URL` automatically.
+Requires `pip install "zeno-api[redis]"`. Reads the Redis URL from `ZENO_REDIS_URL` automatically.
 
 **Constructor options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `prefix` | `str` | `"cinder"` | Namespace prefix for all Redis cache keys. Override when sharing a Redis instance across multiple apps. |
+| `prefix` | `str` | `"zeno"` | Namespace prefix for all Redis cache keys. Override when sharing a Redis instance across multiple apps. |
 
-Also configurable via environment variable: `CINDER_CACHE_PREFIX`.
+Also configurable via environment variable: `ZENO_CACHE_PREFIX`.
 
 ### In-memory (development / single process)
 
 ```python
-from cinder.cache.backends import MemoryCacheBackend
+from zeno.cache.backends import MemoryCacheBackend
 
 app.cache.use(MemoryCacheBackend())
 app.cache.enable()
@@ -60,7 +60,7 @@ Plug in a cache backend. Must be called before `app.build()` or `app.serve()`.
 Also configurable via environment variable:
 
 ```dotenv
-CINDER_CACHE_TTL=600
+ZENO_CACHE_TTL=600
 ```
 
 ### `.exclude(*paths)`
@@ -83,8 +83,8 @@ app.cache.enable(False)   # always off
 Also configurable via:
 
 ```dotenv
-CINDER_CACHE_ENABLED=true
-CINDER_CACHE_ENABLED=false
+ZENO_CACHE_ENABLED=true
+ZENO_CACHE_ENABLED=false
 ```
 
 ## Cache key prefix
@@ -92,14 +92,14 @@ CINDER_CACHE_ENABLED=false
 When using Redis, all cache keys are prefixed to avoid collisions with other applications:
 
 ```dotenv
-CINDER_CACHE_PREFIX=myapp   # default: "cinder"
+ZENO_CACHE_PREFIX=myapp   # default: "zeno"
 ```
 
 ## Auto-detection
 
-If you don't explicitly call `.use()`, Cinder picks the backend automatically:
+If you don't explicitly call `.use()`, Zeno picks the backend automatically:
 
-1. If `CINDER_REDIS_URL` is set → `RedisCacheBackend`
+1. If `ZENO_REDIS_URL` is set → `RedisCacheBackend`
 2. Otherwise → `MemoryCacheBackend`
 
-Caching is only activated if `CINDER_REDIS_URL` is set or you call `.enable()` explicitly.
+Caching is only activated if `ZENO_REDIS_URL` is set or you call `.enable()` explicitly.

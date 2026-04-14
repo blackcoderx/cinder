@@ -53,7 +53,7 @@ async def normalize_email(body, ctx):
 ## Sending a custom welcome email
 
 ```python
-from cinder.email import EmailMessage
+from zeno.email import EmailMessage
 
 @auth.on("after_register")
 async def send_welcome(user, ctx):
@@ -67,15 +67,15 @@ async def send_welcome(user, ctx):
 
 ## Blocking registration
 
-Raise `CinderError` from a hook to abort the request:
+Raise `ZenoError` from a hook to abort the request:
 
 ```python
-from cinder.errors import CinderError
+from zeno.errors import ZenoError
 
 @auth.on("before_register")
 async def check_domain(body, ctx):
     email = body.get("email", "")
     if not email.endswith("@mycompany.com"):
-        raise CinderError(403, "Only company email addresses are allowed")
+        raise ZenoError(403, "Only company email addresses are allowed")
     return body
 ```

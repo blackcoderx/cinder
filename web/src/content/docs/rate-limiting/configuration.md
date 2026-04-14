@@ -12,7 +12,7 @@ sidebar:
 Works out of the box, no extra dependencies. Not shared across processes.
 
 ```python
-from cinder.ratelimit.backends import MemoryRateLimitBackend
+from zeno.ratelimit.backends import MemoryRateLimitBackend
 
 app.rate_limit.use(MemoryRateLimitBackend())
 ```
@@ -20,14 +20,14 @@ app.rate_limit.use(MemoryRateLimitBackend())
 ### Redis (multi-process / multi-server)
 
 ```python
-from cinder.ratelimit.backends import RedisRateLimitBackend
+from zeno.ratelimit.backends import RedisRateLimitBackend
 
 app.rate_limit.use(RedisRateLimitBackend())
 ```
 
-Requires `pip install "cinder[redis]"`. Uses `CINDER_REDIS_URL` automatically.
+Requires `pip install "zeno-api[redis]"`. Uses `ZENO_REDIS_URL` automatically.
 
-When `CINDER_REDIS_URL` is set, the Redis backend is selected automatically — you don't need to call `.use()`.
+When `ZENO_REDIS_URL` is set, the Redis backend is selected automatically — you don't need to call `.use()`.
 
 ## Global defaults
 
@@ -38,8 +38,8 @@ app.rate_limit.configure()  # no method for this — use env vars
 Set via environment variables:
 
 ```dotenv
-CINDER_RATE_LIMIT_ANON=100/60    # format: {requests}/{window_seconds}
-CINDER_RATE_LIMIT_USER=1000/60
+ZENO_RATE_LIMIT_ANON=100/60    # format: {requests}/{window_seconds}
+ZENO_RATE_LIMIT_USER=1000/60
 ```
 
 ## Per-route rules

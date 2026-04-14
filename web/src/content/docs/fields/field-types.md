@@ -23,7 +23,7 @@ Every field type accepts these parameters:
 Stores a UTF-8 string of arbitrary length.
 
 ```python
-from cinder import TextField
+from zeno import TextField
 
 TextField("title", required=True)
 TextField("slug", unique=True, indexed=True)
@@ -45,7 +45,7 @@ TextField("username", min_length=3, max_length=32)
 Stores a 64-bit integer.
 
 ```python
-from cinder import IntField
+from zeno import IntField
 
 IntField("view_count", default=0)
 IntField("score", min_value=0, max_value=100)
@@ -66,7 +66,7 @@ IntField("priority", required=True)
 Stores a double-precision floating-point number.
 
 ```python
-from cinder import FloatField
+from zeno import FloatField
 
 FloatField("price", required=True, min_value=0.0)
 FloatField("rating", min_value=0.0, max_value=5.0)
@@ -86,7 +86,7 @@ FloatField("rating", min_value=0.0, max_value=5.0)
 Stores a boolean. SQLite stores this as `0` or `1`.
 
 ```python
-from cinder import BoolField
+from zeno import BoolField
 
 BoolField("is_published", default=False)
 BoolField("is_featured")
@@ -99,7 +99,7 @@ BoolField("is_featured")
 Stores a datetime as an ISO 8601 string.
 
 ```python
-from cinder import DateTimeField
+from zeno import DateTimeField
 
 DateTimeField("published_at")
 DateTimeField("expires_at", required=True)
@@ -119,7 +119,7 @@ DateTimeField("last_seen", auto_now=True)
 Stores a URL string, validated by Pydantic's `AnyUrl` validator.
 
 ```python
-from cinder import URLField
+from zeno import URLField
 
 URLField("website")
 URLField("avatar_url", required=True)
@@ -132,7 +132,7 @@ URLField("avatar_url", required=True)
 Stores arbitrary JSON data as a serialised string.
 
 ```python
-from cinder import JSONField
+from zeno import JSONField
 
 JSONField("metadata")
 JSONField("config", default={})
@@ -148,7 +148,7 @@ The value can be any JSON-serialisable Python type: `dict`, `list`, `str`, `int`
 Stores file upload metadata. The actual file bytes are written to the configured [storage backend](/file-storage/setup/). This field holds only the metadata.
 
 ```python
-from cinder import FileField
+from zeno import FileField
 
 FileField("avatar", max_size=2_000_000, allowed_types=["image/*"], public=True)
 FileField("attachments", multiple=True, allowed_types=["application/pdf"])
@@ -163,7 +163,7 @@ FileField("attachments", multiple=True, allowed_types=["application/pdf"])
 | `multiple` | `bool` | `False` | If `True`, allows multiple files to be uploaded to this field |
 | `public` | `bool` | `False` | If `True`, the download route requires no authentication |
 
-Cinder automatically generates `POST /api/{collection}/{id}/files/{field}`, `GET`, and `DELETE` routes for every `FileField`. See [File Storage](/file-storage/setup/) for full details.
+Zeno automatically generates `POST /api/{collection}/{id}/files/{field}`, `GET`, and `DELETE` routes for every `FileField`. See [File Storage](/file-storage/setup/) for full details.
 
 ---
 
@@ -172,7 +172,7 @@ Cinder automatically generates `POST /api/{collection}/{id}/files/{field}`, `GET
 Stores a reference to a record in another collection.
 
 ```python
-from cinder import RelationField
+from zeno import RelationField
 
 RelationField("author", collection="users")
 RelationField("category", collection="categories", required=True)

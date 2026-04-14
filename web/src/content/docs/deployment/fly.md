@@ -1,6 +1,6 @@
 ---
 title: "Fly.io"
-description: "Deploy your Cinder app to Fly.io"
+description: "Deploy your Zeno app to Fly.io"
 sidebar:
   order: 5
 ---
@@ -26,7 +26,7 @@ fly auth login
 ## Generate the files
 
 ```bash
-cinderapi deploy --platform fly --app main.py
+zeno deploy --platform fly --app main.py
 ```
 
 This creates:
@@ -34,7 +34,7 @@ This creates:
 - `fly.toml` — app configuration
 - `Dockerfile` — container build instructions
 - `.dockerignore` — excludes unnecessary files from the build
-- `cinder.toml` — deployment record
+- `zeno.toml` — deployment record
 
 ---
 
@@ -47,7 +47,7 @@ primary_region = "iad"
 [build]
 
 [deploy]
-  release_command = "cinderapi migrate run --app main.py"
+  release_command = "zeno migrate run --app main.py"
 
 [http_service]
   internal_port = 8000
@@ -76,7 +76,7 @@ primary_region = "iad"
 
 Key settings:
 
-- `release_command` — runs `cinderapi migrate run` before each deploy, in a temporary VM, before traffic switches over. Migrations are applied safely with zero downtime.
+- `release_command` — runs `zeno migrate run` before each deploy, in a temporary VM, before traffic switches over. Migrations are applied safely with zero downtime.
 - `force_https = true` — all HTTP traffic is redirected to HTTPS automatically
 - `auto_stop_machines` / `auto_start_machines` — machines stop when idle and start on incoming requests (saves cost on low-traffic apps)
 - Health checks on `/api/health` ensure traffic only goes to healthy instances
@@ -96,7 +96,7 @@ This registers the app name and region without deploying anything.
 **2. Set your secret key:**
 
 ```bash
-fly secrets set CINDER_SECRET=$(cinderapi generate-secret)
+fly secrets set ZENO_SECRET=$(zeno generate-secret)
 ```
 
 Secrets are encrypted and injected as environment variables at runtime. They are never stored in `fly.toml`.
@@ -119,7 +119,7 @@ fly redis create
 Copy the connection URL from the output and set it:
 
 ```bash
-fly secrets set CINDER_REDIS_URL=redis://...
+fly secrets set ZENO_REDIS_URL=redis://...
 ```
 
 **5. Deploy:**
@@ -134,7 +134,7 @@ Fly builds the Docker image, runs migrations via the release command, then switc
 
 ## Health checks
 
-Fly checks `GET /api/health` every 15 seconds. Instances that fail the check are restarted and removed from the load balancer. Cinder exposes `/api/health` automatically.
+Fly checks `GET /api/health` every 15 seconds. Instances that fail the check are restarted and removed from the load balancer. Zeno exposes `/api/health` automatically.
 
 ---
 

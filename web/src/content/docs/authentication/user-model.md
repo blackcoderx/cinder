@@ -3,7 +3,7 @@ title: User Model
 description: The _users table structure
 ---
 
-When you call `app.use_auth(auth)`, Cinder creates a `_users` table in your database. You never define this table yourself — it is managed entirely by Cinder.
+When you call `app.use_auth(auth)`, Zeno creates a `_users` table in your database. You never define this table yourself — it is managed entirely by Zeno.
 
 ## Default columns
 
@@ -56,8 +56,8 @@ Extended fields are accepted in the register request body and stored in `_users`
 The default role for new users is `"user"`. Promote a user to admin:
 
 ```bash
-cinder promote alice@example.com
-cinder promote alice@example.com --role moderator
+zeno promote alice@example.com
+zeno promote alice@example.com --role moderator
 ```
 
 Roles are checked by `read:admin` and `write:admin` access control rules. Any string value is accepted — you can define your own role hierarchy.
@@ -68,7 +68,7 @@ The `password` column stores a bcrypt hash. It is stripped from all API response
 
 ## Supporting tables
 
-In addition to `_users`, Cinder creates two helper tables:
+In addition to `_users`, Zeno creates two helper tables:
 
 | Table | Purpose |
 |-------|---------|

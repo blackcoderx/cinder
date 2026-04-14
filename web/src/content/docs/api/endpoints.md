@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Cinder generates a standard set of REST endpoints for each registered collection and optional auth system.
+Zeno generates a standard set of REST endpoints for each registered collection and optional auth system.
 
 ## Collection endpoints
 

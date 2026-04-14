@@ -1,13 +1,13 @@
 ---
 title: Schema Auto-Sync
-description: How Cinder keeps your database schema in sync with your code
+description: How Zeno keeps your database schema in sync with your code
 ---
 
-Every time you start a Cinder app, it compares each registered `Collection` against the live database schema and applies any safe, non-destructive changes automatically.
+Every time you start a Zeno app, it compares each registered `Collection` against the live database schema and applies any safe, non-destructive changes automatically.
 
 ## What auto-sync does
 
-On startup, for each collection Cinder will:
+On startup, for each collection Zeno will:
 
 1. **Create the table** if it doesn't exist yet
 2. **Add new columns** for any fields in your `Collection` that are not in the database
@@ -35,7 +35,7 @@ Use [Migrations](/migrations/commands/) when you need to:
 
 ## Schema drift in production
 
-For production deployments, the recommended approach is to use explicit migrations (run `cinderapi migrate`) and rely on auto-sync only for convenience during local development.
+For production deployments, the recommended approach is to use explicit migrations (run `zeno migrate`) and rely on auto-sync only for convenience during local development.
 
 You can still use auto-sync in production for additive changes — new fields are always safe. But any destructive or transformative schema change must go through a migration.
 

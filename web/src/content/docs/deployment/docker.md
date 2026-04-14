@@ -1,6 +1,6 @@
 ---
 title: "Docker"
-description: "Deploy your Cinder app with Docker and docker-compose"
+description: "Deploy your Zeno app with Docker and docker-compose"
 sidebar:
   order: 2
 ---
@@ -12,7 +12,7 @@ Docker is the most portable deployment option. Use it for self-hosted servers, V
 ## Generate the files
 
 ```bash
-cinderapi deploy --platform docker --app main.py
+zeno deploy --platform docker --app main.py
 ```
 
 This creates:
@@ -20,7 +20,7 @@ This creates:
 - `Dockerfile` — multi-stage production image
 - `docker-compose.yml` — local and production orchestration
 - `.dockerignore` — keeps the image lean
-- `cinder.toml` — deployment record
+- `zeno.toml` — deployment record
 
 ---
 
@@ -43,7 +43,7 @@ COPY . .
 # --- Runtime stage ---
 FROM python:3.12-slim
 
-RUN groupadd -r cinder && useradd -r -g cinder -u 1001 cinder
+RUN groupadd -r zeno && useradd -r -g zeno -u 1001 zeno
 
 WORKDIR /app
 COPY --from=builder /app /app
@@ -51,18 +51,18 @@ COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
-USER cinder
+USER zeno
 EXPOSE 8000
 
-CMD ["sh", "-c", "cinderapi migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000"]
+CMD ["sh", "-c", "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000"]
 ```
 
 Key decisions:
 
 - **Multi-stage build** — dependencies are installed in the builder stage; the runtime stage copies only the result, keeping the final image small
 - **uv** — significantly faster than pip for resolving and installing packages; uses `uv.lock` for reproducibility
-- **Non-root user** — the app runs as UID 1001 (`cinder`) for security
-- **Migrations on startup** — `cinderapi migrate run` runs before gunicorn starts, ensuring the schema is always up to date
+- **Non-root user** — the app runs as UID 1001 (`zeno`) for security
+- **Migrations on startup** — `zeno migrate run` runs before gunicorn starts, ensuring the schema is always up to date
 - **Gunicorn + UvicornWorker** — production-grade process management with async ASGI support
 
 ---
@@ -78,9 +78,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - CINDER_SECRET=${CINDER_SECRET:-changeme}
-      - DATABASE_URL=postgresql://cinder:cinder@postgres:5432/cinder
-      - CINDER_REDIS_URL=redis://redis:6379/0
+      - ZENO_SECRET=${ZENO_SECRET:-changeme}
+      - DATABASE_URL=postgresql://zeno:zeno@postgres:5432/zeno
+      - ZENO_REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,13 +91,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=cinder
-      - POSTGRES_PASSWORD=cinder
-      - POSTGRES_DB=cinder
+      - POSTGRES_USER=zeno
+      - POSTGRES_PASSWORD=zeno
+      - POSTGRES_DB=zeno
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cinder"]
+      test: ["CMD-SHELL", "pg_isready -U zeno"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -141,7 +141,7 @@ docker compose logs -f myapp
 Set your environment variables in a `.env` file at the project root. Docker Compose automatically reads it:
 
 ```env
-CINDER_SECRET=your-secret-key-here
+ZENO_SECRET=your-secret-key-here
 ```
 
 For production, prefer injecting secrets via your hosting environment rather than committing a `.env` file.
@@ -155,7 +155,7 @@ For production, prefer injecting secrets via your hosting environment rather tha
 Edit the `CMD` in the Dockerfile:
 
 ```dockerfile
-CMD ["sh", "-c", "cinderapi migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 --workers 4"]
+CMD ["sh", "-c", "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 --workers 4"]
 ```
 
 A good starting point is `(2 × CPU cores) + 1`.

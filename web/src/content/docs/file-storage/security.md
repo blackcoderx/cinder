@@ -38,7 +38,7 @@ Upload routes follow the collection's `write` rules:
 
 ## File type validation
 
-Cinder validates MIME types on upload using the `allowed_types` option:
+Zeno validates MIME types on upload using the `allowed_types` option:
 
 ```python
 FileField("doc", allowed_types=["application/pdf", "application/msword"])
@@ -64,7 +64,7 @@ Files exceeding the limit are rejected with `413 Payload Too Large`.
 
 ## Keys and filenames
 
-Cinder generates a unique, sanitised storage key for each uploaded file:
+Zeno generates a unique, sanitised storage key for each uploaded file:
 
 ```
 {collection}/{record_id}/{field_name}/{uuid}.{ext}
@@ -76,4 +76,4 @@ The original filename is stored in the metadata but is not used as the storage k
 
 ## Orphan cleanup
 
-When a record containing file fields is deleted, Cinder automatically deletes the associated files from the storage backend through `after_delete` hooks. No manual cleanup is required.
+When a record containing file fields is deleted, Zeno automatically deletes the associated files from the storage backend through `after_delete` hooks. No manual cleanup is required.

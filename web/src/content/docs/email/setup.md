@@ -5,21 +5,21 @@ sidebar:
   order: 1
 ---
 
-Cinder can send transactional emails for account verification, password reset, and welcome messages. Configure a backend to activate email sending.
+Zeno can send transactional emails for account verification, password reset, and welcome messages. Configure a backend to activate email sending.
 
 ## Without a backend (development)
 
-Without configuration, Cinder uses `ConsoleEmailBackend`, which prints emails to the console instead of sending them. Useful for development.
+Without configuration, Zeno uses `ConsoleEmailBackend`, which prints emails to the console instead of sending them. Useful for development.
 
 ```python
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 # No email configuration needed — emails print to stdout
 ```
 
 ## With a backend
 
 ```python
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 app.email.configure(
@@ -37,22 +37,22 @@ Set the email backend. Must be called before `app.build()`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `from_address` | `CINDER_EMAIL_FROM` or `"noreply@localhost"` | Sender address on all emails |
-| `app_name` | `CINDER_APP_NAME` or `"Your App"` | App name used in email templates |
-| `base_url` | `CINDER_BASE_URL` or `"http://localhost:8000"` | Base URL for links in emails (verify, reset) |
+| `from_address` | `ZENO_EMAIL_FROM` or `"noreply@localhost"` | Sender address on all emails |
+| `app_name` | `ZENO_APP_NAME` or `"Your App"` | App name used in email templates |
+| `base_url` | `ZENO_BASE_URL` or `"http://localhost:8000"` | Base URL for links in emails (verify, reset) |
 
 Also configurable via environment variables:
 
 ```dotenv
-CINDER_EMAIL_FROM=no-reply@myapp.com
-CINDER_APP_NAME=MyApp
-CINDER_BASE_URL=https://myapp.com
+ZENO_EMAIL_FROM=no-reply@myapp.com
+ZENO_APP_NAME=MyApp
+ZENO_BASE_URL=https://myapp.com
 ```
 
 ## Sending custom emails from hooks
 
 ```python
-from cinder.email import EmailMessage
+from zeno.email import EmailMessage
 
 @orders.on("after_create")
 async def send_confirmation(order, ctx):

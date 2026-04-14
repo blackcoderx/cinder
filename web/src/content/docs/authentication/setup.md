@@ -1,14 +1,14 @@
 ---
 title: Setup
-description: Configure and enable authentication in your Cinder app
+description: Configure and enable authentication in your Zeno app
 ---
 
 ## Basic setup
 
 ```python
-from cinder import Cinder, Auth
+from zeno import Zeno, Auth
 
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 
 auth = Auth(
     token_expiry=86400,       # token lifetime in seconds (1 day)
@@ -31,7 +31,7 @@ app.use_auth(auth)
 Add custom fields to the user table:
 
 ```python
-from cinder import Auth, TextField, BoolField
+from zeno import Auth, TextField, BoolField
 
 auth = Auth(
     extend_user=[
@@ -47,26 +47,26 @@ These fields are automatically accepted on `POST /api/auth/register` if provided
 
 ## Setting the secret key
 
-Cinder reads the JWT signing secret from `CINDER_SECRET`. Generate a stable key for production:
+Zeno reads the JWT signing secret from `ZENO_SECRET`. Generate a stable key for production:
 
 ```bash
-cinder generate-secret
+zeno generate-secret
 ```
 
 Add it to your `.env`:
 
 ```dotenv
-CINDER_SECRET=your-generated-secret-here
+ZENO_SECRET=your-generated-secret-here
 ```
 
-Without a secret, Cinder generates a random one on startup — which means all tokens are invalidated every time the server restarts.
+Without a secret, Zeno generates a random one on startup — which means all tokens are invalidated every time the server restarts.
 
 ## Email on registration
 
-If you configure an email backend, Cinder automatically sends a verification email after registration:
+If you configure an email backend, Zeno automatically sends a verification email after registration:
 
 ```python
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(

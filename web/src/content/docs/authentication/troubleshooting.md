@@ -3,17 +3,17 @@ title: Troubleshooting
 description: Common authentication errors and how to fix them
 ---
 
-## "No CINDER_SECRET set — tokens will not survive restarts"
+## "No ZENO_SECRET set — tokens will not survive restarts"
 
-This warning means Cinder generated a random secret on startup. All tokens issued before the last restart are now invalid.
+This warning means Zeno generated a random secret on startup. All tokens issued before the last restart are now invalid.
 
 **Fix:** Set a stable secret in your `.env` file:
 
 ```dotenv
-CINDER_SECRET=your-long-random-secret
+ZENO_SECRET=your-long-random-secret
 ```
 
-Generate one: `cinder generate-secret`
+Generate one: `zeno generate-secret`
 
 ---
 
@@ -74,12 +74,12 @@ The password reset token was already used, expired, or is incorrect.
 
 ## Users don't receive verification or reset emails
 
-An email backend is not configured. Without one, Cinder falls back to logging the token to the console.
+An email backend is not configured. Without one, Zeno falls back to logging the token to the console.
 
 **Fix:** Configure an email backend:
 
 ```python
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(

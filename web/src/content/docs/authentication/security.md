@@ -1,6 +1,6 @@
 ---
 title: Security
-description: How Cinder handles passwords, tokens, and email verification
+description: How Zeno handles passwords, tokens, and email verification
 ---
 
 ## Passwords
@@ -13,7 +13,7 @@ Passwords are hashed using **bcrypt** via `passlib`. The hash is stored in the `
 
 ## JWT tokens
 
-Cinder uses **python-jose** with HS256 signing.
+Zeno uses **python-jose** with HS256 signing.
 
 **Token payload:**
 - `sub` — user ID
@@ -25,24 +25,24 @@ Cinder uses **python-jose** with HS256 signing.
 When a user logs out, the token's `jti` is stored in `_token_blocklist` with its expiry time. Expired blocklist entries are cleaned up on startup. Any request using a revoked token receives a `401 Token has been revoked` error.
 
 **Secret key:**
-Set `CINDER_SECRET` to a long random string. Generate one with:
+Set `ZENO_SECRET` to a long random string. Generate one with:
 
 ```bash
-cinder generate-secret
+zeno generate-secret
 ```
 
-Without a secret, Cinder auto-generates one at startup — this means all tokens are invalidated on every restart.
+Without a secret, Zeno auto-generates one at startup — this means all tokens are invalidated on every restart.
 
 ## Email verification
 
-After registration, Cinder generates a time-limited verification token and stores it in `_email_verifications`. If an email backend is configured, it sends the link to the user.
+After registration, Zeno generates a time-limited verification token and stores it in `_email_verifications`. If an email backend is configured, it sends the link to the user.
 
 - Verification tokens expire (checked at use time)
 - The `GET /api/auth/verify-email?token=...` endpoint sets `is_verified = 1`
 - Expired tokens are cleaned up on startup
 
 **Requiring verified email:**
-Cinder does not block unverified users by default. To enforce this, add a hook:
+Zeno does not block unverified users by default. To enforce this, add a hook:
 
 ```python
 @auth.on("before_login")
@@ -52,9 +52,9 @@ async def require_verified(body, ctx):
 
 @auth.on("after_login")
 async def check_verified(user, ctx):
-    from cinder.errors import CinderError
+    from zeno.errors import ZenoError
     if not user.get("is_verified"):
-        raise CinderError(403, "Please verify your email before logging in")
+        raise ZenoError(403, "Please verify your email before logging in")
 ```
 
 ## Password reset
@@ -63,7 +63,7 @@ Password reset tokens are UUIDs stored in `_password_resets` with a 1-hour expir
 
 ## HTTPS
 
-Cinder does not enforce HTTPS internally. In production, always deploy behind a reverse proxy (nginx, Caddy, Cloudflare) that terminates TLS.
+Zeno does not enforce HTTPS internally. In production, always deploy behind a reverse proxy (nginx, Caddy, Cloudflare) that terminates TLS.
 
 ## Token storage (client side)
 

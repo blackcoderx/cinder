@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Cinder broadcasts every create, update, and delete operation to connected clients in real time. No additional setup is needed — realtime is enabled by default.
+Zeno broadcasts every create, update, and delete operation to connected clients in real time. No additional setup is needed — realtime is enabled by default.
 
 ## Endpoints
 

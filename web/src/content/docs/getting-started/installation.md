@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Install Cinder and its optional dependencies
+description: Install Zeno and its optional dependencies
 sidebar:
   order: 1
 ---
@@ -13,20 +13,20 @@ sidebar:
 ## Install
 
 ```bash
-pip install cinder
+pip install zeno-api
 ```
 
 With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add cinder
+uv add zeno-api
 ```
 
 This installs the core framework with SQLite support. No extra configuration needed to get started.
 
 ## Optional Dependencies
 
-Cinder uses extras for optional features to keep the core installation minimal.
+Zeno uses extras for optional features to keep the core installation minimal.
 
 | Extra | Installs | When to use |
 |-------|----------|-------------|
@@ -40,16 +40,16 @@ Install extras:
 
 ```bash
 # Single extra
-pip install "cinder[postgres]"
+pip install "zeno-api[postgres]"
 
 # Multiple extras
-pip install "cinder[postgres,redis,email]"
+pip install "zeno-api[postgres,redis,email]"
 ```
 
 With uv:
 
 ```bash
-uv add "cinder[postgres,redis,email]"
+uv add "zeno-api[postgres,redis,email]"
 ```
 
 ## Scaffold a new project
@@ -57,7 +57,7 @@ uv add "cinder[postgres,redis,email]"
 Use the CLI to create a project with a starter layout:
 
 ```bash
-cinderapi init myapp
+zeno init myapp
 cd myapp
 ```
 
@@ -66,7 +66,7 @@ This creates `main.py`, `.env`, and `.gitignore` with sensible defaults.
 ## Verify the installation
 
 ```bash
-cinder --version
+zeno --version
 ```
 
-You should see the Cinder version printed. If you see a "command not found" error, ensure your Python environment's `bin` directory is on your `PATH`.
+You should see the Zeno version printed. If you see a "command not found" error, ensure your Python environment's `bin` directory is on your `PATH`.

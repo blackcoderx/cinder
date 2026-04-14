@@ -8,9 +8,9 @@ PostgreSQL is the recommended database for production deployments.
 ## Install the extra dependency
 
 ```bash
-pip install "cinder[postgres]"
+pip install "zeno-api[postgres]"
 # or
-uv add "cinder[postgres]"
+uv add "zeno-api[postgres]"
 ```
 
 This installs [asyncpg](https://github.com/MagicStack/asyncpg), the high-performance async PostgreSQL driver.
@@ -26,7 +26,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/mydb
 Or pass it directly:
 
 ```python
-app = Cinder(database="postgresql://user:password@localhost:5432/mydb")
+app = Zeno(database="postgresql://user:password@localhost:5432/mydb")
 ```
 
 ## Advanced configuration
@@ -34,7 +34,7 @@ app = Cinder(database="postgresql://user:password@localhost:5432/mydb")
 For fine-grained control over the connection pool:
 
 ```python
-from cinder.db.backends.postgresql import PostgreSQLBackend
+from zeno.db.backends.postgresql import PostgreSQLBackend
 
 app.configure_database(
     PostgreSQLBackend(
@@ -76,7 +76,7 @@ Connection URLs from common providers work directly:
 For production, always run migrations before deploying new code:
 
 ```bash
-cinder migrate --app main.py
+zeno migrate --app main.py
 ```
 
 See [Migrations](/migrations/commands/) for details.

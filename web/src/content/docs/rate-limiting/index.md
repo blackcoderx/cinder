@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Cinder includes a rate limiting middleware that uses the **token-bucket algorithm** to limit how many requests a client can make in a given time window. It is enabled by default.
+Zeno includes a rate limiting middleware that uses the **token-bucket algorithm** to limit how many requests a client can make in a given time window. It is enabled by default.
 
 ## How it works
 
@@ -19,14 +19,14 @@ Clients are identified by:
 
 | Client type | Default | Environment variable |
 |-------------|---------|----------------------|
-| Unauthenticated | 100 requests / 60 seconds | `CINDER_RATE_LIMIT_ANON` |
-| Authenticated | 1000 requests / 60 seconds | `CINDER_RATE_LIMIT_USER` |
+| Unauthenticated | 100 requests / 60 seconds | `ZENO_RATE_LIMIT_ANON` |
+| Authenticated | 1000 requests / 60 seconds | `ZENO_RATE_LIMIT_USER` |
 
 Override via environment variables:
 
 ```dotenv
-CINDER_RATE_LIMIT_ANON=50/60     # 50 requests per minute for anonymous
-CINDER_RATE_LIMIT_USER=500/60    # 500 per minute for authenticated users
+ZENO_RATE_LIMIT_ANON=50/60     # 50 requests per minute for anonymous
+ZENO_RATE_LIMIT_USER=500/60    # 500 per minute for authenticated users
 ```
 
 ## Per-route rules
@@ -43,7 +43,7 @@ Per-route rules take precedence over the global defaults.
 ## Disabling rate limiting
 
 ```dotenv
-CINDER_RATE_LIMIT_ENABLED=false
+ZENO_RATE_LIMIT_ENABLED=false
 ```
 
 Or in code:

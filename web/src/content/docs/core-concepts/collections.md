@@ -1,14 +1,14 @@
 ---
 title: Collections
-description: Define schemas that Cinder turns into full CRUD APIs
+description: Define schemas that Zeno turns into full CRUD APIs
 ---
 
-A `Collection` maps a Python schema to a database table and a complete set of REST endpoints. You define the shape of your data; Cinder handles the rest.
+A `Collection` maps a Python schema to a database table and a complete set of REST endpoints. You define the shape of your data; Zeno handles the rest.
 
 ## Defining a collection
 
 ```python
-from cinder import Collection, TextField, IntField, BoolField
+from zeno import Collection, TextField, IntField, BoolField
 
 articles = Collection("articles", fields=[
     TextField("title", required=True),
@@ -91,4 +91,4 @@ See [Lifecycle Hooks](/core-concepts/lifecycle-hooks/) for all available events.
 
 ## Schema auto-sync
 
-When you start your app, Cinder compares the `Collection` definition against the live database schema and adds any missing columns. Removed columns are left in place (non-destructive). For larger structural changes, use [Migrations](/migrations/commands/).
+When you start your app, Zeno compares the `Collection` definition against the live database schema and adds any missing columns. Removed columns are left in place (non-destructive). For larger structural changes, use [Migrations](/migrations/commands/).

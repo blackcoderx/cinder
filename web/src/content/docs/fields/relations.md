@@ -8,7 +8,7 @@ description: Foreign key references between collections
 ## Quick example
 
 ```python
-from cinder import Collection, TextField, RelationField
+from zeno import Collection, TextField, RelationField
 
 users = Collection("users", fields=[
     TextField("name", required=True),
@@ -100,7 +100,7 @@ This creates a `CREATE INDEX` on the column, making queries like `?filter[author
 
 ## Many-to-many relations
 
-Cinder does not have a built-in many-to-many field. Model these with a junction collection:
+Zeno does not have a built-in many-to-many field. Model these with a junction collection:
 
 ```python
 post_tags = Collection("post_tags", fields=[

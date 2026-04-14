@@ -10,7 +10,7 @@ File storage lets you attach uploaded files to any collection record. The API ge
 ## 1. Add a FileField to your collection
 
 ```python
-from cinder import Collection, TextField, FileField
+from zeno import Collection, TextField, FileField
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -22,17 +22,17 @@ posts = Collection("posts", fields=[
 ## 2. Configure a storage backend
 
 ```python
-from cinder.storage import LocalFileBackend
+from zeno.storage import LocalFileBackend
 
 app.configure_storage(LocalFileBackend("./uploads"))
 app.register(posts)
 ```
 
-A storage backend **must** be configured if any collection has a `FileField`. Cinder raises an error at startup if this is missing.
+A storage backend **must** be configured if any collection has a `FileField`. Zeno raises an error at startup if this is missing.
 
 ## 3. Generated routes
 
-For each `FileField`, Cinder generates:
+For each `FileField`, Zeno generates:
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -117,7 +117,7 @@ Omitting both `?index` and `?all` on a multi-file field returns `400 Bad Request
 
 ## Orphan cleanup
 
-When a record is deleted, Cinder automatically deletes any files attached to it through lifecycle hooks — no manual cleanup needed.
+When a record is deleted, Zeno automatically deletes any files attached to it through lifecycle hooks — no manual cleanup needed.
 
 ## Next: choose a backend
 

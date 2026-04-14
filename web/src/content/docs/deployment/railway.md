@@ -1,6 +1,6 @@
 ---
 title: "Railway"
-description: "Deploy your Cinder app to Railway"
+description: "Deploy your Zeno app to Railway"
 sidebar:
   order: 3
 ---
@@ -12,13 +12,13 @@ sidebar:
 ## Generate the config
 
 ```bash
-cinderapi deploy --platform railway --app main.py
+zeno deploy --platform railway --app main.py
 ```
 
 This creates:
 
 - `railway.toml` — build and deploy configuration
-- `cinder.toml` — deployment record
+- `zeno.toml` — deployment record
 
 ---
 
@@ -29,7 +29,7 @@ This creates:
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "cinderapi migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT"
+startCommand = "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 5
 restartPolicyType = "ON_FAILURE"
@@ -55,11 +55,11 @@ The start command runs migrations first, then starts gunicorn. `$PORT` is inject
    - Click **New** → **Database** → **Add Redis**
    - Add a reference variable:
      ```
-     CINDER_REDIS_URL = ${{Redis.REDIS_URL}}
+     ZENO_REDIS_URL = ${{Redis.REDIS_URL}}
      ```
 4. **Set your secret key** in the web service environment variables:
    ```
-   CINDER_SECRET = <output of cinderapi generate-secret>
+   ZENO_SECRET = <output of zeno generate-secret>
    ```
 5. Railway deploys automatically on every push to your connected branch
 
@@ -67,7 +67,7 @@ The start command runs migrations first, then starts gunicorn. `$PORT` is inject
 
 ## Health checks
 
-Railway uses `healthcheckPath = "/api/health"` to verify your app is running before routing traffic to it. Cinder exposes this endpoint automatically at `GET /api/health`.
+Railway uses `healthcheckPath = "/api/health"` to verify your app is running before routing traffic to it. Zeno exposes this endpoint automatically at `GET /api/health`.
 
 ---
 
@@ -77,9 +77,9 @@ Set these in the Railway dashboard under your web service → **Variables**:
 
 | Variable | Value |
 |----------|-------|
-| `CINDER_SECRET` | Output of `cinderapi generate-secret` |
+| `ZENO_SECRET` | Output of `zeno generate-secret` |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference variable) |
-| `CINDER_REDIS_URL` | `${{Redis.REDIS_URL}}` (reference variable) |
+| `ZENO_REDIS_URL` | `${{Redis.REDIS_URL}}` (reference variable) |
 
 Reference variables like `${{Postgres.DATABASE_URL}}` are Railway's way of wiring service URLs between services in the same project. They resolve at deploy time.
 
@@ -90,7 +90,7 @@ Reference variables like `${{Postgres.DATABASE_URL}}` are Railway's way of wirin
 Railway's filesystem is ephemeral — data written to disk does not persist between deploys. Do not use SQLite in production on Railway. Add a PostgreSQL service instead and update your app:
 
 ```python
-app = Cinder(database="postgresql://...")
+app = Zeno(database="postgresql://...")
 ```
 
-Or set `DATABASE_URL` in the environment — Cinder picks it up automatically.
+Or set `DATABASE_URL` in the environment — Zeno picks it up automatically.

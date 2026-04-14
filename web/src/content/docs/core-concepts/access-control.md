@@ -3,7 +3,7 @@ title: Access Control
 description: Fine-grained permission rules for every collection
 ---
 
-Cinder uses a simple string-based rule system to control who can read and write each collection. Rules are declared when you call `app.register()`.
+Zeno uses a simple string-based rule system to control who can read and write each collection. Rules are declared when you call `app.register()`.
 
 ## Rule syntax
 
@@ -53,7 +53,7 @@ app.register(public_data)
 
 ## The `created_by` field
 
-When `owner` rules are used, Cinder automatically adds a `created_by` column to the collection if one does not already exist. On `POST`, the authenticated user's ID is stored in that field. The ownership check on `read:owner` and `write:owner` compares `created_by` against the token's subject.
+When `owner` rules are used, Zeno automatically adds a `created_by` column to the collection if one does not already exist. On `POST`, the authenticated user's ID is stored in that field. The ownership check on `read:owner` and `write:owner` compares `created_by` against the token's subject.
 
 You can declare the field explicitly if you need to customise it:
 
@@ -70,8 +70,8 @@ app.register(notes, auth=["read:owner", "write:owner"])
 Use the CLI to grant admin access:
 
 ```bash
-cinderapi promote alice@example.com
-cinderapi promote bob@example.com --role moderator
+zeno promote alice@example.com
+zeno promote bob@example.com --role moderator
 ```
 
 Or update the `_users` table directly.
@@ -88,4 +88,4 @@ app.register(announcements, auth=["read:public", "write:admin"])
 app.register(profiles, auth=["read:authenticated", "write:owner"])
 ```
 
-Only one rule per operation is applied. If you need more complex logic, use [Lifecycle Hooks](/core-concepts/lifecycle-hooks/) to inspect `ctx.user` and raise a `CinderError(403, "Forbidden")`.
+Only one rule per operation is applied. If you need more complex logic, use [Lifecycle Hooks](/core-concepts/lifecycle-hooks/) to inspect `ctx.user` and raise a `ZenoError(403, "Forbidden")`.

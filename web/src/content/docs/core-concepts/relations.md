@@ -8,7 +8,7 @@ description: Link collections together with foreign key references
 ## Defining a relation
 
 ```python
-from cinder import Collection, TextField, RelationField
+from zeno import Collection, TextField, RelationField
 
 authors = Collection("authors", fields=[
     TextField("name", required=True),

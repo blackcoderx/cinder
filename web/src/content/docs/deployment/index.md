@@ -1,11 +1,11 @@
 ---
 title: "Deployment"
-description: "Deploy your Cinder app to any platform with a single command"
+description: "Deploy your Zeno app to any platform with a single command"
 sidebar:
   order: 1
 ---
 
-`cinderapi deploy` generates production-ready deployment configuration files for your app. It inspects your Cinder instance to detect which services you need — database, Redis, auth, file storage — and writes platform-specific config tailored to those requirements.
+`zeno deploy` generates production-ready deployment configuration files for your app. It inspects your Zeno instance to detect which services you need — database, Redis, auth, file storage — and writes platform-specific config tailored to those requirements.
 
 It does **not** deploy your app. It generates the files so you can commit them and let the platform handle the rest.
 
@@ -16,8 +16,8 @@ It does **not** deploy your app. It generates the files so you can commit them a
 Generate a secret key and add it to your `.env` file:
 
 ```bash
-cinderapi generate-secret
-# Copy the output into your .env as CINDER_SECRET
+zeno generate-secret
+# Copy the output into your .env as ZENO_SECRET
 ```
 
 This is required for JWT signing. Tokens are invalid without a persistent secret.
@@ -27,13 +27,13 @@ This is required for JWT signing. Tokens are invalid without a persistent secret
 ## Usage
 
 ```bash
-cinderapi deploy --platform <platform> --app main.py
+zeno deploy --platform <platform> --app main.py
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--platform`, `-p` | auto-detect | `docker`, `railway`, `render`, or `fly` |
-| `--app` | `main.py` | Path to the file containing your `Cinder` instance |
+| `--app` | `main.py` | Path to the file containing your `Zeno` instance |
 | `--dry-run` | `false` | Print generated files to the terminal without writing them |
 | `--force` | `false` | Overwrite existing files without prompting |
 
@@ -43,19 +43,19 @@ cinderapi deploy --platform <platform> --app main.py
 
 | Platform | Files generated |
 |----------|----------------|
-| `docker` | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `cinder.toml` |
-| `railway` | `railway.toml`, `cinder.toml` |
-| `render` | `render.yaml`, `cinder.toml` |
-| `fly` | `fly.toml`, `Dockerfile`, `.dockerignore`, `cinder.toml` |
+| `docker` | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `zeno.toml` |
+| `railway` | `railway.toml`, `zeno.toml` |
+| `render` | `render.yaml`, `zeno.toml` |
+| `fly` | `fly.toml`, `Dockerfile`, `.dockerignore`, `zeno.toml` |
 
 ---
 
 ## App introspection
 
-`cinderapi deploy` loads your app file and inspects it to determine what your app needs:
+`zeno deploy` loads your app file and inspects it to determine what your app needs:
 
-- **Database type** — reads `CINDER_DATABASE_URL`, `DATABASE_URL`, or the `database=` constructor argument to detect PostgreSQL, MySQL, or SQLite
-- **Redis** — checks `CINDER_REDIS_URL` and whether cache, rate-limit, or realtime backends are Redis-backed
+- **Database type** — reads `ZENO_DATABASE_URL`, `DATABASE_URL`, or the `database=` constructor argument to detect PostgreSQL, MySQL, or SQLite
+- **Redis** — checks `ZENO_REDIS_URL` and whether cache, rate-limit, or realtime backends are Redis-backed
 - **Auth** — checks if `app.use_auth()` was called
 - **File storage** — checks if a storage backend is configured
 - **Email** — checks if an email backend is configured
@@ -66,7 +66,7 @@ This means the generated configs only include the services your app actually use
 
 ## Auto-detection
 
-If you omit `--platform`, Cinder detects it from environment variables:
+If you omit `--platform`, Zeno detects it from environment variables:
 
 | Environment variable | Detected platform |
 |---------------------|------------------|
@@ -82,14 +82,14 @@ If you omit `--platform`, Cinder detects it from environment variables:
 Use `--dry-run` to see exactly what will be generated without touching the filesystem:
 
 ```bash
-cinderapi deploy --platform railway --dry-run
+zeno deploy --platform railway --dry-run
 ```
 
 ---
 
-## `cinder.toml`
+## `zeno.toml`
 
-Every platform generates a `cinder.toml` alongside the platform config. This is a central deployment record describing your app's requirements:
+Every platform generates a `zeno.toml` alongside the platform config. This is a central deployment record describing your app's requirements:
 
 ```toml
 [project]

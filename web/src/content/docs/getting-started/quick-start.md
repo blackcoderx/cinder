@@ -1,6 +1,6 @@
 ---
 title: Quick Start
-description: Build your first Cinder API in under 5 minutes
+description: Build your first Zeno API in under 5 minutes
 sidebar:
   order: 2
 ---
@@ -12,9 +12,9 @@ This guide walks you through creating a fully working REST API with authenticati
 Create `main.py`:
 
 ```python
-from cinder import Cinder, Collection, TextField, IntField, Auth
+from zeno import Zeno, Collection, TextField, IntField, Auth
 
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -31,7 +31,7 @@ app.use_auth(auth)
 ## 2. Start the server
 
 ```bash
-cinderapi serve main.py
+zeno serve main.py
 ```
 
 The server starts on `http://localhost:8000`.
@@ -39,12 +39,12 @@ The server starts on `http://localhost:8000`.
 For development with auto-reload:
 
 ```bash
-cinderapi serve main.py --reload
+zeno serve main.py --reload
 ```
 
 ## 3. What you get
 
-Cinder auto-generates the following endpoints:
+Zeno auto-generates the following endpoints:
 
 **Auth**
 | Method | Path | Description |
@@ -94,7 +94,7 @@ Create a post with the token:
 curl -X POST http://localhost:8000/api/posts \
   -H "Authorization: Bearer eyJ..." \
   -H "Content-Type: application/json" \
-  -d '{"title": "Hello Cinder", "body": "My first post"}'
+  -d '{"title": "Hello Zeno", "body": "My first post"}'
 ```
 
 List posts (no auth required):
@@ -106,7 +106,7 @@ curl http://localhost:8000/api/posts
 ```json
 {
   "items": [
-    { "id": "...", "title": "Hello Cinder", "body": "My first post", "views": 0, "created_at": "...", "updated_at": "..." }
+    { "id": "...", "title": "Hello Zeno", "body": "My first post", "views": 0, "created_at": "...", "updated_at": "..." }
   ],
   "total": 1,
   "limit": 20,
@@ -116,7 +116,7 @@ curl http://localhost:8000/api/posts
 
 ## 5. Next steps
 
-- [Core Concepts](/core-concepts/app/) — understand how the `Cinder` app works
+- [Core Concepts](/core-concepts/app/) — understand how the `Zeno` app works
 - [Collections](/core-concepts/collections/) — define richer schemas
 - [Field Types](/fields/field-types/) — all available field types and options
 - [Access Control](/core-concepts/access-control/) — fine-grained permission rules

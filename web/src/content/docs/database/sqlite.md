@@ -3,19 +3,19 @@ title: SQLite
 description: The default development database
 ---
 
-SQLite is the default database for Cinder. No installation or configuration is required — just pass a filename.
+SQLite is the default database for Zeno. No installation or configuration is required — just pass a filename.
 
 ## Configuration
 
 ```python
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 ```
 
 Or use a full SQLite URL:
 
 ```python
-app = Cinder(database="sqlite:///app.db")
-app = Cinder(database="sqlite:////absolute/path/to/app.db")
+app = Zeno(database="sqlite:///app.db")
+app = Zeno(database="sqlite:////absolute/path/to/app.db")
 ```
 
 The file is created automatically if it doesn't exist.
@@ -23,7 +23,7 @@ The file is created automatically if it doesn't exist.
 ## Using an in-memory database (testing)
 
 ```python
-app = Cinder(database=":memory:")
+app = Zeno(database=":memory:")
 ```
 
 The in-memory database is destroyed when the connection closes. Useful for isolated tests.
@@ -46,4 +46,4 @@ For production with multiple workers, use [PostgreSQL](/database/postgresql/) or
 
 ## Driver
 
-Cinder uses [aiosqlite](https://github.com/omnilib/aiosqlite), which wraps SQLite's standard library driver with an async interface. No extra install is needed — `aiosqlite` is part of Cinder's core dependencies.
+Zeno uses [aiosqlite](https://github.com/omnilib/aiosqlite), which wraps SQLite's standard library driver with an async interface. No extra install is needed — `aiosqlite` is part of Zeno's core dependencies.

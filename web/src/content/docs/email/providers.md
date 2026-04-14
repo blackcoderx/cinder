@@ -10,8 +10,8 @@ sidebar:
 Install the email extra:
 
 ```bash
-pip install "cinder[email]"
-uv add "cinder[email]"
+pip install "zeno-api[email]"
+uv add "zeno-api[email]"
 ```
 
 ---
@@ -19,7 +19,7 @@ uv add "cinder[email]"
 ## SendGrid
 
 ```python
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 ```
@@ -92,7 +92,7 @@ app.email.use(SMTPBackend.gmail(
 ## Custom SMTP server
 
 ```python
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 
 app.email.use(SMTPBackend(
     host="smtp.myserver.com",
@@ -110,7 +110,7 @@ app.email.use(SMTPBackend(
 Prints emails to stdout instead of sending them. This is the default when no backend is configured:
 
 ```python
-from cinder.email.backends import ConsoleEmailBackend
+from zeno.email.backends import ConsoleEmailBackend
 
 app.email.use(ConsoleEmailBackend())
 ```

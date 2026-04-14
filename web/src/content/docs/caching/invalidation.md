@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Cinder uses **tag-based invalidation** to clear cache entries when data changes. You don't need to manage this manually.
+Zeno uses **tag-based invalidation** to clear cache entries when data changes. You don't need to manage this manually.
 
 ## How it works
 
@@ -39,11 +39,11 @@ This pattern is only needed for denormalised or embedded data.
 For debugging, connect to Redis directly and list keys:
 
 ```bash
-redis-cli --scan --pattern "cinder:*"
+redis-cli --scan --pattern "zeno:*"
 ```
 
-Clear all Cinder cache entries:
+Clear all Zeno cache entries:
 
 ```bash
-redis-cli --scan --pattern "cinder:*" | xargs redis-cli del
+redis-cli --scan --pattern "zeno:*" | xargs redis-cli del
 ```

@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-Cinder includes a cache-aside middleware that automatically caches `GET` responses and invalidates them on writes. No changes to your collection definitions are needed.
+Zeno includes a cache-aside middleware that automatically caches `GET` responses and invalidates them on writes. No changes to your collection definitions are needed.
 
 ## How it works
 
@@ -16,16 +16,16 @@ Cinder includes a cache-aside middleware that automatically caches `GET` respons
 
 ## Enabling caching
 
-Caching is **automatically enabled** when `CINDER_REDIS_URL` is set. No code changes needed.
+Caching is **automatically enabled** when `ZENO_REDIS_URL` is set. No code changes needed.
 
 ```dotenv
-CINDER_REDIS_URL=redis://localhost:6379
+ZENO_REDIS_URL=redis://localhost:6379
 ```
 
 For development without Redis, use the in-memory cache:
 
 ```python
-from cinder.cache.backends import MemoryCacheBackend
+from zeno.cache.backends import MemoryCacheBackend
 
 app.cache.use(MemoryCacheBackend())
 app.cache.enable()

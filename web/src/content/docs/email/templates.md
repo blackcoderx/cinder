@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Cinder includes built-in HTML and plain-text templates for three system emails. You can override each one with a custom function.
+Zeno includes built-in HTML and plain-text templates for three system emails. You can override each one with a custom function.
 
 ## Built-in templates
 

@@ -5,7 +5,7 @@ import starlight from "@astrojs/starlight";
 export default defineConfig({
   integrations: [
     starlight({
-      title: "CinderAPI",
+      title: "ZenoAPI",
       customCss: ["@fontsource/jetbrains-mono", "./src/styles/custom.css"],
       components: {
         SocialIcons: "./src/components/GitHubLink.astro",
@@ -19,7 +19,7 @@ export default defineConfig({
           label: "Core Concepts",
           collapsed: false,
           items: [
-            { label: "The Cinder App", link: "/core-concepts/app/" },
+            { label: "The Zeno App", link: "/core-concepts/app/" },
             { label: "Collections", link: "/core-concepts/collections/" },
             { label: "Field Types", link: "/fields/field-types/" },
             { label: "Relations", link: "/core-concepts/relations/" },

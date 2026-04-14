@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-Cinder auto-generates an OpenAPI 3.1 specification for your entire API — including all collections, auth endpoints, and file routes.
+Zeno auto-generates an OpenAPI 3.1 specification for your entire API — including all collections, auth endpoints, and file routes.
 
 ## Endpoints
 
@@ -51,10 +51,10 @@ openapi-generator-cli generate \
 
 ## API title and version
 
-Set the title and version when creating the `Cinder` instance:
+Set the title and version when creating the `Zeno` instance:
 
 ```python
-app = Cinder(
+app = Zeno(
     database="app.db",
     title="My Blog API",
     version="2.1.0",

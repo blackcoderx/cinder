@@ -1,6 +1,6 @@
 ---
 title: "Render"
-description: "Deploy your Cinder app to Render"
+description: "Deploy your Zeno app to Render"
 sidebar:
   order: 4
 ---
@@ -12,13 +12,13 @@ sidebar:
 ## Generate the config
 
 ```bash
-cinderapi deploy --platform render --app main.py
+zeno deploy --platform render --app main.py
 ```
 
 This creates:
 
 - `render.yaml` — blueprint defining all services
-- `cinder.toml` — deployment record
+- `zeno.toml` — deployment record
 
 ---
 
@@ -30,10 +30,10 @@ services:
     name: myapp
     runtime: python
     buildCommand: pip install uv && uv sync --frozen --no-dev
-    startCommand: cinderapi migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+    startCommand: zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
     healthCheckPath: /api/health
     envVars:
-      - key: CINDER_SECRET
+      - key: ZENO_SECRET
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12"
@@ -53,7 +53,7 @@ keyvalues:
 
 Key things to know:
 
-- `generateValue: true` — Render auto-generates a random value for `CINDER_SECRET` and keeps it stable across deploys. You don't need to set it manually.
+- `generateValue: true` — Render auto-generates a random value for `ZENO_SECRET` and keeps it stable across deploys. You don't need to set it manually.
 - `fromDatabase` — wires the Postgres connection string directly from the database service. No copy-pasting URLs.
 - `fromService` — same pattern for Redis, using the `keyvalue` service type.
 - `databases` and `keyvalues` sections are only generated if your app needs them.
@@ -67,13 +67,13 @@ Key things to know:
 3. Connect your repo — Render reads `render.yaml` and creates all services
 4. Render deploys automatically on every push to your main branch
 
-That's it. `CINDER_SECRET` is auto-generated, the database URL is wired automatically, and migrations run on startup via the start command.
+That's it. `ZENO_SECRET` is auto-generated, the database URL is wired automatically, and migrations run on startup via the start command.
 
 ---
 
 ## Health checks
 
-Render uses `healthCheckPath: /api/health` to route traffic only after your app passes the health check. Cinder exposes this at `GET /api/health` with no configuration needed.
+Render uses `healthCheckPath: /api/health` to route traffic only after your app passes the health check. Zeno exposes this at `GET /api/health` with no configuration needed.
 
 ---
 
@@ -88,9 +88,9 @@ Common additions:
 
 | Variable | Example |
 |----------|---------|
-| `CINDER_EMAIL_FROM` | `no-reply@myapp.com` |
-| `CINDER_APP_NAME` | `MyApp` |
-| `CINDER_BASE_URL` | `https://myapp.onrender.com` |
+| `ZENO_EMAIL_FROM` | `no-reply@myapp.com` |
+| `ZENO_APP_NAME` | `MyApp` |
+| `ZENO_BASE_URL` | `https://myapp.onrender.com` |
 
 ---
 

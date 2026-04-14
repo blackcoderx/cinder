@@ -72,8 +72,8 @@ You can fire events from anywhere — not just inside hooks:
 
 ```python
 # In a scheduled job, a background task, etc.
-ctx = CinderContext.system(extra={"source": "scheduler"})
+ctx = ZenoContext.system(extra={"source": "scheduler"})
 await app.hooks.fire("daily:digest", None, ctx)
 ```
 
-`CinderContext.system()` creates a context with no user or request — suitable for system-initiated events.
+`ZenoContext.system()` creates a context with no user or request — suitable for system-initiated events.

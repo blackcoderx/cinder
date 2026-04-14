@@ -7,7 +7,7 @@ Hooks let you intercept every CRUD operation — validate data, enrich records, 
 
 ## Hook events
 
-For each collection named `{name}`, Cinder fires these events:
+For each collection named `{name}`, Zeno fires these events:
 
 | Event | When | Can modify payload |
 |-------|------|--------------------|
@@ -51,14 +51,14 @@ async def notify_subscribers(post, ctx):
     await send_notification(post["id"])
 ```
 
-## The `CinderContext` object
+## The `ZenoContext` object
 
-Every hook receives a `CinderContext` as its second argument:
+Every hook receives a `ZenoContext` as its second argument:
 
 ```python
-from cinder.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
 
-async def my_hook(data, ctx: CinderContext):
+async def my_hook(data, ctx: ZenoContext):
     print(ctx.user)        # dict of the current user, or None if unauthenticated
     print(ctx.collection)  # "posts"
     print(ctx.operation)   # "create", "update", "delete"
@@ -82,16 +82,16 @@ If you don't return anything (or return `None`), the original `data` is used unc
 
 ## Raising errors from hooks
 
-Raise a `CinderError` to abort the operation and return an HTTP error response:
+Raise a `ZenoError` to abort the operation and return an HTTP error response:
 
 ```python
-from cinder.errors import CinderError
+from zeno.errors import ZenoError
 
 @posts.on("before_create")
 async def check_quota(data, ctx):
     count = await get_post_count(ctx.user["id"])
     if count >= 10:
-        raise CinderError(403, "Post limit reached")
+        raise ZenoError(403, "Post limit reached")
     return data
 ```
 

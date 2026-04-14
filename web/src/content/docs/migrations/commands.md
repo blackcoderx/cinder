@@ -7,38 +7,38 @@ Migrations let you apply schema changes in a controlled, tracked way — essenti
 
 ## How migrations work
 
-Each migration is a Python file in a `migrations/` directory. Cinder tracks which migrations have been applied in a `_schema_migrations` table. Running `cinder migrate` applies any pending migrations in order.
+Each migration is a Python file in a `migrations/` directory. Zeno tracks which migrations have been applied in a `_schema_migrations` table. Running `zeno migrate` applies any pending migrations in order.
 
 ## Commands
 
-### `cinder migrate`
+### `zeno migrate`
 
 Apply all pending migrations:
 
 ```bash
-cinder migrate
-cinder migrate --app main.py
-cinder migrate --dir custom/migrations/path
+zeno migrate
+zeno migrate --app main.py
+zeno migrate --dir custom/migrations/path
 ```
 
 Options:
-- `--app` — path to your Cinder app file (used to read the database URL)
+- `--app` — path to your Zeno app file (used to read the database URL)
 - `--dir` — migration directory (default: `migrations`)
 
-### `cinder migrate run`
+### `zeno migrate run`
 
-Same as `cinder migrate` (explicit sub-command form):
+Same as `zeno migrate` (explicit sub-command form):
 
 ```bash
-cinder migrate run --app main.py
+zeno migrate run --app main.py
 ```
 
-### `cinder migrate status`
+### `zeno migrate status`
 
 Show the status of all migrations:
 
 ```bash
-cinder migrate status --app main.py
+zeno migrate status --app main.py
 ```
 
 Output:
@@ -50,31 +50,31 @@ ID                                       Status     Applied At
 20240102_add_author_index                pending    -
 ```
 
-### `cinder migrate create`
+### `zeno migrate create`
 
 Create a new blank migration file:
 
 ```bash
-cinder migrate create add_slug_to_posts
+zeno migrate create add_slug_to_posts
 # Creates: migrations/20240101_120000_add_slug_to_posts.py
 ```
 
-### `cinder migrate create --auto`
+### `zeno migrate create --auto`
 
 Auto-generate a migration by diffing your current schema against the database:
 
 ```bash
-cinder migrate create add_new_fields --auto --app main.py
+zeno migrate create add_new_fields --auto --app main.py
 ```
 
-Cinder compares each `Collection` definition to the live database and generates `up()` / `down()` functions for the detected changes.
+Zeno compares each `Collection` definition to the live database and generates `up()` / `down()` functions for the detected changes.
 
-### `cinder migrate rollback`
+### `zeno migrate rollback`
 
 Roll back the last applied migration (runs its `down()` function):
 
 ```bash
-cinder migrate rollback --app main.py
+zeno migrate rollback --app main.py
 ```
 
 ## Migration file format
@@ -91,15 +91,15 @@ async def down(db):
     # SQLite doesn't support DROP COLUMN directly; use table rebuild if needed
 ```
 
-`db` is a Cinder `Database` instance with `execute()`, `fetch_one()`, and `fetch_all()` methods.
+`db` is a Zeno `Database` instance with `execute()`, `fetch_one()`, and `fetch_all()` methods.
 
 ## Typical workflow
 
 1. Make a schema change in your `Collection` definition
-2. Create a migration: `cinder migrate create describe_the_change --auto --app main.py`
+2. Create a migration: `zeno migrate create describe_the_change --auto --app main.py`
 3. Review the generated file in `migrations/`
-4. Test locally: `cinder migrate --app main.py`
-5. Deploy and run `cinder migrate --app main.py` in your CI/CD pipeline before starting the server
+4. Test locally: `zeno migrate --app main.py`
+5. Deploy and run `zeno migrate --app main.py` in your CI/CD pipeline before starting the server
 
 ## Auto-sync vs migrations
 

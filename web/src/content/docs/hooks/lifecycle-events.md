@@ -3,7 +3,7 @@ title: Lifecycle Events
 description: Built-in events fired for every CRUD operation
 ---
 
-Cinder fires events before and after every database operation. Register handlers to run custom logic at each point.
+Zeno fires events before and after every database operation. Register handlers to run custom logic at each point.
 
 ## Collection events
 
@@ -72,12 +72,12 @@ async def set_defaults(data, ctx):
 
 Both forms are equivalent.
 
-## The `CinderContext` object
+## The `ZenoContext` object
 
 ```python
-from cinder.hooks.context import CinderContext
+from zeno.hooks.context import ZenoContext
 
-async def my_handler(data, ctx: CinderContext):
+async def my_handler(data, ctx: ZenoContext):
     ctx.user        # authenticated user dict, or None
     ctx.collection  # collection name (e.g. "posts")
     ctx.operation   # "create", "update", "delete"
@@ -102,23 +102,23 @@ If you don't return anything, the original `data` is used unchanged.
 
 ## Aborting an operation
 
-Raise `CinderError` from any hook to stop the operation and return an error response:
+Raise `ZenoError` from any hook to stop the operation and return an error response:
 
 ```python
-from cinder.errors import CinderError
+from zeno.errors import ZenoError
 
 @posts.on("before_delete")
 async def prevent_published_delete(record, ctx):
     if record.get("status") == "published":
-        raise CinderError(403, "Cannot delete a published post")
+        raise ZenoError(403, "Cannot delete a published post")
 ```
 
 ## Soft deletes
 
-Use `CinderError.cancel_delete()` in a `before_delete` hook to intercept a `DELETE` request, do your own cleanup (e.g. set a `deleted_at` timestamp), and **prevent the hard delete** from happening. Cinder reports 200 to the caller as if the delete succeeded.
+Use `ZenoError.cancel_delete()` in a `before_delete` hook to intercept a `DELETE` request, do your own cleanup (e.g. set a `deleted_at` timestamp), and **prevent the hard delete** from happening. Zeno reports 200 to the caller as if the delete succeeded.
 
 ```python
-from cinder.errors import CinderError
+from zeno.errors import ZenoError
 from datetime import datetime, timezone
 
 @posts.on("before_delete")
@@ -129,10 +129,10 @@ async def soft_delete(record, ctx):
         "UPDATE posts SET deleted_at = ? WHERE id = ?",
         (now, record["id"]),
     )
-    raise CinderError.cancel_delete()  # stops the hard DELETE, returns 200
+    raise ZenoError.cancel_delete()  # stops the hard DELETE, returns 200
 ```
 
-`CinderError.cancel_delete()` is a sentinel — it is caught specifically by the store and treated as a successful (soft) delete. Any other `CinderError` (e.g. status 403) propagates normally as an error response.
+`ZenoError.cancel_delete()` is a sentinel — it is caught specifically by the store and treated as a successful (soft) delete. Any other `ZenoError` (e.g. status 403) propagates normally as an error response.
 
 ## Multiple handlers
 

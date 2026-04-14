@@ -40,7 +40,7 @@ GET /api/posts?order_by=created_at
 ```
 
 :::note
-Advanced filtering operators (greater than, contains, etc.) and descending sort are not yet implemented in Cinder v0.1.0. Only exact match filtering and ascending `order_by` are currently supported.
+Advanced filtering operators (greater than, contains, etc.) and descending sort are not yet implemented in Zeno v0.1.0. Only exact match filtering and ascending `order_by` are currently supported.
 :::
 
 ## Expanding relations

@@ -3,14 +3,14 @@ title: Indexes
 description: Speed up queries with field and composite indexes
 ---
 
-Indexes speed up filtering, sorting, and lookups on large collections. Cinder creates indexes automatically when you declare them on fields or on the collection.
+Indexes speed up filtering, sorting, and lookups on large collections. Zeno creates indexes automatically when you declare them on fields or on the collection.
 
 ## Single-field indexes
 
 Add `indexed=True` to any field:
 
 ```python
-from cinder import Collection, TextField, IntField
+from zeno import Collection, TextField, IntField
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -20,7 +20,7 @@ posts = Collection("posts", fields=[
 ])
 ```
 
-Cinder generates:
+Zeno generates:
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_posts_author_id ON posts (author_id);
@@ -67,7 +67,7 @@ Indexes improve read performance but have a small cost on write operations. For 
 
 ## Index naming
 
-Cinder names indexes automatically:
+Zeno names indexes automatically:
 
 - Single field: `idx_{collection}_{field}`
 - Composite: `idx_{collection}_{field1}_{field2}`

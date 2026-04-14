@@ -1,21 +1,21 @@
 ---
 title: Authentication
-description: Built-in JWT authentication for Cinder apps
+description: Built-in JWT authentication for Zeno apps
 ---
 
-Cinder ships with a complete authentication system: user registration and login, JWT access tokens, email verification, and password reset — all wired up with a single call.
+Zeno ships with a complete authentication system: user registration and login, JWT access tokens, email verification, and password reset — all wired up with a single call.
 
 ## How it works
 
 1. A user registers or logs in and receives a **JWT access token**
 2. The client sends the token in the `Authorization: Bearer <token>` header on subsequent requests
-3. Cinder's middleware validates the token and attaches the user to `request.state.user`
+3. Zeno's middleware validates the token and attaches the user to `request.state.user`
 4. [Access control rules](/core-concepts/access-control/) use the authenticated user to decide whether to allow the request
 
 ## Enabling auth
 
 ```python
-from cinder import Auth
+from zeno import Auth
 
 auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)

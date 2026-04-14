@@ -1,16 +1,16 @@
 ---
-title: The Cinder App
+title: The Zeno App
 description: The central application object that wires everything together
 ---
 
-The `Cinder` class is the entry point for every application. It owns the database connection, registered collections, authentication config, and all optional subsystems.
+The `Zeno` class is the entry point for every application. It owns the database connection, registered collections, authentication config, and all optional subsystems.
 
 ## Creating an app
 
 ```python
-from cinder import Cinder
+from zeno import Zeno
 
-app = Cinder(database="app.db")
+app = Zeno(database="app.db")
 ```
 
 ### Constructor options
@@ -18,16 +18,16 @@ app = Cinder(database="app.db")
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `database` | `str` | `"app.db"` | Database URL or SQLite filename |
-| `title` | `str` | `"Cinder API"` | API title shown in OpenAPI docs |
+| `title` | `str` | `"Zeno API"` | API title shown in OpenAPI docs |
 | `version` | `str` | `"1.0.0"` | API version shown in OpenAPI docs |
 
 For PostgreSQL or MySQL, pass a full connection URL:
 
 ```python
-app = Cinder(database="postgresql://user:pass@localhost/mydb")
+app = Zeno(database="postgresql://user:pass@localhost/mydb")
 ```
 
-Or use an environment variable — Cinder reads `CINDER_DATABASE_URL` then `DATABASE_URL` automatically.
+Or use an environment variable — Zeno reads `ZENO_DATABASE_URL` then `DATABASE_URL` automatically.
 
 ## Registering collections
 
@@ -40,7 +40,7 @@ app.register(posts, auth=["read:public", "write:authenticated"])
 ## Enabling authentication
 
 ```python
-from cinder import Auth
+from zeno import Auth
 
 auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)
@@ -54,11 +54,11 @@ Each subsystem has a fluent configuration facade on the `app` object:
 
 ```python
 # File storage
-from cinder.storage import LocalFileBackend
+from zeno.storage import LocalFileBackend
 app.configure_storage(LocalFileBackend("./uploads"))
 
 # Email
-from cinder.email import SMTPBackend
+from zeno.email import SMTPBackend
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(from_address="no-reply@myapp.com", app_name="MyApp")
 
@@ -73,7 +73,7 @@ app.rate_limit.rule("/api/posts", limit=50, window=60)
 app.configure_redis(url="redis://localhost:6379")
 
 # Custom database backend
-from cinder.db.backends.postgresql import PostgreSQLBackend
+from zeno.db.backends.postgresql import PostgreSQLBackend
 app.configure_database(PostgreSQLBackend(url="...", min_size=2, max_size=20, ssl="require"))
 ```
 
@@ -95,9 +95,9 @@ app.on("orders:after_create", send_confirmation_email)
 ### Via the CLI (recommended)
 
 ```bash
-cinder serve main.py
-cinder serve main.py --reload  # development auto-reload
-cinder serve main.py --host 0.0.0.0 --port 8080
+zeno serve main.py
+zeno serve main.py --reload  # development auto-reload
+zeno serve main.py --host 0.0.0.0 --port 8080
 ```
 
 ### Programmatically
@@ -113,8 +113,8 @@ app.serve(host="0.0.0.0", port=8080)
 
 ```python
 # main.py
-from cinder import Cinder, ...
-app = Cinder(...)
+from zeno import Zeno, ...
+app = Zeno(...)
 # ... configure ...
 asgi_app = app.build()
 ```
@@ -126,7 +126,7 @@ gunicorn main:asgi_app -k uvicorn.workers.UvicornWorker
 
 ## Lifecycle events
 
-Cinder fires `app:startup` and `app:shutdown` during the ASGI lifespan:
+Zeno fires `app:startup` and `app:shutdown` during the ASGI lifespan:
 
 ```python
 @app.on("app:startup")
