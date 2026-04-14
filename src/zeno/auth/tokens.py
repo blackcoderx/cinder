@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from jose import ExpiredSignatureError, JWTError, jwt
 
-from zeno.errors import CinderError
+from zeno.errors import ZenoError
 
 ALGORITHM = "HS256"
 
@@ -27,6 +27,6 @@ def decode_token(token: str, secret: str) -> dict:
         payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
         return payload
     except ExpiredSignatureError:
-        raise CinderError(401, "Token has expired")
+        raise ZenoError(401, "Token has expired")
     except JWTError:
-        raise CinderError(401, "Invalid or expired token")
+        raise ZenoError(401, "Invalid or expired token")

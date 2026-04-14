@@ -20,7 +20,7 @@ from zeno.auth.models import (
 from zeno.auth.passwords import hash_password, verify_password
 from zeno.auth.tokens import create_token, decode_token
 from zeno.db.connection import Database
-from zeno.errors import CinderError
+from zeno.errors import ZenoError
 from zeno.hooks.context import CinderContext
 
 
@@ -31,19 +31,19 @@ def _user_response(user: dict) -> dict:
 async def _get_current_user(request: Request, db: Database, secret: str):
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
-        raise CinderError(401, "Authentication required")
+        raise ZenoError(401, "Authentication required")
 
     token = auth_header[7:]
     payload = decode_token(token, secret)
 
     if await is_blocked(db, payload["jti"]):
-        raise CinderError(401, "Token has been revoked")
+        raise ZenoError(401, "Token has been revoked")
 
     user = await db.fetch_one(
         f"SELECT * FROM {USERS_TABLE} WHERE id = ?", (payload["sub"],)
     )
     if user is None:
-        raise CinderError(401, "User not found")
+        raise ZenoError(401, "User not found")
 
     return dict(user), payload
 
@@ -55,7 +55,7 @@ def build_auth_routes(
 
     async def register(request: Request) -> JSONResponse:
         if not auth.allow_registration:
-            raise CinderError(403, "Registration is disabled")
+            raise ZenoError(403, "Registration is disabled")
 
         body = await request.json()
         ctx = CinderContext.from_request(request, operation="register")
@@ -65,20 +65,20 @@ def build_auth_routes(
         username = body.get("username")
 
         if not email or not password:
-            raise CinderError(400, "Email and password are required")
+            raise ZenoError(400, "Email and password are required")
 
         existing = await db.fetch_one(
             f"SELECT id FROM {USERS_TABLE} WHERE email = ?", (email,)
         )
         if existing:
-            raise CinderError(400, "Email already registered")
+            raise ZenoError(400, "Email already registered")
 
         if username:
             existing_username = await db.fetch_one(
                 f"SELECT id FROM {USERS_TABLE} WHERE username = ?", (username,)
             )
             if existing_username:
-                raise CinderError(400, "Username already taken")
+                raise ZenoError(400, "Username already taken")
 
         now = datetime.now(timezone.utc).isoformat()
         user_id = str(uuid.uuid4())
@@ -121,8 +121,8 @@ def build_auth_routes(
 
         # Send email verification link (non-blocking; silent if no backend configured)
         if email_config is not None:
-            from cinder.email.backends import EmailMessage
-            from cinder.email.templates import email_verification_email
+            from zeno.email.backends import EmailMessage
+            from zeno.email.templates import email_verification_email
 
             ver_token = await create_verification_token(db, user_id, email)
             verify_url = (
@@ -146,20 +146,20 @@ def build_auth_routes(
         password = body.get("password")
 
         if not email or not password:
-            raise CinderError(400, "Email and password are required")
+            raise ZenoError(400, "Email and password are required")
 
         user = await db.fetch_one(
             f"SELECT * FROM {USERS_TABLE} WHERE email = ?", (email,)
         )
         if user is None:
-            raise CinderError(401, "Invalid email or password")
+            raise ZenoError(401, "Invalid email or password")
 
         user = dict(user)
         if not verify_password(password, user["password"]):
-            raise CinderError(401, "Invalid email or password")
+            raise ZenoError(401, "Invalid email or password")
 
         if not user["is_active"]:
-            raise CinderError(403, "Account is disabled")
+            raise ZenoError(403, "Account is disabled")
 
         token = create_token(user["id"], user["role"], auth.token_expiry, secret)
         user_resp = _user_response(user)
@@ -203,7 +203,7 @@ def build_auth_routes(
         body = await runner.run("auth:before_password_reset", body, ctx)
         email = body.get("email")
         if not email:
-            raise CinderError(400, "Email is required")
+            raise ZenoError(400, "Email is required")
 
         user = await db.fetch_one(
             f"SELECT id FROM {USERS_TABLE} WHERE email = ?", (email,)
@@ -248,13 +248,13 @@ def build_auth_routes(
         new_password = body.get("new_password")
 
         if not token or not new_password:
-            raise CinderError(400, "Token and new_password are required")
+            raise ZenoError(400, "Token and new_password are required")
 
         reset = await db.fetch_one(
             f"SELECT * FROM {PASSWORD_RESETS_TABLE} WHERE token = ?", (token,)
         )
         if reset is None:
-            raise CinderError(400, "Invalid or expired reset token")
+            raise ZenoError(400, "Invalid or expired reset token")
 
         reset = dict(reset)
         now = datetime.now(timezone.utc).isoformat()
@@ -262,7 +262,7 @@ def build_auth_routes(
             await db.execute(
                 f"DELETE FROM {PASSWORD_RESETS_TABLE} WHERE token = ?", (token,)
             )
-            raise CinderError(400, "Invalid or expired reset token")
+            raise ZenoError(400, "Invalid or expired reset token")
 
         hashed = hash_password(new_password)
         await db.execute(
@@ -278,13 +278,13 @@ def build_auth_routes(
     async def verify_email(request: Request) -> JSONResponse:
         token = request.query_params.get("token")
         if not token:
-            raise CinderError(400, "Verification token is required")
+            raise ZenoError(400, "Verification token is required")
 
         row = await db.fetch_one(
             f"SELECT * FROM {EMAIL_VERIFICATIONS_TABLE} WHERE token = ?", (token,)
         )
         if row is None:
-            raise CinderError(400, "Invalid or expired verification token")
+            raise ZenoError(400, "Invalid or expired verification token")
 
         row = dict(row)
         now = datetime.now(timezone.utc).isoformat()
@@ -292,7 +292,7 @@ def build_auth_routes(
             await db.execute(
                 f"DELETE FROM {EMAIL_VERIFICATIONS_TABLE} WHERE token = ?", (token,)
             )
-            raise CinderError(400, "Invalid or expired verification token")
+            raise ZenoError(400, "Invalid or expired verification token")
 
         await db.execute(
             f"UPDATE {USERS_TABLE} SET is_verified = 1, updated_at = ? WHERE id = ?",
