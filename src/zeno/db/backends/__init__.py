@@ -12,7 +12,7 @@ def resolve_backend(url: str) -> DatabaseBackend:
     """Return the correct DatabaseBackend for the given URL.
 
     Resolution priority (highest → lowest):
-    1. CINDER_DATABASE_URL env var   (Cinder-specific override)
+    1. ZENO_DATABASE_URL env var   (ZENO-specific override)
     2. DATABASE_URL env var          (standard PaaS convention)
     3. Programmatic ``url`` argument
     4. Default: "app.db" (SQLite, zero config)
@@ -30,9 +30,7 @@ def resolve_backend(url: str) -> DatabaseBackend:
     installed.
     """
     effective_url: str = (
-        os.getenv("CINDER_DATABASE_URL")
-        or os.getenv("DATABASE_URL")
-        or url
+        os.getenv("ZENO_DATABASE_URL") or os.getenv("DATABASE_URL") or url
     )
 
     lower = effective_url.lower()
@@ -49,7 +47,7 @@ def resolve_backend(url: str) -> DatabaseBackend:
 
     # Default: SQLite — strip "sqlite:///" scheme prefix if present
     path = (
-        effective_url[len("sqlite:///"):]
+        effective_url[len("sqlite:///") :]
         if lower.startswith("sqlite:///")
         else effective_url
     )

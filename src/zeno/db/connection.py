@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from cinder.db.backends import resolve_backend
-from cinder.db.backends.base import DatabaseBackend
+from zeno.db.backends import resolve_backend
+from zeno.db.backends.base import DatabaseBackend
 
 
 class Database:
@@ -15,14 +15,14 @@ class Database:
         "mysql://user:pass@host/db"        → MySQL (requires aiomysql)
 
     Environment variables override the programmatic value:
-        CINDER_DATABASE_URL   — highest priority (Cinder-specific)
+        ZENO_DATABASE_URL   — highest priority (Cinder-specific)
         DATABASE_URL          — second priority (standard PaaS convention)
 
     Pool size (PostgreSQL / MySQL):
-        CINDER_DB_POOL_MIN    — minimum connections (default: 1)
-        CINDER_DB_POOL_MAX    — maximum connections (default: 10)
-        CINDER_DB_POOL_TIMEOUT    — seconds to wait for a free connection (default: 30)
-        CINDER_DB_CONNECT_TIMEOUT — seconds to open a new connection (default: 10)
+        ZENO_DB_POOL_MIN    — minimum connections (default: 1)
+        ZENO_DB_POOL_MAX    — maximum connections (default: 10)
+        ZENO_DB_POOL_TIMEOUT    — seconds to wait for a free connection (default: 30)
+        ZENO_DB_CONNECT_TIMEOUT — seconds to open a new connection (default: 10)
     """
 
     def __init__(self, url: str = "app.db"):

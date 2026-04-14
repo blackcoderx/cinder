@@ -6,7 +6,7 @@ import aiosqlite
 
 from .base import DatabaseBackend, DatabaseIntegrityError
 
-logger = logging.getLogger("cinder.db.backends.sqlite")
+logger = logging.getLogger("zeno.db.backends.sqlite")
 
 
 class SQLiteBackend(DatabaseBackend):

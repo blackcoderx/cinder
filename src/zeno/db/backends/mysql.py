@@ -7,18 +7,18 @@ from urllib.parse import urlparse
 
 from .base import DatabaseBackend, DatabaseIntegrityError
 
-logger = logging.getLogger("cinder.db.backends.mysql")
+logger = logging.getLogger("zeno.db.backends.mysql")
 
 
 class MySQLBackend(DatabaseBackend):
     """MySQL database backend using aiomysql connection pool.
 
-    Install: pip install cinder[mysql]   (aiomysql>=0.2.0)
+    Install: pip install zeno[mysql]   (aiomysql>=0.2.0)
 
     Parameter style: callers write '?' — this backend converts to %s.
     Pool size is configurable via constructor args or env vars:
-        CINDER_DB_POOL_MIN  (default: 1)
-        CINDER_DB_POOL_MAX  (default: 10)
+        ZENO_DB_POOL_MIN  (default: 1)
+        ZENO_DB_POOL_MAX  (default: 10)
 
     Accepted URL schemes:
         mysql://user:pass@host:3306/db
@@ -46,8 +46,8 @@ class MySQLBackend(DatabaseBackend):
         self._user = parsed.username or "root"
         self._password = parsed.password or ""
         self._db = parsed.path.lstrip("/")
-        self._min_size = min_size or int(os.getenv("CINDER_DB_POOL_MIN", "1"))
-        self._max_size = max_size or int(os.getenv("CINDER_DB_POOL_MAX", "10"))
+        self._min_size = min_size or int(os.getenv("ZENO_DB_POOL_MIN", "1"))
+        self._max_size = max_size or int(os.getenv("ZENO_DB_POOL_MAX", "10"))
         self._pool = None  # aiomysql.Pool, lazily created
 
     @staticmethod
@@ -59,7 +59,7 @@ class MySQLBackend(DatabaseBackend):
     def _rewrite_ddl(sql: str) -> str:
         """Rewrite TEXT PRIMARY KEY → VARCHAR(36) PRIMARY KEY for MySQL.
 
-        MySQL requires a length prefix for TEXT primary keys. Since Cinder
+        MySQL requires a length prefix for TEXT primary keys. Since ZENO
         always uses UUID strings (exactly 36 chars) as primary keys this
         substitution is always safe.
         """
@@ -78,10 +78,10 @@ class MySQLBackend(DatabaseBackend):
         except ImportError as exc:
             raise ImportError(
                 "aiomysql is required for MySQL support. "
-                "Install it with: pip install cinder[mysql]"
+                "Install it with: pip install zeno[mysql]"
             ) from exc
 
-        connect_timeout = int(os.getenv("CINDER_DB_CONNECT_TIMEOUT", "10"))
+        connect_timeout = int(os.getenv("ZENO_DB_CONNECT_TIMEOUT", "10"))
 
         try:
             self._pool = await aiomysql.create_pool(

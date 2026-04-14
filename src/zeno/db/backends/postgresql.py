@@ -5,20 +5,20 @@ import os
 
 from .base import DatabaseBackend, DatabaseIntegrityError
 
-logger = logging.getLogger("cinder.db.backends.postgresql")
+logger = logging.getLogger("zeno.db.backends.postgresql")
 
 
 class PostgreSQLBackend(DatabaseBackend):
     """PostgreSQL database backend using asyncpg connection pool.
 
-    Install: pip install cinder[postgres]   (asyncpg>=0.29.0)
+    Install: pip install zeno[postgres]   (asyncpg>=0.29.0)
 
     Parameter style: callers write '?' — this backend converts to $1, $2, ...
     Pool size is configurable via constructor args or env vars:
-        CINDER_DB_POOL_MIN  (default: 1)
-        CINDER_DB_POOL_MAX  (default: 10)
-        CINDER_DB_POOL_TIMEOUT   (default: 30, seconds)
-        CINDER_DB_CONNECT_TIMEOUT (default: 10, seconds)
+        ZENO_DB_POOL_MIN  (default: 1)
+        ZENO_DB_POOL_MAX  (default: 10)
+        ZENO_DB_POOL_TIMEOUT   (default: 30, seconds)
+        ZENO_DB_CONNECT_TIMEOUT (default: 10, seconds)
 
     For NeonDB / Supabase (serverless), append ?sslmode=require to the DSN.
     max_inactive_connection_lifetime=300 keeps connections alive through
@@ -35,8 +35,8 @@ class PostgreSQLBackend(DatabaseBackend):
         statement_timeout: int | None = None,
     ) -> None:
         self._url = url
-        self._min_size = min_size or int(os.getenv("CINDER_DB_POOL_MIN", "1"))
-        self._max_size = max_size or int(os.getenv("CINDER_DB_POOL_MAX", "10"))
+        self._min_size = min_size or int(os.getenv("ZENO_DB_POOL_MIN", "1"))
+        self._max_size = max_size or int(os.getenv("ZENO_DB_POOL_MAX", "10"))
         self._max_inactive_connection_lifetime = max_inactive_connection_lifetime
         self._ssl = ssl
         self._statement_timeout = statement_timeout
@@ -59,14 +59,14 @@ class PostgreSQLBackend(DatabaseBackend):
                 "Install it with: pip install cinder[postgres]"
             ) from exc
 
-        connect_timeout = float(os.getenv("CINDER_DB_CONNECT_TIMEOUT", "10"))
+        connect_timeout = float(os.getenv("ZENO_DB_CONNECT_TIMEOUT", "10"))
 
         try:
             kwargs: dict = {
                 "min_size": self._min_size,
                 "max_size": self._max_size,
                 "max_inactive_connection_lifetime": self._max_inactive_connection_lifetime,
-                "timeout": float(os.getenv("CINDER_DB_POOL_TIMEOUT", "30")),
+                "timeout": float(os.getenv("ZENO_DB_POOL_TIMEOUT", "30")),
                 "command_timeout": connect_timeout,
             }
             if self._ssl:
