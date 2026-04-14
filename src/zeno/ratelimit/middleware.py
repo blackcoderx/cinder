@@ -1,4 +1,4 @@
-"""Rate-limit middleware for Cinder.
+"""Rate-limit middleware for Zeno.
 
 Sits just above the cache middleware (rate-limit fires first so abusive traffic
 never even reaches the cache lookup).

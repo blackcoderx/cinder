@@ -1,4 +1,4 @@
-"""Core email abstractions for Cinder.
+"""Core email abstractions for Zeno.
 
 ``EmailBackend`` is the abstract base class every backend must implement.
 ``EmailMessage`` is the data class passed to ``send()``.
@@ -6,6 +6,7 @@
 is configured — it logs the message to stdout so developers can inspect emails
 during local development without any SMTP setup.
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,7 +44,7 @@ class EmailMessage:
 
 
 class EmailBackend(ABC):
-    """Abstract base class for Cinder email backends.
+    """Abstract base class for Zeno email backends.
 
     Subclass this to integrate any delivery mechanism — SMTP, HTTP API,
     in-memory queue, etc. The only required method is ``send``.

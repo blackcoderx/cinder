@@ -1,4 +1,4 @@
-"""Orphan file cleanup for Cinder collections.
+"""Orphan file cleanup for Zeno collections.
 
 When a record is deleted, any files stored in its ``FileField`` columns must
 also be removed from the storage backend. This module wires ``after_delete``

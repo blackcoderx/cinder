@@ -1,4 +1,4 @@
-"""Built-in email templates for Cinder's auth flows.
+"""Built-in email templates for Zeno's auth flows.
 
 Each function returns a ``(subject, html_body, text_body)`` 3-tuple.
 Templates use inline styles only — no CDN, no external resources, no
@@ -38,6 +38,7 @@ You are not required to use these templates. Override any of them on
 The ``ctx`` dict passed to your callable always contains the same keys
 documented on each function below — nothing hidden, nothing extra.
 """
+
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
@@ -79,7 +80,7 @@ def _html_wrapper(app_name: str, body: str, footer: str = "") -> str:
   <div style="{_CONTAINER_STYLE}">
     <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">{app_name}</p>
     {body}
-    {f'<div style="{_FOOTER_STYLE}">{footer}</div>' if footer else ''}
+    {f'<div style="{_FOOTER_STYLE}">{footer}</div>' if footer else ""}
   </div>
 </body>
 </html>"""
@@ -88,6 +89,7 @@ def _html_wrapper(app_name: str, body: str, footer: str = "") -> str:
 # ---------------------------------------------------------------------------
 # Password-reset template
 # ---------------------------------------------------------------------------
+
 
 def password_reset_email(
     reset_url: str,
@@ -132,7 +134,7 @@ def password_reset_email(
 
     footer_html = (
         f"If the button above doesn't work, copy and paste this URL into your browser:<br>"
-        f"<a href=\"{reset_url}\" style=\"color: #2563eb; word-break: break-all;\">{reset_url}</a>"
+        f'<a href="{reset_url}" style="color: #2563eb; word-break: break-all;">{reset_url}</a>'
     )
 
     html_body = _html_wrapper(app_name, body_html, footer_html)
@@ -153,6 +155,7 @@ def password_reset_email(
 # ---------------------------------------------------------------------------
 # Email-verification template
 # ---------------------------------------------------------------------------
+
 
 def email_verification_email(
     verify_url: str,
@@ -193,7 +196,7 @@ def email_verification_email(
 
     footer_html = (
         f"If the button above doesn't work, copy and paste this URL into your browser:<br>"
-        f"<a href=\"{verify_url}\" style=\"color: #2563eb; word-break: break-all;\">{verify_url}</a>"
+        f'<a href="{verify_url}" style="color: #2563eb; word-break: break-all;">{verify_url}</a>'
     )
 
     html_body = _html_wrapper(app_name, body_html, footer_html)
@@ -214,6 +217,7 @@ def email_verification_email(
 # ---------------------------------------------------------------------------
 # Welcome template
 # ---------------------------------------------------------------------------
+
 
 def welcome_email(
     user_email: str,

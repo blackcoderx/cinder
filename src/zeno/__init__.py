@@ -1,4 +1,8 @@
-"""Zeno — A lightweight backend framework for Python."""
+"""Zeno — A lightweight backend framework for Python.
+
+A lightweight, open-source backend framework for Python. Define your data schema
+— Zeno auto-generates a full REST API with auth, CRUD, filtering, and more.
+"""
 
 from dotenv import load_dotenv
 
@@ -10,6 +14,7 @@ from zeno.collections.schema import (
     Collection,
     DateTimeField,
     Field,
+    FileField,
     FloatField,
     IntField,
     JSONField,
@@ -41,6 +46,7 @@ __all__ = [
     "URLField",
     "JSONField",
     "RelationField",
+    "FileField",
     "ZenoError",
     # Cache
     "CacheBackend",

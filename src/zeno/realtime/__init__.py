@@ -22,9 +22,9 @@ __all__ = [
 
 
 class RealtimeFacade:
-    """Public surface for the Cinder realtime layer.
+    """Public surface for the Zeno realtime layer.
 
-    Attached to the ``Cinder`` app as ``app.realtime``.
+    Attached to the ``Zeno`` app as ``app.realtime``.
 
     **Developer-facing API:**
 
@@ -57,10 +57,10 @@ class RealtimeFacade:
         # Override to change the envelope shape for all auto-emitted events
         self.envelope_builder: Callable = default_envelope
 
-        # Internal: collections dict set by Cinder.build()
+        # Internal: collections dict set by Zeno.build()
         self._collections: dict = {}
 
-        # Internal: weak reference back to the Cinder app (for auth_rules lookup)
+        # Internal: weak reference back to the Zeno app (for auth_rules lookup)
         self._app_ref = app_ref
 
         # Per-collection opt-out
@@ -111,7 +111,7 @@ class RealtimeFacade:
         self._extra_ws_routes.append((path, handler))
 
     # ------------------------------------------------------------------
-    # Internal: called from Cinder.build()
+    # Internal: called from Zeno.build()
     # ------------------------------------------------------------------
 
     def _build_routes(self, db, secret: str) -> list:

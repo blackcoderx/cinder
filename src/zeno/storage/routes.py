@@ -1,4 +1,4 @@
-"""File upload / download / delete route handlers for Cinder collections.
+"""File upload / download / delete route handlers for Zeno collections.
 
 Each public function is a *factory* that captures the collection, field, store,
 and backend in a closure and returns a Starlette-compatible async callable.
@@ -275,7 +275,7 @@ def make_download_handler(
         if resolved_url:
             return RedirectResponse(url=resolved_url, status_code=302)
 
-        # 4. Proxy the bytes through Cinder
+        # 4. Proxy the bytes through Zeno
         try:
             data, content_type = await backend.get(key)
         except FileNotFoundError:

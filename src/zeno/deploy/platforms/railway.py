@@ -48,6 +48,6 @@ class RailwayGenerator(PlatformGenerator):
                 "",
                 f"{'4' if p.needs_postgres else '3'}. Add a Redis service:",
                 "   - Click 'New' → 'Database' → 'Redis'",
-                "   - Add a reference variable: CINDER_REDIS_URL = ${{Redis.REDIS_URL}}",
+                "   - Add a reference variable: ZENO_REDIS_URL = ${{Redis.REDIS_URL}}",
             ]
         return "\n".join(lines)

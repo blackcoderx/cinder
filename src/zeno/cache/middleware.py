@@ -1,4 +1,4 @@
-"""Cache-aside middleware for Cinder GET responses.
+"""Cache-aside middleware for Zeno GET responses.
 
 Intercepts GET requests to ``/api/{collection}`` and ``/api/{collection}/{id}``
 paths, serves cached responses on hits, and stores responses on misses.

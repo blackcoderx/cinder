@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 class FileStorageBackend(ABC):
-    """Abstract base class for Cinder file storage backends.
+    """Abstract base class for Zeno file storage backends.
 
     Subclass this to implement a custom storage provider. The only required
     methods are ``put``, ``get``, and ``delete``. Override ``signed_url`` and/or
@@ -34,7 +34,7 @@ class FileStorageBackend(ABC):
     async def signed_url(self, key: str, expires_in: int = 900) -> str | None:
         """Return a time-limited URL for authenticated download, or ``None``.
 
-        When ``None`` is returned, Cinder proxies the file bytes through the
+        When ``None`` is returned, Zeno proxies the file bytes through the
         server instead of redirecting. Defaults to ``None`` (proxy mode).
 
         ``expires_in`` is the lifetime of the URL in seconds (default 15 min).
@@ -45,7 +45,7 @@ class FileStorageBackend(ABC):
         """Return a permanent public URL for the file, or ``None``.
 
         Used for ``FileField(public=True)`` fields. When ``None`` is returned,
-        Cinder proxies the bytes. Defaults to ``None``.
+        Zeno proxies the bytes. Defaults to ``None``.
         """
         return None
 
@@ -54,7 +54,7 @@ class LocalFileBackend(FileStorageBackend):
     """Store files on the local filesystem under ``base_path``.
 
     Zero external dependencies. Files are always served by proxying bytes
-    through the Cinder server (no signed URLs, no CDN).
+    through the Zeno server (no signed URLs, no CDN).
 
     Example::
 
@@ -84,6 +84,7 @@ class LocalFileBackend(FileStorageBackend):
         # Best-effort MIME detection from extension; caller already knows the
         # stored content_type but we don't persist it separately for local files.
         import mimetypes
+
         content_type, _ = mimetypes.guess_type(str(path))
         return path.read_bytes(), content_type or "application/octet-stream"
 

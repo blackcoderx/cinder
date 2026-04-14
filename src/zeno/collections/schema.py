@@ -254,7 +254,7 @@ class FileField(Field):
     S3, R2, MinIO, etc.). This field holds only the metadata dict (or list of
     dicts for ``multiple=True``).
 
-    Cinder automatically generates ``POST``, ``GET``, and ``DELETE`` routes at
+    Zeno automatically generates ``POST``, ``GET``, and ``DELETE`` routes at
     ``/api/{collection}/{id}/files/{field_name}`` for every ``FileField``.
 
     Args:
@@ -358,7 +358,7 @@ class RelationField(Field):
 
 
 class Collection:
-    """A named schema that Cinder turns into a full CRUD API."""
+    """A named schema that Zeno turns into a full CRUD API."""
 
     def __init__(
         self,
@@ -371,7 +371,7 @@ class Collection:
         self.indexes: list[tuple[str, ...]] = indexes or []
         # Each collection starts with its own registry/runner so it is
         # usable standalone (tests, scripts). When the collection is
-        # registered on a Cinder app, ``bind_registry`` swaps in the app's
+        # registered on a Zeno app, ``bind_registry`` swaps in the app's
         # shared registry and migrates any pre-registered handlers so that
         # app-level, collection-level and auth-level hooks all live in the
         # same place — namespaced purely by event string.

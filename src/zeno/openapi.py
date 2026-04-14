@@ -59,7 +59,7 @@ SWAGGER_HTML = """<!DOCTYPE html>
 class ZenoOpenAPI:
     def __init__(
         self,
-        title: str = "Cinder API",
+        title: str = "Zeno API",
         version: str = "1.0.0",
         collections: dict[str, tuple[Collection, dict[str, str]]] | None = None,
         auth_enabled: bool = False,

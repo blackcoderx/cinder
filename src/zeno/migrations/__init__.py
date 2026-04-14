@@ -1,4 +1,4 @@
-# Cinder migration system
+# Zeno migration system
 from .engine import MigrationEngine, MigrationFile
 from .diff import SchemaComparator, AddTable, AddColumn, DropColumn, AddIndex, DropIndex
 from .generator import (

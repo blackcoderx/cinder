@@ -1,7 +1,7 @@
 """Shared async Redis client factory.
 
 A single ``redis.asyncio.Redis`` instance is created lazily on first access
-and reused across all Cinder subsystems (cache, rate-limit, realtime broker).
+and reused across all Zeno subsystems (cache, rate-limit, realtime broker).
 
 Usage::
 

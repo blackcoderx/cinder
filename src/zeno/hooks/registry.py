@@ -7,7 +7,7 @@ class HookRegistry:
     """A simple named-event registry.
 
     Maps event names (any string) to an ordered list of handlers. Handlers
-    execute in registration order. No event name is validated — Cinder's
+    execute in registration order. No event name is validated — Zeno's
     built-in lifecycle events and developer-defined custom events share the
     same registry.
     """

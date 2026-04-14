@@ -1,4 +1,4 @@
-"""Tag-based cache invalidation for Cinder collections.
+"""Tag-based cache invalidation for Zeno collections.
 
 Wires ``after_create``, ``after_update``, and ``after_delete`` hooks for every
 registered collection so that writes automatically bust cached responses.

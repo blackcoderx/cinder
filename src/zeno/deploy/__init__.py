@@ -1,1 +1,1 @@
-"""Cinder deployment configuration generator."""
+"""Zeno deployment configuration generator."""

@@ -36,6 +36,7 @@ def _make_unhandled_error_handler(runner: HookRunner | None):
             {"status": 500, "error": "Internal server error"},
             status_code=500,
         )
+
     return _handle_unhandled_error
 
 
@@ -99,7 +100,7 @@ class AuthMiddleware:
             auth_header = headers.get(b"authorization", b"").decode()
 
             if auth_header.startswith("Bearer "):
-                token = auth_header[len("Bearer "):]
+                token = auth_header[len("Bearer ") :]
                 try:
                     payload = decode_token(token, self.secret)
                 except Exception:
@@ -131,7 +132,7 @@ def build_middleware_stack(
     cache_middleware=None,
     ratelimit_middleware=None,
 ) -> ASGIApp:
-    """Wrap the app with the standard Cinder middleware stack.
+    """Wrap the app with the standard Zeno middleware stack.
 
     Order (outermost to innermost):
     1. ErrorHandler — catches all errors

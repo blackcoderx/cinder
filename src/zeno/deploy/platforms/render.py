@@ -34,7 +34,7 @@ class RenderGenerator(PlatformGenerator):
                 startCommand: {self._start_with_migrate(use_port_env=True)}
                 healthCheckPath: /api/health
                 envVars:
-                  - key: CINDER_SECRET
+                  - key: ZENO_SECRET
                     generateValue: true
                   - key: PYTHON_VERSION
                     value: "{p.python_version}"
@@ -52,7 +52,7 @@ class RenderGenerator(PlatformGenerator):
             """).format(name=p.project_name)
         if p.needs_redis:
             lines += dedent("""\
-                  - key: CINDER_REDIS_URL
+                  - key: ZENO_REDIS_URL
                     fromService:
                       name: {name}-redis
                       type: keyvalue

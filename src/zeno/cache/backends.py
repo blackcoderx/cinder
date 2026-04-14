@@ -21,7 +21,7 @@ logger = logging.getLogger("zeno.cache.backends")
 
 
 class CacheBackend(ABC):
-    """Abstract base for Cinder cache backends."""
+    """Abstract base for Zeno cache backends."""
 
     @abstractmethod
     async def get(self, key: str) -> bytes | None:
@@ -133,7 +133,7 @@ class MemoryCacheBackend(CacheBackend):
 
 
 class RedisCacheBackend(CacheBackend):
-    """Redis-backed cache using the shared Cinder Redis client.
+    """Redis-backed cache using the shared Zeno Redis client.
 
     Requires ``pip install 'zeno[redis]'``.
 

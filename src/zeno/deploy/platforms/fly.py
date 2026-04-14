@@ -82,7 +82,7 @@ class FlyGenerator(PlatformGenerator):
                     "5" if p.needs_postgres else "4"
                 ),
                 "   fly redis create",
-                "   fly secrets set CINDER_REDIS_URL=<redis-url-from-above>",
+                "   fly secrets set ZENO_REDIS_URL=<redis-url-from-above>",
             ]
         lines += ["", "Deploy: fly deploy"]
         return "\n".join(lines)

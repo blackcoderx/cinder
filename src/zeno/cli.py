@@ -90,7 +90,7 @@ def serve(
 def init(
     project_name: str = typer.Argument(..., help="Name of the project to create"),
 ):
-    """Scaffold a new Cinder project."""
+    """Scaffold a new Zeno project."""
     project_path = Path(project_name)
     project_path.mkdir(parents=True, exist_ok=True)
 
@@ -183,7 +183,7 @@ def doctor(
         db_url = database
     else:
         db_url = (
-            os.environ.get("CINDER_DATABASE_URL")
+            os.environ.get("ZENO_DATABASE_URL")
             or os.environ.get("DATABASE_URL")
             or "app.db"
         )
@@ -212,7 +212,7 @@ def doctor(
         all_ok = False
 
     # --- Redis check ---
-    redis_url = os.environ.get("CINDER_REDIS_URL") or os.environ.get("REDIS_URL")
+    redis_url = os.environ.get("ZENO_REDIS_URL") or os.environ.get("REDIS_URL")
     if redis_url:
         try:
             import redis.asyncio as aioredis
@@ -351,7 +351,7 @@ def _get_db_url_for_migrate(app_path: Optional[str]) -> tuple[str, object | None
         zeno_app, _ = _load_app(app_path)
         return zeno_app.database, zeno_app
     url = (
-        os.environ.get("CINDER_DATABASE_URL")
+        os.environ.get("ZENO_DATABASE_URL")
         or os.environ.get("DATABASE_URL")
         or "app.db"
     )
@@ -556,13 +556,13 @@ def deploy(
         "-p",
         help=f"Target platform: {', '.join(SUPPORTED_PLATFORMS)}",
     ),
-    app_path: str = typer.Option("main.py", "--app", help="Path to Cinder app file"),
+    app_path: str = typer.Option("main.py", "--app", help="Path to Zeno app file"),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Preview files without writing"
     ),
     force: bool = typer.Option(False, "--force", help="Overwrite existing files"),
 ):
-    """Generate deployment configuration files for your Cinder app."""
+    """Generate deployment configuration files for your Zeno app."""
     from zeno.deploy.config import generate_zeno_toml
     from zeno.deploy.introspect import introspect
     from zeno.deploy.platforms import PLATFORMS

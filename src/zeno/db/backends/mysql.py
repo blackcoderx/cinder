@@ -27,7 +27,7 @@ class MySQLBackend(DatabaseBackend):
 
     DDL note: MySQL cannot use bare TEXT as a primary key. This backend
     rewrites TEXT PRIMARY KEY → VARCHAR(36) PRIMARY KEY in CREATE TABLE
-    statements (all Cinder id columns are UUID strings, always 36 chars).
+    statements (all Zeno id columns are UUID strings, always 36 chars).
     """
 
     def __init__(

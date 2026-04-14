@@ -10,7 +10,7 @@ from .backends import FileStorageBackend
 class S3CompatibleBackend(FileStorageBackend):
     """File storage backed by any S3-compatible object store.
 
-    Uses boto3 (sync) executed in a thread pool so Cinder's async event loop
+    Uses boto3 (sync) executed in a thread pool so Zeno's async event loop
     is never blocked. Requires the ``s3`` optional dependency::
 
         pip install zeno[s3]
@@ -89,7 +89,12 @@ class S3CompatibleBackend(FileStorageBackend):
         region: str = "us-east-1",
     ) -> "S3CompatibleBackend":
         """Amazon Web Services S3."""
-        return cls(bucket=bucket, access_key=access_key, secret_key=secret_key, region_name=region)
+        return cls(
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            region_name=region,
+        )
 
     @classmethod
     def r2(
@@ -148,7 +153,9 @@ class S3CompatibleBackend(FileStorageBackend):
         """
         # Extract region from hostname: s3.<region>.backblazeb2.com
         try:
-            host = endpoint.split("://", 1)[1].split("/")[0]  # e.g. s3.us-west-001.backblazeb2.com
+            host = endpoint.split("://", 1)[1].split("/")[
+                0
+            ]  # e.g. s3.us-west-001.backblazeb2.com
             parts = host.split(".")
             region = parts[1] if len(parts) >= 3 else "us-west-001"
         except Exception:
@@ -245,7 +252,9 @@ class S3CompatibleBackend(FileStorageBackend):
         if "signature_version" in self._extra_config:
             config_kwargs["signature_version"] = self._extra_config["signature_version"]
         if "addressing_style" in self._extra_config:
-            config_kwargs["s3"] = {"addressing_style": self._extra_config["addressing_style"]}
+            config_kwargs["s3"] = {
+                "addressing_style": self._extra_config["addressing_style"]
+            }
 
         client_kwargs: dict[str, Any] = {
             "service_name": "s3",
@@ -269,7 +278,9 @@ class S3CompatibleBackend(FileStorageBackend):
     async def _run(self, func, *args, **kwargs):
         """Run a sync boto3 call in a thread pool to avoid blocking the event loop."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+        return await loop.run_in_executor(
+            None, functools.partial(func, *args, **kwargs)
+        )
 
     # ------------------------------------------------------------------
     # FileStorageBackend interface
@@ -297,7 +308,11 @@ class S3CompatibleBackend(FileStorageBackend):
             raise FileNotFoundError(f"No file at key '{key}'")
         except Exception as exc:
             # Re-raise boto3 ClientError as FileNotFoundError for 404s
-            error_code = getattr(getattr(exc, "response", {}).get("Error", {}), "get", lambda k, d=None: d)("Code")
+            error_code = getattr(
+                getattr(exc, "response", {}).get("Error", {}),
+                "get",
+                lambda k, d=None: d,
+            )("Code")
             if error_code == "NoSuchKey":
                 raise FileNotFoundError(f"No file at key '{key}'") from exc
             raise

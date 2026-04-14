@@ -19,11 +19,11 @@ async def authenticate_ws_token(
 
     Used by both the WebSocket and SSE handlers because
     ``AuthMiddleware`` in ``pipeline.py`` only processes HTTP scopes.
-    Unlike the middleware, this function raises ``CinderError`` so
+    Unlike the middleware, this function raises ``ZenoError`` so
     transport handlers can send a proper close/error response:
 
-    - ``CinderError(401, ...)`` — invalid/expired token or blocked JTI
-    - ``CinderError(401, "User not found")`` — valid token, missing user row
+    - ``ZenoError(401, ...)`` — invalid/expired token or blocked JTI
+    - ``ZenoError(401, "User not found")`` — valid token, missing user row
 
     Returns the user dict (without the ``password`` field) on success.
     """

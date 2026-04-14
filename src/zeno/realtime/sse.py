@@ -28,7 +28,7 @@ HEARTBEAT_INTERVAL: float = float(os.getenv("ZENO_SSE_HEARTBEAT", "15"))
 def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
     """Return the SSE HTTP handler bound to this app's realtime facade.
 
-    Called once from ``Cinder.build()``; the resulting coroutine is registered
+    Called once from ``Zeno.build()``; the resulting coroutine is registered
     as a ``Route`` with ``methods=["GET"]``.
 
     Query parameters:

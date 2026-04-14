@@ -24,7 +24,7 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
     """Return the WebSocket ASGI endpoint closure bound to this app's
     realtime facade, database, and JWT secret.
 
-    Called once from ``Cinder.build()``; the resulting coroutine is registered
+    Called once from ``Zeno.build()``; the resulting coroutine is registered
     as a ``WebSocketRoute``.
     """
 

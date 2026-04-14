@@ -1,4 +1,4 @@
-"""Inspect a Cinder app instance to build a deployment profile."""
+"""Inspect a Zeno app instance to build a deployment profile."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def introspect(app_path: str) -> AppProfile:
     module_name = path.stem
     module = importlib.import_module(module_name)
 
-    # Find the Cinder instance and its variable name
+    # Find the Zeno instance and its variable name
     zeno_app: Zeno | None = None
     var_name = "app"
     for attr_name in dir(module):
@@ -59,22 +59,20 @@ def introspect(app_path: str) -> AppProfile:
             break
 
     if zeno_app is None:
-        raise RuntimeError(f"No Cinder instance found in {app_path}")
+        raise RuntimeError(f"No Zeno instance found in {app_path}")
 
     # --- Detect database type ---
     import os
 
     db_url = (
-        os.getenv("CINDER_DATABASE_URL")
-        or os.getenv("DATABASE_URL")
-        or zeno_app.database
+        os.getenv("ZENO_DATABASE_URL") or os.getenv("DATABASE_URL") or zeno_app.database
     )
     needs_postgres = db_url.startswith(("postgresql://", "postgres://"))
     needs_mysql = db_url.startswith(("mysql://", "mysql+aiomysql://"))
     needs_sqlite = not needs_postgres and not needs_mysql
 
     # --- Detect Redis usage ---
-    redis_url = os.getenv("CINDER_REDIS_URL")
+    redis_url = os.getenv("ZENO_REDIS_URL")
     needs_redis = bool(redis_url)
     if not needs_redis:
         # Check if cache or rate-limit backends are Redis-backed

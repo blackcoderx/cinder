@@ -9,7 +9,7 @@ logger = logging.getLogger("zeno.realtime.broker")
 
 @runtime_checkable
 class BrokerProtocol(Protocol):
-    """Interface that all Cinder realtime brokers must satisfy.
+    """Interface that all Zeno realtime brokers must satisfy.
 
     Both :class:`RealtimeBroker` (in-process) and ``RedisBroker`` (Redis
     pub/sub) implement this protocol.  Custom brokers should also satisfy it

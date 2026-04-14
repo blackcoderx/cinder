@@ -1,4 +1,4 @@
-"""SMTP email backend for Cinder.
+"""SMTP email backend for Zeno.
 
 ``SMTPBackend`` is a concrete ``EmailBackend`` implementation that uses
 ``aiosmtplib`` for async SMTP delivery. It ships with provider presets for
@@ -24,6 +24,7 @@ Quick start::
     # Any custom SMTP server
     app.email.use(SMTPBackend(hostname="smtp.myhost.com", port=587, username="u", password="p"))
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -135,7 +136,9 @@ class SMTPBackend(EmailBackend):
         )
 
     @classmethod
-    def mailgun(cls, *, username: str, password: str, eu: bool = False) -> "SMTPBackend":
+    def mailgun(
+        cls, *, username: str, password: str, eu: bool = False
+    ) -> "SMTPBackend":
         """Mailgun.
 
         ``username`` is typically ``postmaster@mg.yourdomain.com``.
@@ -235,7 +238,9 @@ class SMTPBackend(EmailBackend):
             ) from exc
 
         mime = self._build_mime(message)
-        await self._send_with_retry(aiosmtplib, mime, self._max_retries, self._retry_base_delay)
+        await self._send_with_retry(
+            aiosmtplib, mime, self._max_retries, self._retry_base_delay
+        )
 
     async def _send_with_retry(
         self,
@@ -249,7 +254,11 @@ class SMTPBackend(EmailBackend):
         Permanent errors (auth failure, recipients refused) are re-raised
         immediately. Transient errors trigger a sleep + retry.
         """
-        _PERMANENT = ("SMTPAuthenticationError", "SMTPRecipientsRefused", "SMTPSenderRefused")
+        _PERMANENT = (
+            "SMTPAuthenticationError",
+            "SMTPRecipientsRefused",
+            "SMTPSenderRefused",
+        )
         try:
             await asyncio.wait_for(
                 aiosmtplib.send(
@@ -268,7 +277,9 @@ class SMTPBackend(EmailBackend):
                 raise
             logger.warning(
                 "SMTP timeout sending to %s (retries left: %d) — retrying in %.1fs",
-                mime["To"], retries_left - 1, delay,
+                mime["To"],
+                retries_left - 1,
+                delay,
             )
             await asyncio.sleep(delay)
             await self._send_with_retry(aiosmtplib, mime, retries_left - 1, delay * 2)
@@ -278,17 +289,24 @@ class SMTPBackend(EmailBackend):
                 # Auth / recipient errors — retrying won't help
                 logger.error(
                     "Permanent SMTP error (%s) sending to %s: %s",
-                    exc_type, mime["To"], exc,
+                    exc_type,
+                    mime["To"],
+                    exc,
                 )
                 raise
             if retries_left <= 1:
                 logger.error(
-                    "SMTP send failed after all retries (to=%s): %s", mime["To"], exc,
+                    "SMTP send failed after all retries (to=%s): %s",
+                    mime["To"],
+                    exc,
                 )
                 raise
             logger.warning(
                 "Transient SMTP error (%s) sending to %s — retrying in %.1fs (retries left: %d)",
-                exc_type, mime["To"], delay, retries_left - 1,
+                exc_type,
+                mime["To"],
+                delay,
+                retries_left - 1,
             )
             await asyncio.sleep(delay)
             await self._send_with_retry(aiosmtplib, mime, retries_left - 1, delay * 2)

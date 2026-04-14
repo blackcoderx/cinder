@@ -102,7 +102,7 @@ class DockerGenerator(PlatformGenerator):
             ports:
               - "{p.port}:{p.port}"
             environment:
-              - CINDER_SECRET=${{CINDER_SECRET:-changeme}}
+              - ZENO_SECRET=${{ZENO_SECRET:-changeme}}
         {env_lines}{depends}    restart: unless-stopped
         """)
 
@@ -112,7 +112,7 @@ class DockerGenerator(PlatformGenerator):
         if p.needs_postgres:
             lines += "      - DATABASE_URL=postgresql://zeno:zeno@postgres:5432/zeno\n"
         if p.needs_redis:
-            lines += "      - CINDER_REDIS_URL=redis://redis:6379/0\n"
+            lines += "      - ZENO_REDIS_URL=redis://redis:6379/0\n"
         return lines
 
     def _compose_depends(self) -> str:
@@ -124,7 +124,9 @@ class DockerGenerator(PlatformGenerator):
             deps.append("redis")
         if not deps:
             return ""
-        items = "".join(f"\n          {d}:\n            condition: service_healthy" for d in deps)
+        items = "".join(
+            f"\n          {d}:\n            condition: service_healthy" for d in deps
+        )
         return f"    depends_on:{items}\n"
 
     def _postgres_service(self) -> str:

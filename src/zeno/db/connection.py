@@ -15,7 +15,7 @@ class Database:
         "mysql://user:pass@host/db"        → MySQL (requires aiomysql)
 
     Environment variables override the programmatic value:
-        ZENO_DATABASE_URL   — highest priority (Cinder-specific)
+        ZENO_DATABASE_URL   — highest priority (Zeno-specific)
         DATABASE_URL          — second priority (standard PaaS convention)
 
     Pool size (PostgreSQL / MySQL):

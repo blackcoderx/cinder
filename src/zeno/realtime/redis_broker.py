@@ -1,4 +1,4 @@
-"""Redis pub/sub broker for Cinder realtime.
+"""Redis pub/sub broker for Zeno realtime.
 
 A drop-in replacement for :class:`~zeno.realtime.broker.RealtimeBroker` that
 fans out events across multiple processes/nodes via Redis pub/sub.
@@ -21,7 +21,7 @@ Usage::
 
     from zeno.realtime.redis_broker import RedisBroker
     broker = RedisBroker()
-    # In app.py: self._broker = RedisBroker() when CINDER_REALTIME_BROKER=redis
+    # In app.py: self._broker = RedisBroker() when ZENO_REALTIME_BROKER=redis
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Cinder rate-limit subsystem.
+"""Zeno rate-limit subsystem.
 
 Public API::
 
