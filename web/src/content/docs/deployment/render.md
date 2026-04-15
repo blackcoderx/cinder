@@ -12,13 +12,13 @@ sidebar:
 ## Generate the config
 
 ```bash
-zeno deploy --platform render --app main.py
+zork deploy --platform render --app main.py
 ```
 
 This creates:
 
 - `render.yaml` — blueprint defining all services
-- `zeno.toml` — deployment record
+- `zork.toml` — deployment record
 
 ---
 
@@ -30,7 +30,7 @@ services:
     name: myapp
     runtime: python
     buildCommand: pip install uv && uv sync --frozen --no-dev
-    startCommand: zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
+    startCommand: zork migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT
     healthCheckPath: /api/health
     envVars:
       - key: ZENO_SECRET

@@ -8,7 +8,7 @@ A `Collection` maps a Python schema to a database table and a complete set of RE
 ## Defining a collection
 
 ```python
-from zeno import Collection, TextField, IntField, BoolField
+from zork import Collection, TextField, IntField, BoolField
 
 articles = Collection("articles", fields=[
     TextField("title", required=True),

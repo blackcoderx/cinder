@@ -10,7 +10,7 @@ sidebar:
 Stores files on the local filesystem. No extra dependencies required.
 
 ```python
-from zeno.storage import LocalFileBackend
+from zork.storage import LocalFileBackend
 
 app.configure_storage(LocalFileBackend("./uploads"))
 ```
@@ -24,14 +24,14 @@ Files are served directly through Zeno's download route. Suitable for developmen
 Stores files in any S3-compatible object store. Requires the `s3` extra:
 
 ```bash
-pip install "zeno-api[s3]"
-uv add "zeno-api[s3]"
+pip install "zork-api[s3]"
+uv add "zork-api[s3]"
 ```
 
 ### AWS S3
 
 ```python
-from zeno.storage import S3CompatibleBackend
+from zork.storage import S3CompatibleBackend
 
 app.configure_storage(S3CompatibleBackend.aws(
     bucket="my-bucket",

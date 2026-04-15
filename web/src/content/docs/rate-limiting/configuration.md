@@ -12,7 +12,7 @@ sidebar:
 Works out of the box, no extra dependencies. Not shared across processes.
 
 ```python
-from zeno.ratelimit.backends import MemoryRateLimitBackend
+from zork.ratelimit.backends import MemoryRateLimitBackend
 
 app.rate_limit.use(MemoryRateLimitBackend())
 ```
@@ -20,12 +20,12 @@ app.rate_limit.use(MemoryRateLimitBackend())
 ### Redis (multi-process / multi-server)
 
 ```python
-from zeno.ratelimit.backends import RedisRateLimitBackend
+from zork.ratelimit.backends import RedisRateLimitBackend
 
 app.rate_limit.use(RedisRateLimitBackend())
 ```
 
-Requires `pip install "zeno-api[redis]"`. Uses `ZENO_REDIS_URL` automatically.
+Requires `pip install "zork-api[redis]"`. Uses `ZENO_REDIS_URL` automatically.
 
 When `ZENO_REDIS_URL` is set, the Redis backend is selected automatically — you don't need to call `.use()`.
 

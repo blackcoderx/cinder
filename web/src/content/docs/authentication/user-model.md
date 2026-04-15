@@ -56,8 +56,8 @@ Extended fields are accepted in the register request body and stored in `_users`
 The default role for new users is `"user"`. Promote a user to admin:
 
 ```bash
-zeno promote alice@example.com
-zeno promote alice@example.com --role moderator
+zork promote alice@example.com
+zork promote alice@example.com --role moderator
 ```
 
 Roles are checked by `read:admin` and `write:admin` access control rules. Any string value is accepted — you can define your own role hierarchy.

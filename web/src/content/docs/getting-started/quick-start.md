@@ -12,7 +12,7 @@ This guide walks you through creating a fully working REST API with authenticati
 Create `main.py`:
 
 ```python
-from zeno import Zeno, Collection, TextField, IntField, Auth
+from zork import Zeno, Collection, TextField, IntField, Auth
 
 app = Zeno(database="app.db")
 
@@ -31,7 +31,7 @@ app.use_auth(auth)
 ## 2. Start the server
 
 ```bash
-zeno serve main.py
+zork serve main.py
 ```
 
 The server starts on `http://localhost:8000`.
@@ -39,7 +39,7 @@ The server starts on `http://localhost:8000`.
 For development with auto-reload:
 
 ```bash
-zeno serve main.py --reload
+zork serve main.py --reload
 ```
 
 ## 3. What you get

@@ -14,8 +14,8 @@ The Redis broker solves this by using Redis Pub/Sub as the shared message bus.
 Install the Redis extra:
 
 ```bash
-pip install "zeno-api[redis]"
-uv add "zeno-api[redis]"
+pip install "zork[redis]"
+uv add "zork[redis]"
 ```
 
 Configure Redis:
@@ -27,16 +27,16 @@ app.configure_redis(url="redis://localhost:6379")
 Or via environment variable:
 
 ```dotenv
-ZENO_REDIS_URL=redis://localhost:6379
+ZORK_REDIS_URL=redis://localhost:6379
 ```
 
-When `ZENO_REDIS_URL` is set, Zeno automatically selects the Redis broker. All processes sharing the same Redis instance exchange events — every connected client receives updates regardless of which worker handled the write.
+When `ZORK_REDIS_URL` is set, Zeno automatically selects the Redis broker. All processes sharing the same Redis instance exchange events — every connected client receives updates regardless of which worker handled the write.
 
 ## Forcing a specific broker
 
 ```dotenv
-ZENO_REALTIME_BROKER=redis    # always Redis
-ZENO_REALTIME_BROKER=memory   # always in-process (even if Redis is configured)
+ZORK_REALTIME_BROKER=redis    # always Redis
+ZORK_REALTIME_BROKER=memory   # always in-process (even if Redis is configured)
 ```
 
 ## How it works
@@ -58,8 +58,8 @@ Or with uvicorn directly (not recommended for production — use gunicorn):
 uvicorn main:asgi_app --workers 4
 ```
 
-All workers must share the same `ZENO_REDIS_URL`.
+All workers must share the same `ZORK_REDIS_URL`.
 
 ## Redis connection
 
-The Redis client is a shared singleton reused across caching, rate limiting, and realtime. A single `configure_redis()` call (or `ZENO_REDIS_URL`) configures all subsystems.
+The Redis client is a shared singleton reused across caching, rate limiting, and realtime. A single `configure_redis()` call (or `ZORK_REDIS_URL`) configures all subsystems.

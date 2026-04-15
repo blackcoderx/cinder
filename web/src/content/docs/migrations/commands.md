@@ -7,38 +7,38 @@ Migrations let you apply schema changes in a controlled, tracked way — essenti
 
 ## How migrations work
 
-Each migration is a Python file in a `migrations/` directory. Zeno tracks which migrations have been applied in a `_schema_migrations` table. Running `zeno migrate` applies any pending migrations in order.
+Each migration is a Python file in a `migrations/` directory. Zeno tracks which migrations have been applied in a `_schema_migrations` table. Running `zork migrate` applies any pending migrations in order.
 
 ## Commands
 
-### `zeno migrate`
+### `zork migrate`
 
 Apply all pending migrations:
 
 ```bash
-zeno migrate
-zeno migrate --app main.py
-zeno migrate --dir custom/migrations/path
+zork migrate
+zork migrate --app main.py
+zork migrate --dir custom/migrations/path
 ```
 
 Options:
 - `--app` — path to your Zeno app file (used to read the database URL)
 - `--dir` — migration directory (default: `migrations`)
 
-### `zeno migrate run`
+### `zork migrate run`
 
-Same as `zeno migrate` (explicit sub-command form):
+Same as `zork migrate` (explicit sub-command form):
 
 ```bash
-zeno migrate run --app main.py
+zork migrate run --app main.py
 ```
 
-### `zeno migrate status`
+### `zork migrate status`
 
 Show the status of all migrations:
 
 ```bash
-zeno migrate status --app main.py
+zork migrate status --app main.py
 ```
 
 Output:
@@ -50,31 +50,31 @@ ID                                       Status     Applied At
 20240102_add_author_index                pending    -
 ```
 
-### `zeno migrate create`
+### `zork migrate create`
 
 Create a new blank migration file:
 
 ```bash
-zeno migrate create add_slug_to_posts
+zork migrate create add_slug_to_posts
 # Creates: migrations/20240101_120000_add_slug_to_posts.py
 ```
 
-### `zeno migrate create --auto`
+### `zork migrate create --auto`
 
 Auto-generate a migration by diffing your current schema against the database:
 
 ```bash
-zeno migrate create add_new_fields --auto --app main.py
+zork migrate create add_new_fields --auto --app main.py
 ```
 
 Zeno compares each `Collection` definition to the live database and generates `up()` / `down()` functions for the detected changes.
 
-### `zeno migrate rollback`
+### `zork migrate rollback`
 
 Roll back the last applied migration (runs its `down()` function):
 
 ```bash
-zeno migrate rollback --app main.py
+zork migrate rollback --app main.py
 ```
 
 ## Migration file format
@@ -96,10 +96,10 @@ async def down(db):
 ## Typical workflow
 
 1. Make a schema change in your `Collection` definition
-2. Create a migration: `zeno migrate create describe_the_change --auto --app main.py`
+2. Create a migration: `zork migrate create describe_the_change --auto --app main.py`
 3. Review the generated file in `migrations/`
-4. Test locally: `zeno migrate --app main.py`
-5. Deploy and run `zeno migrate --app main.py` in your CI/CD pipeline before starting the server
+4. Test locally: `zork migrate --app main.py`
+5. Deploy and run `zork migrate --app main.py` in your CI/CD pipeline before starting the server
 
 ## Auto-sync vs migrations
 

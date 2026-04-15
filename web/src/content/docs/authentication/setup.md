@@ -6,7 +6,7 @@ description: Configure and enable authentication in your Zeno app
 ## Basic setup
 
 ```python
-from zeno import Zeno, Auth
+from zork import Zeno, Auth
 
 app = Zeno(database="app.db")
 
@@ -31,7 +31,7 @@ app.use_auth(auth)
 Add custom fields to the user table:
 
 ```python
-from zeno import Auth, TextField, BoolField
+from zork import Auth, TextField, BoolField
 
 auth = Auth(
     extend_user=[
@@ -50,7 +50,7 @@ These fields are automatically accepted on `POST /api/auth/register` if provided
 Zeno reads the JWT signing secret from `ZENO_SECRET`. Generate a stable key for production:
 
 ```bash
-zeno generate-secret
+zork generate-secret
 ```
 
 Add it to your `.env`:
@@ -66,7 +66,7 @@ Without a secret, Zeno generates a random one on startup — which means all tok
 If you configure an email backend, Zeno automatically sends a verification email after registration:
 
 ```python
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(

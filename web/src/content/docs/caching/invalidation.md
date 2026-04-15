@@ -39,11 +39,11 @@ This pattern is only needed for denormalised or embedded data.
 For debugging, connect to Redis directly and list keys:
 
 ```bash
-redis-cli --scan --pattern "zeno:*"
+redis-cli --scan --pattern "zork:*"
 ```
 
 Clear all Zeno cache entries:
 
 ```bash
-redis-cli --scan --pattern "zeno:*" | xargs redis-cli del
+redis-cli --scan --pattern "zork:*" | xargs redis-cli del
 ```

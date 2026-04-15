@@ -10,7 +10,7 @@ Indexes speed up filtering, sorting, and lookups on large collections. Zeno crea
 Add `indexed=True` to any field:
 
 ```python
-from zeno import Collection, TextField, IntField
+from zork import Collection, TextField, IntField
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),

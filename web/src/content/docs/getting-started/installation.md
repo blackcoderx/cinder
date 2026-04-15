@@ -13,13 +13,13 @@ sidebar:
 ## Install
 
 ```bash
-pip install zeno-api
+pip install zork-api
 ```
 
 With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add zeno-api
+uv add zork-api
 ```
 
 This installs the core framework with SQLite support. No extra configuration needed to get started.
@@ -40,16 +40,16 @@ Install extras:
 
 ```bash
 # Single extra
-pip install "zeno-api[postgres]"
+pip install "zork-api[postgres]"
 
 # Multiple extras
-pip install "zeno-api[postgres,redis,email]"
+pip install "zork-api[postgres,redis,email]"
 ```
 
 With uv:
 
 ```bash
-uv add "zeno-api[postgres,redis,email]"
+uv add "zork-api[postgres,redis,email]"
 ```
 
 ## Scaffold a new project
@@ -57,7 +57,7 @@ uv add "zeno-api[postgres,redis,email]"
 Use the CLI to create a project with a starter layout:
 
 ```bash
-zeno init myapp
+zork init myapp
 cd myapp
 ```
 
@@ -66,7 +66,7 @@ This creates `main.py`, `.env`, and `.gitignore` with sensible defaults.
 ## Verify the installation
 
 ```bash
-zeno --version
+zork --version
 ```
 
 You should see the Zeno version printed. If you see a "command not found" error, ensure your Python environment's `bin` directory is on your `PATH`.

@@ -6,9 +6,9 @@ description: Use MySQL or MariaDB as your database
 ## Install the extra dependency
 
 ```bash
-pip install "zeno-api[mysql]"
+pip install "zork-api[mysql]"
 # or
-uv add "zeno-api[mysql]"
+uv add "zork-api[mysql]"
 ```
 
 This installs [aiomysql](https://github.com/aio-libs/aiomysql), the async MySQL driver.
@@ -28,7 +28,7 @@ app = Zeno(database="mysql://user:password@localhost:3306/mydb")
 ## Advanced configuration
 
 ```python
-from zeno.db.backends.mysql import MySQLBackend
+from zork.db.backends.mysql import MySQLBackend
 
 app.configure_database(
     MySQLBackend(

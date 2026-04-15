@@ -75,7 +75,7 @@ Both forms are equivalent.
 ## The `ZenoContext` object
 
 ```python
-from zeno.hooks.context import ZenoContext
+from zork.hooks.context import ZenoContext
 
 async def my_handler(data, ctx: ZenoContext):
     ctx.user        # authenticated user dict, or None
@@ -105,7 +105,7 @@ If you don't return anything, the original `data` is used unchanged.
 Raise `ZenoError` from any hook to stop the operation and return an error response:
 
 ```python
-from zeno.errors import ZenoError
+from zork.errors import ZenoError
 
 @posts.on("before_delete")
 async def prevent_published_delete(record, ctx):
@@ -118,7 +118,7 @@ async def prevent_published_delete(record, ctx):
 Use `ZenoError.cancel_delete()` in a `before_delete` hook to intercept a `DELETE` request, do your own cleanup (e.g. set a `deleted_at` timestamp), and **prevent the hard delete** from happening. Zeno reports 200 to the caller as if the delete succeeded.
 
 ```python
-from zeno.errors import ZenoError
+from zork.errors import ZenoError
 from datetime import datetime, timezone
 
 @posts.on("before_delete")

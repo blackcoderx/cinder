@@ -53,7 +53,7 @@ async def normalize_email(body, ctx):
 ## Sending a custom welcome email
 
 ```python
-from zeno.email import EmailMessage
+from zork.email import EmailMessage
 
 @auth.on("after_register")
 async def send_welcome(user, ctx):
@@ -67,15 +67,15 @@ async def send_welcome(user, ctx):
 
 ## Blocking registration
 
-Raise `ZenoError` from a hook to abort the request:
+Raise `ZorkError` from a hook to abort the request:
 
 ```python
-from zeno.errors import ZenoError
+from zork.errors import ZorkError
 
 @auth.on("before_register")
 async def check_domain(body, ctx):
     email = body.get("email", "")
     if not email.endswith("@mycompany.com"):
-        raise ZenoError(403, "Only company email addresses are allowed")
+        raise ZorkError(403, "Only company email addresses are allowed")
     return body
 ```

@@ -19,7 +19,7 @@ app = Zeno(database="app.db")
 ## With a backend
 
 ```python
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 app.email.configure(
@@ -52,7 +52,7 @@ ZENO_BASE_URL=https://myapp.com
 ## Sending custom emails from hooks
 
 ```python
-from zeno.email import EmailMessage
+from zork.email import EmailMessage
 
 @orders.on("after_create")
 async def send_confirmation(order, ctx):

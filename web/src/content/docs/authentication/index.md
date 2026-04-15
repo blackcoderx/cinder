@@ -15,7 +15,7 @@ Zeno ships with a complete authentication system: user registration and login, J
 ## Enabling auth
 
 ```python
-from zeno import Auth
+from zork import Auth
 
 auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)

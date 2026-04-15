@@ -12,13 +12,13 @@ sidebar:
 ## Generate the config
 
 ```bash
-zeno deploy --platform railway --app main.py
+zork deploy --platform railway --app main.py
 ```
 
 This creates:
 
 - `railway.toml` — build and deploy configuration
-- `zeno.toml` — deployment record
+- `zork.toml` — deployment record
 
 ---
 
@@ -29,7 +29,7 @@ This creates:
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT"
+startCommand = "zork migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 5
 restartPolicyType = "ON_FAILURE"
@@ -59,7 +59,7 @@ The start command runs migrations first, then starts gunicorn. `$PORT` is inject
      ```
 4. **Set your secret key** in the web service environment variables:
    ```
-   ZENO_SECRET = <output of zeno generate-secret>
+   ZENO_SECRET = <output of zork generate-secret>
    ```
 5. Railway deploys automatically on every push to your connected branch
 
@@ -77,7 +77,7 @@ Set these in the Railway dashboard under your web service → **Variables**:
 
 | Variable | Value |
 |----------|-------|
-| `ZENO_SECRET` | Output of `zeno generate-secret` |
+| `ZENO_SECRET` | Output of `zork generate-secret` |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference variable) |
 | `ZENO_REDIS_URL` | `${{Redis.REDIS_URL}}` (reference variable) |
 

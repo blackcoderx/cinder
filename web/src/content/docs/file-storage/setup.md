@@ -10,7 +10,7 @@ File storage lets you attach uploaded files to any collection record. The API ge
 ## 1. Add a FileField to your collection
 
 ```python
-from zeno import Collection, TextField, FileField
+from zork import Collection, TextField, FileField
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -22,7 +22,7 @@ posts = Collection("posts", fields=[
 ## 2. Configure a storage backend
 
 ```python
-from zeno.storage import LocalFileBackend
+from zork.storage import LocalFileBackend
 
 app.configure_storage(LocalFileBackend("./uploads"))
 app.register(posts)

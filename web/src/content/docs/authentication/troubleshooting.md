@@ -13,7 +13,7 @@ This warning means Zeno generated a random secret on startup. All tokens issued 
 ZENO_SECRET=your-long-random-secret
 ```
 
-Generate one: `zeno generate-secret`
+Generate one: `zork generate-secret`
 
 ---
 
@@ -79,7 +79,7 @@ An email backend is not configured. Without one, Zeno falls back to logging the 
 **Fix:** Configure an email backend:
 
 ```python
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(

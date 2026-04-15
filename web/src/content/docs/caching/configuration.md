@@ -10,26 +10,26 @@ sidebar:
 ### Redis (recommended for production)
 
 ```python
-from zeno.cache.backends import RedisCacheBackend
+from zork.cache.backends import RedisCacheBackend
 
 app.cache.use(RedisCacheBackend())
 app.cache.use(RedisCacheBackend(prefix="myapp"))  # custom key prefix
 ```
 
-Requires `pip install "zeno-api[redis]"`. Reads the Redis URL from `ZENO_REDIS_URL` automatically.
+Requires `pip install "zork-api[redis]"`. Reads the Redis URL from `ZENO_REDIS_URL` automatically.
 
 **Constructor options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `prefix` | `str` | `"zeno"` | Namespace prefix for all Redis cache keys. Override when sharing a Redis instance across multiple apps. |
+| `prefix` | `str` | `"zork"` | Namespace prefix for all Redis cache keys. Override when sharing a Redis instance across multiple apps. |
 
 Also configurable via environment variable: `ZENO_CACHE_PREFIX`.
 
 ### In-memory (development / single process)
 
 ```python
-from zeno.cache.backends import MemoryCacheBackend
+from zork.cache.backends import MemoryCacheBackend
 
 app.cache.use(MemoryCacheBackend())
 app.cache.enable()
@@ -92,7 +92,7 @@ ZENO_CACHE_ENABLED=false
 When using Redis, all cache keys are prefixed to avoid collisions with other applications:
 
 ```dotenv
-ZENO_CACHE_PREFIX=myapp   # default: "zeno"
+ZENO_CACHE_PREFIX=myapp   # default: "zork"
 ```
 
 ## Auto-detection

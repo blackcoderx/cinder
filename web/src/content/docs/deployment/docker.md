@@ -12,7 +12,7 @@ Docker is the most portable deployment option. Use it for self-hosted servers, V
 ## Generate the files
 
 ```bash
-zeno deploy --platform docker --app main.py
+zork deploy --platform docker --app main.py
 ```
 
 This creates:
@@ -20,7 +20,7 @@ This creates:
 - `Dockerfile` — multi-stage production image
 - `docker-compose.yml` — local and production orchestration
 - `.dockerignore` — keeps the image lean
-- `zeno.toml` — deployment record
+- `zork.toml` — deployment record
 
 ---
 
@@ -43,7 +43,7 @@ COPY . .
 # --- Runtime stage ---
 FROM python:3.12-slim
 
-RUN groupadd -r zeno && useradd -r -g zeno -u 1001 zeno
+RUN groupadd -r zork && useradd -r -g zork -u 1001 zork
 
 WORKDIR /app
 COPY --from=builder /app /app
@@ -51,18 +51,18 @@ COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
-USER zeno
+USER zork
 EXPOSE 8000
 
-CMD ["sh", "-c", "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000"]
+CMD ["sh", "-c", "zork migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000"]
 ```
 
 Key decisions:
 
 - **Multi-stage build** — dependencies are installed in the builder stage; the runtime stage copies only the result, keeping the final image small
 - **uv** — significantly faster than pip for resolving and installing packages; uses `uv.lock` for reproducibility
-- **Non-root user** — the app runs as UID 1001 (`zeno`) for security
-- **Migrations on startup** — `zeno migrate run` runs before gunicorn starts, ensuring the schema is always up to date
+- **Non-root user** — the app runs as UID 1001 (`zork`) for security
+- **Migrations on startup** — `zork migrate run` runs before gunicorn starts, ensuring the schema is always up to date
 - **Gunicorn + UvicornWorker** — production-grade process management with async ASGI support
 
 ---
@@ -79,7 +79,7 @@ services:
       - "8000:8000"
     environment:
       - ZENO_SECRET=${ZENO_SECRET:-changeme}
-      - DATABASE_URL=postgresql://zeno:zeno@postgres:5432/zeno
+      - DATABASE_URL=postgresql://zork:zork@postgres:5432/zork
       - ZENO_REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -91,13 +91,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=zeno
-      - POSTGRES_PASSWORD=zeno
-      - POSTGRES_DB=zeno
+      - POSTGRES_USER=zork
+      - POSTGRES_PASSWORD=zork
+      - POSTGRES_DB=zork
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zeno"]
+      test: ["CMD-SHELL", "pg_isready -U zork"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -155,7 +155,7 @@ For production, prefer injecting secrets via your hosting environment rather tha
 Edit the `CMD` in the Dockerfile:
 
 ```dockerfile
-CMD ["sh", "-c", "zeno migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 --workers 4"]
+CMD ["sh", "-c", "zork migrate run --app main.py && gunicorn -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000 --workers 4"]
 ```
 
 A good starting point is `(2 × CPU cores) + 1`.

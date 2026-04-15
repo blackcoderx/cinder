@@ -1,6 +1,6 @@
 ---
 template: splash
-title: ZenoAPI
+title: ZorkAPI
 description: A lightweight, open-source backend framework for Python
 hero:
   tagline: Build production-ready REST APIs with built-in auth, dynamic collections, and pluggable multi-database support
@@ -10,7 +10,7 @@ hero:
       icon: right-arrow
       variant: primary
     - text: View on GitHub
-      link: https://github.com/blackcoderx/zeno-api
+      link: https://github.com/blackcoderx/zork
       icon: external
 ---
 
@@ -20,7 +20,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Auto-generated CRUD">
-    Define your data schema in Python and Zeno auto-generates a full REST API with filtering, pagination, and relation expansion.
+    Define your data schema in Python and Zork auto-generates a full REST API with filtering, pagination, and relation expansion.
   </Card>
   <Card title="Built-in Auth">
     JWT authentication with role-based access control, email verification, and password reset out of the box.
@@ -48,9 +48,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Quick Example
 
 ```python
-from zeno import Zeno, Collection, TextField, IntField, Auth
+from zork import Zork, Collection, TextField, IntField, Auth
 
-app = Zeno(database="app.db")
+app = Zork(database="app.db")
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -68,7 +68,7 @@ app.serve()
 Run it:
 
 ```bash
-zeno serve main.py
+zork serve main.py
 ```
 
 You now have:
@@ -83,7 +83,7 @@ You now have:
 - `GET /openapi.json` — OpenAPI 3.1 schema
 - `GET /docs` — Swagger UI
 
-## Why Zeno?
+## Why Zork?
 
 - **Zero Boilerplate** — Define schemas, not endpoints
 - **Production-Ready** — Built-in caching, rate-limiting, migrations

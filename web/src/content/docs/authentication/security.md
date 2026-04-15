@@ -28,7 +28,7 @@ When a user logs out, the token's `jti` is stored in `_token_blocklist` with its
 Set `ZENO_SECRET` to a long random string. Generate one with:
 
 ```bash
-zeno generate-secret
+zork generate-secret
 ```
 
 Without a secret, Zeno auto-generates one at startup — this means all tokens are invalidated on every restart.
@@ -52,7 +52,7 @@ async def require_verified(body, ctx):
 
 @auth.on("after_login")
 async def check_verified(user, ctx):
-    from zeno.errors import ZenoError
+    from zork.errors import ZenoError
     if not user.get("is_verified"):
         raise ZenoError(403, "Please verify your email before logging in")
 ```

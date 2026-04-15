@@ -3,16 +3,16 @@ title: CLI Commands
 description: All Zeno CLI commands and their options
 ---
 
-The `zeno` CLI is installed alongside the framework and provides commands for running your app, managing migrations, and inspecting the application.
+The `zork` CLI is installed alongside the framework and provides commands for running your app, managing migrations, and inspecting the application.
 
-## `zeno serve`
+## `zork serve`
 
 Start the development server.
 
 ```bash
-zeno serve main.py
-zeno serve main.py --reload
-zeno serve main.py --host 0.0.0.0 --port 8080
+zork serve main.py
+zork serve main.py --reload
+zork serve main.py --host 0.0.0.0 --port 8080
 ```
 
 | Option | Default | Description |
@@ -24,12 +24,12 @@ zeno serve main.py --host 0.0.0.0 --port 8080
 
 ---
 
-## `zeno init`
+## `zork init`
 
 Scaffold a new Zeno project.
 
 ```bash
-zeno init myapp
+zork init myapp
 ```
 
 Creates a `myapp/` directory with:
@@ -39,14 +39,14 @@ Creates a `myapp/` directory with:
 
 ---
 
-## `zeno promote`
+## `zork promote`
 
 Promote a user to a new role.
 
 ```bash
-zeno promote alice@example.com
-zeno promote alice@example.com --role moderator
-zeno promote alice@example.com --database prod.db
+zork promote alice@example.com
+zork promote alice@example.com --role moderator
+zork promote alice@example.com --database prod.db
 ```
 
 | Option | Default | Description |
@@ -57,12 +57,12 @@ zeno promote alice@example.com --database prod.db
 
 ---
 
-## `zeno generate-secret`
+## `zork generate-secret`
 
 Generate a cryptographically secure secret key for `ZENO_SECRET`.
 
 ```bash
-zeno generate-secret
+zork generate-secret
 # Output: a3f8b2c1d4e5...
 ```
 
@@ -70,14 +70,14 @@ Copy the output into your `.env` file.
 
 ---
 
-## `zeno doctor`
+## `zork doctor`
 
 Check connectivity to configured services.
 
 ```bash
-zeno doctor
-zeno doctor --app main.py
-zeno doctor --database postgresql://user:pass@localhost/mydb
+zork doctor
+zork doctor --app main.py
+zork doctor --database postgresql://user:pass@localhost/mydb
 ```
 
 Checks:
@@ -86,12 +86,12 @@ Checks:
 
 ---
 
-## `zeno routes`
+## `zork routes`
 
 List all registered routes for your app.
 
 ```bash
-zeno routes --app main.py
+zork routes --app main.py
 ```
 
 Output:
@@ -111,12 +111,12 @@ DELETE               /api/posts/{id}                                    posts_de
 
 ---
 
-## `zeno info`
+## `zork info`
 
 Show a summary of the application configuration.
 
 ```bash
-zeno info --app main.py
+zork info --app main.py
 ```
 
 Output:
@@ -135,16 +135,16 @@ Realtime broker:  RealtimeBroker
 
 ---
 
-## `zeno deploy`
+## `zork deploy`
 
 Generate deployment configuration files for your app. See [Deployment](/deployment/) for full documentation.
 
 ```bash
-zeno deploy --platform docker
-zeno deploy --platform railway --app main.py
-zeno deploy --platform render --dry-run
-zeno deploy --platform fly --force
-zeno deploy  # auto-detects platform from environment
+zork deploy --platform docker
+zork deploy --platform railway --app main.py
+zork deploy --platform render --dry-run
+zork deploy --platform fly --force
+zork deploy  # auto-detects platform from environment
 ```
 
 | Option | Default | Description |
@@ -158,22 +158,22 @@ Platform auto-detection reads `RAILWAY_ENVIRONMENT`, `RENDER`, and `FLY_APP_NAME
 
 ---
 
-## `zeno migrate`
+## `zork migrate`
 
 Apply pending migrations. See [Migrations](/migrations/commands/) for full documentation.
 
 ```bash
-zeno migrate
-zeno migrate --app main.py
-zeno migrate --dir custom/migrations
+zork migrate
+zork migrate --app main.py
+zork migrate --dir custom/migrations
 ```
 
 ### Sub-commands
 
 | Command | Description |
 |---------|-------------|
-| `zeno migrate run` | Apply all pending migrations (same as `zeno migrate`) |
-| `zeno migrate status` | Show the status of all migrations |
-| `zeno migrate create <name>` | Create a new blank migration file |
-| `zeno migrate create <name> --auto` | Auto-generate migration from schema diff |
-| `zeno migrate rollback` | Roll back the last applied migration |
+| `zork migrate run` | Apply all pending migrations (same as `zork migrate`) |
+| `zork migrate status` | Show the status of all migrations |
+| `zork migrate create <name>` | Create a new blank migration file |
+| `zork migrate create <name> --auto` | Auto-generate migration from schema diff |
+| `zork migrate rollback` | Roll back the last applied migration |

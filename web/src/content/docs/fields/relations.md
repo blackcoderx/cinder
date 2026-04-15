@@ -8,7 +8,7 @@ description: Foreign key references between collections
 ## Quick example
 
 ```python
-from zeno import Collection, TextField, RelationField
+from zork import Collection, TextField, RelationField
 
 users = Collection("users", fields=[
     TextField("name", required=True),

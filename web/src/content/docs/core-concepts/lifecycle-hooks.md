@@ -56,7 +56,7 @@ async def notify_subscribers(post, ctx):
 Every hook receives a `ZenoContext` as its second argument:
 
 ```python
-from zeno.hooks.context import ZenoContext
+from zork.hooks.context import ZenoContext
 
 async def my_hook(data, ctx: ZenoContext):
     print(ctx.user)        # dict of the current user, or None if unauthenticated
@@ -85,7 +85,7 @@ If you don't return anything (or return `None`), the original `data` is used unc
 Raise a `ZenoError` to abort the operation and return an HTTP error response:
 
 ```python
-from zeno.errors import ZenoError
+from zork.errors import ZenoError
 
 @posts.on("before_create")
 async def check_quota(data, ctx):

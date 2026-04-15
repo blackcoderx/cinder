@@ -25,7 +25,7 @@ ZENO_REDIS_URL=redis://localhost:6379
 For development without Redis, use the in-memory cache:
 
 ```python
-from zeno.cache.backends import MemoryCacheBackend
+from zork.cache.backends import MemoryCacheBackend
 
 app.cache.use(MemoryCacheBackend())
 app.cache.enable()

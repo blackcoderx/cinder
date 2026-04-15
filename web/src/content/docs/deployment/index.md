@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-`zeno deploy` generates production-ready deployment configuration files for your app. It inspects your Zeno instance to detect which services you need — database, Redis, auth, file storage — and writes platform-specific config tailored to those requirements.
+`zork deploy` generates production-ready deployment configuration files for your app. It inspects your Zeno instance to detect which services you need — database, Redis, auth, file storage — and writes platform-specific config tailored to those requirements.
 
 It does **not** deploy your app. It generates the files so you can commit them and let the platform handle the rest.
 
@@ -16,7 +16,7 @@ It does **not** deploy your app. It generates the files so you can commit them a
 Generate a secret key and add it to your `.env` file:
 
 ```bash
-zeno generate-secret
+zork generate-secret
 # Copy the output into your .env as ZENO_SECRET
 ```
 
@@ -27,7 +27,7 @@ This is required for JWT signing. Tokens are invalid without a persistent secret
 ## Usage
 
 ```bash
-zeno deploy --platform <platform> --app main.py
+zork deploy --platform <platform> --app main.py
 ```
 
 | Option | Default | Description |
@@ -43,16 +43,16 @@ zeno deploy --platform <platform> --app main.py
 
 | Platform | Files generated |
 |----------|----------------|
-| `docker` | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `zeno.toml` |
-| `railway` | `railway.toml`, `zeno.toml` |
-| `render` | `render.yaml`, `zeno.toml` |
-| `fly` | `fly.toml`, `Dockerfile`, `.dockerignore`, `zeno.toml` |
+| `docker` | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `zork.toml` |
+| `railway` | `railway.toml`, `zork.toml` |
+| `render` | `render.yaml`, `zork.toml` |
+| `fly` | `fly.toml`, `Dockerfile`, `.dockerignore`, `zork.toml` |
 
 ---
 
 ## App introspection
 
-`zeno deploy` loads your app file and inspects it to determine what your app needs:
+`zork deploy` loads your app file and inspects it to determine what your app needs:
 
 - **Database type** — reads `ZENO_DATABASE_URL`, `DATABASE_URL`, or the `database=` constructor argument to detect PostgreSQL, MySQL, or SQLite
 - **Redis** — checks `ZENO_REDIS_URL` and whether cache, rate-limit, or realtime backends are Redis-backed
@@ -82,14 +82,14 @@ If you omit `--platform`, Zeno detects it from environment variables:
 Use `--dry-run` to see exactly what will be generated without touching the filesystem:
 
 ```bash
-zeno deploy --platform railway --dry-run
+zork deploy --platform railway --dry-run
 ```
 
 ---
 
-## `zeno.toml`
+## `zork.toml`
 
-Every platform generates a `zeno.toml` alongside the platform config. This is a central deployment record describing your app's requirements:
+Every platform generates a `zork.toml` alongside the platform config. This is a central deployment record describing your app's requirements:
 
 ```toml
 [project]

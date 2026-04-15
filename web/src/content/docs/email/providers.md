@@ -10,8 +10,8 @@ sidebar:
 Install the email extra:
 
 ```bash
-pip install "zeno-api[email]"
-uv add "zeno-api[email]"
+pip install "zork-api[email]"
+uv add "zork-api[email]"
 ```
 
 ---
@@ -19,7 +19,7 @@ uv add "zeno-api[email]"
 ## SendGrid
 
 ```python
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 
 app.email.use(SMTPBackend.sendgrid(api_key="SG.xxx"))
 ```
@@ -92,7 +92,7 @@ app.email.use(SMTPBackend.gmail(
 ## Custom SMTP server
 
 ```python
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 
 app.email.use(SMTPBackend(
     host="smtp.myserver.com",
@@ -110,7 +110,7 @@ app.email.use(SMTPBackend(
 Prints emails to stdout instead of sending them. This is the default when no backend is configured:
 
 ```python
-from zeno.email.backends import ConsoleEmailBackend
+from zork.email.backends import ConsoleEmailBackend
 
 app.email.use(ConsoleEmailBackend())
 ```

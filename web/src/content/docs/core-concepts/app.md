@@ -8,7 +8,7 @@ The `Zeno` class is the entry point for every application. It owns the database 
 ## Creating an app
 
 ```python
-from zeno import Zeno
+from zork import Zeno
 
 app = Zeno(database="app.db")
 ```
@@ -40,7 +40,7 @@ app.register(posts, auth=["read:public", "write:authenticated"])
 ## Enabling authentication
 
 ```python
-from zeno import Auth
+from zork import Auth
 
 auth = Auth(token_expiry=86400, allow_registration=True)
 app.use_auth(auth)
@@ -54,11 +54,11 @@ Each subsystem has a fluent configuration facade on the `app` object:
 
 ```python
 # File storage
-from zeno.storage import LocalFileBackend
+from zork.storage import LocalFileBackend
 app.configure_storage(LocalFileBackend("./uploads"))
 
 # Email
-from zeno.email import SMTPBackend
+from zork.email import SMTPBackend
 app.email.use(SMTPBackend.sendgrid(api_key="..."))
 app.email.configure(from_address="no-reply@myapp.com", app_name="MyApp")
 
@@ -73,7 +73,7 @@ app.rate_limit.rule("/api/posts", limit=50, window=60)
 app.configure_redis(url="redis://localhost:6379")
 
 # Custom database backend
-from zeno.db.backends.postgresql import PostgreSQLBackend
+from zork.db.backends.postgresql import PostgreSQLBackend
 app.configure_database(PostgreSQLBackend(url="...", min_size=2, max_size=20, ssl="require"))
 ```
 
@@ -95,9 +95,9 @@ app.on("orders:after_create", send_confirmation_email)
 ### Via the CLI (recommended)
 
 ```bash
-zeno serve main.py
-zeno serve main.py --reload  # development auto-reload
-zeno serve main.py --host 0.0.0.0 --port 8080
+zork serve main.py
+zork serve main.py --reload  # development auto-reload
+zork serve main.py --host 0.0.0.0 --port 8080
 ```
 
 ### Programmatically
@@ -113,7 +113,7 @@ app.serve(host="0.0.0.0", port=8080)
 
 ```python
 # main.py
-from zeno import Zeno, ...
+from zork import Zeno, ...
 app = Zeno(...)
 # ... configure ...
 asgi_app = app.build()

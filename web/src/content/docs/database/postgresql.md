@@ -8,9 +8,9 @@ PostgreSQL is the recommended database for production deployments.
 ## Install the extra dependency
 
 ```bash
-pip install "zeno-api[postgres]"
+pip install "zork-api[postgres]"
 # or
-uv add "zeno-api[postgres]"
+uv add "zork-api[postgres]"
 ```
 
 This installs [asyncpg](https://github.com/MagicStack/asyncpg), the high-performance async PostgreSQL driver.
@@ -34,7 +34,7 @@ app = Zeno(database="postgresql://user:password@localhost:5432/mydb")
 For fine-grained control over the connection pool:
 
 ```python
-from zeno.db.backends.postgresql import PostgreSQLBackend
+from zork.db.backends.postgresql import PostgreSQLBackend
 
 app.configure_database(
     PostgreSQLBackend(
@@ -76,7 +76,7 @@ Connection URLs from common providers work directly:
 For production, always run migrations before deploying new code:
 
 ```bash
-zeno migrate --app main.py
+zork migrate --app main.py
 ```
 
 See [Migrations](/migrations/commands/) for details.
