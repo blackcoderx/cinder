@@ -16,6 +16,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from zork.auth import Auth
 from zork.auth.models import (
     cleanup_expired_blocklist,
+    cleanup_expired_refresh_tokens,
     cleanup_expired_verifications,
     create_auth_tables,
 )
@@ -589,6 +590,7 @@ class Zork:
                 await create_auth_tables(db, extend_cols if extend_cols else None)
                 await cleanup_expired_blocklist(db)
                 await cleanup_expired_verifications(db)
+                await cleanup_expired_refresh_tokens(db)
                 logger.info("Auth tables ready")
 
             _init_done[0] = True
