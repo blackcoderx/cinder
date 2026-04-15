@@ -342,26 +342,124 @@ from zork.collections.schema import (
 **Public API:**
 ```python
 from zork.auth import Auth  # Auth configuration
-from zork.auth.models import (
-    USERS_TABLE,           # Table name constant
-    block_token,          # Revoke a token
+from zork.auth.backends import (
+    TokenBlocklistBackend,   # ABC for blocklist backends
+    DatabaseBlocklist,      # Default DB implementation
+    RedisBlocklist,       # Redis with auto-TTL
+)
+from zork.auth.delivery import (
+    TokenDeliveryBackend,    # ABC for token delivery
+    BearerTokenDelivery,    # Authorization header (default)
+    CookieTokenDelivery,    # HTTP-only cookies with CSRF
 )
 from zork.auth.tokens import (
-    create_token,         # Create JWT
-    decode_token,        # Decode JWT
-    refresh_token,        # Refresh JWT
+    create_access_token,    # Short-lived (15-60 min)
+    create_refresh_token,   # Long-lived (7-30 days)
+    decode_token,          # Decode JWT
+    verify_token_type,     # Verify token type (access/refresh)
+)
+from zork.auth.models import (
+    USERS_TABLE,           # Table name constant
+    REFRESH_TOKENS_TABLE, # Refresh token storage
+    store_refresh_token,   # Store hashed JTI
+    get_refresh_token_by_jti,
+    revoke_all_user_refresh_tokens,
+    enforce_refresh_token_limit,
 )
 ```
 
-* **`models.py`** — Configures the built-in `_users` table, allows developers to extend it with custom fields. Creates and owns:
-  - `_token_blocklist` — revoked JWT tokens (auto-cleaned on startup). `block_token()` uses a try/except on `DatabaseIntegrityError` instead of `INSERT OR IGNORE` — portable across all backends.
-  - `_email_verifications` — one-time 24-hour verification tokens. `create_verification_token(db, user_id, email)` deletes any prior token for the user before inserting the new one (re-send invalidation). `cleanup_expired_verifications(db)` is called on startup.
-* **`routes.py`** — Standardised endpoints for user registration, login, logout, token refresh, forgot-password, reset-password, and **email verification** (`GET /api/auth/verify-email?token=<token>`). When `email_config` is injected:
-  - Registration → dispatches verification email.
-  - Forgot-password → dispatches password-reset email.
-  - Without `email_config` → falls back to logging the token to the console (zero breaking change).
-* **`passwords.py`** — Securely hashes and verifies user passwords.
-* **`tokens.py`** — Signs and verifies JSON Web Tokens for stateless session handling.
+**Architecture Overview:**
+
+Zork auth uses a dual token strategy with pluggable backends:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Token Delivery                                │
+│  ┌───────────────────────┐     ┌─────────────────────────┐    │
+│  │ BearerTokenDelivery   │ OR  │   CookieTokenDelivery  │    │
+│  │ (Authorization:       │     │   (HTTP-only cookies,  │    │
+│  │  Bearer <token>)      │     │    CSRF protection)   │    │
+│  └───────────────────────┘     └─────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Token Blocklist                               │
+│  ┌───────────────────────┐     ┌─────────────────────────┐    │
+│  │  DatabaseBlocklist    │ OR  │    RedisBlocklist     │    │
+│  │  (default)            │     │   (auto-TTL, O(1))    │    │
+│  └───────────────────────┘     └─────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**`tokens.py`** — Creates two token types with unique JTIs:
+- `create_access_token()` — 15-60 min lifetime (default: 1 hour), returned in response body or cookie
+- `create_refresh_token()` — 7-30 days lifetime (default: 7 days), enables seamless re-authentication
+- Both include unique `jti` (JWT ID) for revocation and `type` claim for validation
+
+**`models.py`** — Manages auth tables:
+- `_users` — User accounts with extensible fields via `extend_user` parameter
+- `_token_blocklist` — Revoked access tokens (auto-cleaned on startup)
+- `_refresh_tokens` — Hashed JTI storage with user association, max 5 per user
+- `_email_verifications` — One-time verification tokens
+- `_password_resets` — Password reset tokens
+
+**`backends/base.py`** — `TokenBlocklistBackend` ABC:
+```python
+class TokenBlocklistBackend(ABC):
+    async def block(self, jti: str, expires_at: int) -> None
+    async def is_blocked(self, jti: str) -> bool
+    async def cleanup(self) -> int  # Returns count removed
+```
+
+**`backends/db.py`** — `DatabaseBlocklist`:
+- Wraps existing block_token/is_blocked from models.py
+- Manual cleanup on startup via `cleanup_expired_blocklist()`
+
+**`backends/redis.py`** — `RedisBlocklist`:
+- Uses `SETEX` with TTL matching token's remaining validity
+- O(1) lookup performance
+- Automatic cleanup via Redis TTL (returns 0 from cleanup())
+
+**`delivery/base.py`** — `TokenDeliveryBackend` ABC:
+```python
+class TokenDeliveryBackend(ABC):
+    @property supports_csrf -> bool
+    async def extract_token(request) -> str | None
+    async def attach_token(response, access_token, refresh_token)
+    async def clear_token(response)
+```
+
+**`delivery/bearer.py`** — `BearerTokenDelivery`:
+- Default delivery mechanism
+- Token in Authorization header
+- No CSRF protection needed (stateless API usage)
+
+**`delivery/cookie.py`** — `CookieTokenDelivery`:
+- Access token in HTTP-only cookie (short-lived, `path="/"`)
+- Refresh token in HTTP-only cookie (long-lived, `path="/api/auth/refresh"`)
+- CSRF double-submit cookie (readable by JS, validated via `X-CSRF-Token` header)
+- Configurable `samesite`, `secure`, `domain`
+- Supports both `lax`, `strict`, and `none` for SameSite policy
+
+**`routes.py`** — Auth endpoints:
+- `POST /api/auth/register` — Creates user + issues access/refresh tokens
+- `POST /api/auth/login` — Authenticates + issues access/refresh tokens
+- `POST /api/auth/logout` — Revokes token + clears cookies
+- `GET /api/auth/me` — Returns current user
+- `POST /api/auth/refresh` — Rotates refresh token (cookie) or issues new access token (bearer)
+- `POST /api/auth/forgot-password` — Sends reset email
+- `POST /api/auth/reset-password` — Resets password + revokes ALL refresh tokens
+- `GET /api/auth/verify-email` — Verifies email
+
+**Security Features:**
+- XSS Protection: HTTP-only cookies prevent token theft
+- CSRF Protection: Double-submit cookie pattern for state-changing operations
+- Token Rotation: Refresh tokens rotate on every use (refresh endpoint)
+- Token Limits: Max 5 active refresh tokens per user (configurable)
+- Password Change: Revokes ALL refresh tokens for user
+- Hashed JTI: Refresh token JTIs stored as SHA256 hashes
+- Blocklist: Supports both database and Redis backends with auto-expiration
 
 ### 6. File Storage Subsystem (`src/zork/storage/`)
 
@@ -517,7 +615,7 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
 | Schema / field definitions | `test_schema.py` |
 | Collection CRUD (HTTP) | `test_router.py`, `test_integration.py` |
 | Store layer | `test_store.py` |
-| Authentication | `test_auth.py`, `test_auth_core.py`, `test_auth_middleware.py` |
+| Authentication | `test_auth.py`, `test_auth_core.py`, `test_auth_middleware.py`, `test_auth_tokens.py`, `test_auth_backends.py`, `test_auth_delivery.py`, `test_auth_csrf.py`, `test_auth_refresh_rotation.py` |
 | Email backends & templates | `test_email_backends.py`, `test_email_templates.py` |
 | Email verification flow | `test_email_verification.py` |
 | File storage | `test_storage_backends.py`, `test_storage_routes.py`, `test_storage_keys.py` |
@@ -569,6 +667,15 @@ The test suite lives in `tests/` and is run with `pytest`. All async tests use `
 | `REDIS_URL` | Fallback Redis URL (PaaS compatibility) | — | `redis://...` |
 | `ZORK_CACHE_ENABLED` | Enable/disable caching | `true` | `false` |
 | `ZORK_RATE_LIMIT_ENABLED` | Enable/disable rate limiting | `true` | `false` |
+| `ZORK_ACCESS_TOKEN_EXPIRY` | Access token lifetime (seconds) | `3600` | `7200` |
+| `ZORK_REFRESH_TOKEN_EXPIRY` | Refresh token lifetime (seconds) | `604800` | `2592000` |
+| `ZORK_AUTH_DELIVERY` | Token delivery mechanism | `bearer` | `cookie` |
+| `ZORK_BLOCKLIST_BACKEND` | Token blocklist backend | `database` | `redis` |
+| `ZORK_COOKIE_SECURE` | Require HTTPS for cookies | `true` | `false` |
+| `ZORK_COOKIE_SAMESITE` | SameSite policy | `lax` | `strict`, `none` |
+| `ZORK_COOKIE_DOMAIN` | Cookie domain | `None` | `.example.com` |
+| `ZORK_CSRF_ENABLE` | Enable CSRF protection (cookies only) | `true` | `false` |
+| `ZORK_MAX_REFRESH_TOKENS` | Max refresh tokens per user | `5` | `10` |
 
 ### Database URL Formats
 

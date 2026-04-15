@@ -47,7 +47,35 @@ posts = Collection("posts", fields=[
     IntField("views", default=0),
 ])
 
-auth = Auth(token_expiry=86400, allow_registration=True)
+# === Session Style (HTTP-Only Cookies + Redis Blocklist) ===
+# Use for: Web apps, SSR, browser-based clients
+# - Tokens stored in HTTP-only cookies (XSS resistant)
+# - CSRF protection via double-submit cookie
+# - Fast token revocation with Redis TTL
+auth = Auth(
+    delivery="cookie",
+    blocklist_backend="redis",
+    token_expiry=3600,
+    refresh_token_expiry=604800,
+    cookie_secure=True,
+    cookie_samesite="lax",
+    csrf_enabled=True,
+    max_refresh_tokens=5,
+    allow_registration=True,
+)
+
+# === API Style (Bearer Token) ===
+# Use for: Mobile apps, third-party APIs, SPAs
+# - Tokens returned in JSON response
+# - Store in localStorage/sessionStorage (manual)
+# - Attach Authorization header manually
+# auth = Auth(
+#     delivery="bearer",
+#     blocklist_backend="redis",
+#     token_expiry=3600,
+#     refresh_token_expiry=604800,
+#     allow_registration=True,
+# )
 
 app.register(posts, auth=["read:public", "write:authenticated"])
 app.use_auth(auth)
@@ -75,6 +103,8 @@ You now have:
 
 - Auto-generated CRUD REST API from Python schemas
 - JWT authentication with role-based access control
+- HTTP-only cookie delivery with CSRF protection
+- Refresh token rotation with automatic blocklist (Redis or database)
 - Multi-database support — SQLite, PostgreSQL, MySQL
 - Realtime via WebSocket and Server-Sent Events
 - File storage — local filesystem or S3-compatible (AWS, R2, MinIO, and more)
