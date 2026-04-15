@@ -1,45 +1,45 @@
-# Zeno
+# Zork
 
 <p align="center">
 
-[![PyPI version](https://img.shields.io/pypi/v/zeno-api?color=f47b20&label=zeno&style=flat-square)](https://pypi.org/project/zeno-api/)
-[![Python](https://img.shields.io/pypi/pyversions/zeno-api?color=3572A5&style=flat-square)](https://pypi.org/project/zeno/)
+[![PyPI version](https://img.shields.io/pypi/v/zork?color=f47b20&label=zork&style=flat-square)](https://pypi.org/project/zork/)
+[![Python](https://img.shields.io/pypi/pyversions/zork?color=3572A5&style=flat-square)](https://pypi.org/project/zork/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-zeno.vercel.app-f47b20?style=flat-square)](https://zeno.vercel.app)
+[![Docs](https://img.shields.io/badge/docs-zork.vercel.app-f47b20?style=flat-square)](https://zork.vercel.app)
 
 </p>
 
-A lightweight, open-source backend framework for Python. Define your data schema — Zeno auto-generates a full REST API with auth, CRUD, filtering, and more.
+A lightweight, open-source backend framework for Python. Define your data schema — Zork auto-generates a full REST API with auth, CRUD, filtering, and more.
 
 ## Install
 
 ```bash
-pip install zeno-api
+pip install zork
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add zeno-api
+uv add zork
 ```
 
 **Optional extras:**
 
 | Extra | What it adds |
 |-------|-------------|
-| `zeno-api[postgres]` | PostgreSQL support (asyncpg) |
-| `zeno-api[mysql]` | MySQL support (aiomysql) |
-| `zeno-api[s3]` | S3-compatible file storage (boto3) |
-| `zeno-api[email]` | Email delivery (aiosmtplib) |
-| `zeno-api[redis]` | Redis caching & sessions |
-| `zeno-api[all]` | Everything above |
+| `zork[postgres]` | PostgreSQL support (asyncpg) |
+| `zork[mysql]` | MySQL support (aiomysql) |
+| `zork[s3]` | S3-compatible file storage (boto3) |
+| `zork[email]` | Email delivery (aiosmtplib) |
+| `zork[redis]` | Redis caching & sessions |
+| `zork[all]` | Everything above |
 
 ## Quick Start
 
 ```python
-from zeno import Zeno, Collection, TextField, IntField, Auth
+from zork import Zork, Collection, TextField, IntField, Auth
 
-app = Zeno(database="app.db")
+app = Zork(database="app.db")
 
 posts = Collection("posts", fields=[
     TextField("title", required=True),
@@ -55,7 +55,7 @@ app.serve()
 ```
 
 ```bash
-zeno serve main.py
+zork serve main.py
 # Server running at http://localhost:8000
 ```
 
@@ -84,13 +84,13 @@ You now have:
 - Rate limiting per route
 - Email delivery with SMTP and provider presets
 - Schema migrations via CLI
-- One-command deployment — generate Docker, Railway, Render, and Fly.io configs with `zeno deploy`
+- One-command deployment — generate Docker, Railway, Render, and Fly.io configs with `zork deploy`
 - Auto-generated OpenAPI 3.1 + Swagger UI
 - Zero boilerplate — one file to a working API
 
 ## Documentation
 
-Full documentation at **[zenoapi.vercel.app](https://zenoapi.vercel.app)**
+Full documentation at **[zorkapi.vercel.app](https://zorkapi.vercel.app)**
 
 ## License
 

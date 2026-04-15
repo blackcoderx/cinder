@@ -1,6 +1,6 @@
-# Contributing to Zeno
+# Contributing to Zork
 
-Thanks for taking the time to contribute. Zeno is a small, focused project and contributions of all sizes are welcome — bug fixes, new features, docs improvements, or test coverage.
+Thanks for taking the time to contribute. Zork is a small, focused project and contributions of all sizes are welcome — bug fixes, new features, docs improvements, or test coverage.
 
 ---
 
@@ -18,12 +18,12 @@ Thanks for taking the time to contribute. Zeno is a small, focused project and c
 
 ## Getting Started
 
-Zeno uses [uv](https://docs.astral.sh/uv/) for dependency management.
+Zork uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
 # 1. Fork and clone the repo
-git clone https://github.com/your-username/zeno-api
-cd zeno-api
+git clone https://github.com/your-username/zork
+cd zork
 
 # 2. Install dependencies (including dev extras)
 uv sync --all-extras
@@ -37,9 +37,9 @@ uv run pytest
 ## Project Structure
 
 ```
-zeno-api/
-├── src/zeno/           # Framework source code
-│   ├── app.py          # Zeno app entry point
+zork/
+├── src/zork/           # Framework source code
+│   ├── app.py          # Zork app entry point
 │   ├── collections/    # Collection and field definitions
 │   ├── auth/           # JWT auth, user model, endpoints
 │   ├── db/             # Database adapters (SQLite, PostgreSQL, MySQL)
@@ -51,7 +51,7 @@ zeno-api/
 │   ├── email/          # Email backends
 │   ├── migrations/     # Schema migration engine
 │   ├── openapi.py      # OpenAPI 3.1 generation
-│   └── cli.py          # CLI commands (zeno serve, migrate, etc.)
+│   └── cli.py          # CLI commands (zork serve, migrate, etc.)
 ├── tests/              # Pytest test suite
 ├── web/                # Docs site (Astro + Starlight)
 └── pyproject.toml
@@ -114,7 +114,7 @@ Tests use `pytest-asyncio` for async test cases and `fakeredis` for Redis-depend
 
 Open an issue and include:
 
-- Zeno version (`pip show zeno`)
+- Zork version (`pip show zork`)
 - Python version (`python --version`)
 - Minimal reproduction case
 - Full error traceback if applicable
@@ -126,7 +126,7 @@ Open an issue and include:
 - Follow existing patterns in the codebase — consistency matters more than personal preference.
 - Use type hints.
 - Keep functions small and focused.
-- Async all the way down — Zeno is fully async; avoid blocking calls.
+- Async all the way down — Zork is fully async; avoid blocking calls.
 
 ---
 
