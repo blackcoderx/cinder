@@ -9,16 +9,34 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from zork.auth import Auth
+from zork.auth.delivery import (
+    BearerTokenDelivery,
+    CookieTokenDelivery,
+    TokenDeliveryBackend,
+)
 from zork.auth.models import (
     EMAIL_VERIFICATIONS_TABLE,
     PASSWORD_RESETS_TABLE,
     USERS_TABLE,
     block_token,
     create_verification_token,
+    delete_refresh_token,
+    enforce_refresh_token_limit,
+    get_refresh_token_by_jti,
     is_blocked,
+    revoke_all_user_refresh_tokens,
+    store_refresh_token,
 )
 from zork.auth.passwords import hash_password, verify_password
-from zork.auth.tokens import create_token, decode_token
+from zork.auth.tokens import (
+    TOKEN_TYPE_ACCESS,
+    TOKEN_TYPE_REFRESH,
+    create_access_token,
+    create_refresh_token,
+    create_token,
+    decode_token,
+    verify_token_type,
+)
 from zork.db.connection import Database
 from zork.errors import ZorkError
 from zork.hooks.context import ZorkContext
@@ -28,16 +46,27 @@ def _user_response(user: dict) -> dict:
     return {k: v for k, v in user.items() if k != "password"}
 
 
-async def _get_current_user(request: Request, db: Database, secret: str):
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+async def _get_current_user(
+    request: Request,
+    db: Database,
+    secret: str,
+    blocklist_is_blocked,
+    delivery: TokenDeliveryBackend,
+):
+    token = await delivery.extract_token(request)
+    if not token:
         raise ZorkError(401, "Authentication required")
 
-    token = auth_header[7:]
     payload = decode_token(token, secret)
 
-    if await is_blocked(db, payload["jti"]):
+    if await blocklist_is_blocked(payload["jti"]):
         raise ZorkError(401, "Token has been revoked")
+
+    if delivery.supports_csrf:
+        if isinstance(delivery, CookieTokenDelivery):
+            csrf_token = await delivery.extract_csrf_token(request)
+            if not csrf_token:
+                raise ZorkError(403, "CSRF token required")
 
     user = await db.fetch_one(
         f"SELECT * FROM {USERS_TABLE} WHERE id = ?", (payload["sub"],)
@@ -48,10 +77,39 @@ async def _get_current_user(request: Request, db: Database, secret: str):
     return dict(user), payload
 
 
+def _resolve_blocklist(db: Database, auth: Auth):
+    """Resolve the blocklist backend based on configuration."""
+    backend = auth.blocklist_backend
+    if backend == "redis":
+        from zork.auth.backends import RedisBlocklist
+
+        return RedisBlocklist()
+    from zork.auth.backends import DatabaseBlocklist
+
+    return DatabaseBlocklist(db)
+
+
+def _resolve_delivery(auth: Auth) -> TokenDeliveryBackend:
+    """Resolve the token delivery backend based on configuration."""
+    delivery = auth.token_delivery
+    if delivery == "cookie":
+        return CookieTokenDelivery(
+            secure=auth.cookie_secure,
+            samesite=auth.cookie_samesite,
+            domain=auth.cookie_domain,
+            access_max_age=auth.access_token_expiry,
+            refresh_max_age=auth.refresh_token_expiry,
+            enable_csrf=auth.csrf_enable,
+        )
+    return BearerTokenDelivery()
+
+
 def build_auth_routes(
     auth: Auth, db: Database, secret: str, email_config=None
 ) -> list[Route]:  # noqa: ANN001
     runner = auth._runner
+    delivery = _resolve_delivery(auth)
+    blocklist = _resolve_blocklist(db, auth)
 
     async def register(request: Request) -> JSONResponse:
         if not auth.allow_registration:
@@ -112,12 +170,25 @@ def build_auth_routes(
             tuple(values),
         )
 
-        token = create_token(user_id, "user", auth.token_expiry, secret)
+        access_token = create_access_token(
+            user_id, "user", auth.access_token_expiry, secret
+        )
+        refresh_tok = create_refresh_token(
+            user_id, "user", auth.refresh_token_expiry, secret
+        )
+
         user = await db.fetch_one(
             f"SELECT * FROM {USERS_TABLE} WHERE id = ?", (user_id,)
         )
         user_dict = _user_response(dict(user))
         await runner.run("auth:after_register", user_dict, ctx)
+
+        from zork.auth.tokens import decode_token
+
+        refresh_payload = decode_token(refresh_tok, secret)
+        await store_refresh_token(
+            db, user_id, refresh_payload["jti"], auth.refresh_token_expiry
+        )
 
         # Send email verification link (non-blocking; silent if no backend configured)
         if email_config is not None:
@@ -133,10 +204,13 @@ def build_auth_routes(
                 EmailMessage(to=email, subject=subject, html_body=html, text_body=text)
             )
 
-        return JSONResponse(
-            {"token": token, "user": user_dict},
-            status_code=201,
-        )
+        response_data = {"user": user_dict}
+        if isinstance(delivery, BearerTokenDelivery):
+            response_data["token"] = access_token
+
+        response = JSONResponse(response_data, status_code=201)
+        await delivery.attach_token(response, access_token, refresh_tok)
+        return response
 
     async def login(request: Request) -> JSONResponse:
         body = await request.json()
@@ -161,41 +235,110 @@ def build_auth_routes(
         if not user["is_active"]:
             raise ZorkError(403, "Account is disabled")
 
-        token = create_token(user["id"], user["role"], auth.token_expiry, secret)
+        access_token = create_access_token(
+            user["id"], user["role"], auth.access_token_expiry, secret
+        )
+        refresh_tok = create_refresh_token(
+            user["id"], user["role"], auth.refresh_token_expiry, secret
+        )
+
+        await enforce_refresh_token_limit(db, user["id"], auth.max_refresh_tokens)
+
+        from zork.auth.tokens import decode_token
+
+        refresh_payload = decode_token(refresh_tok, secret)
+        await store_refresh_token(
+            db, user["id"], refresh_payload["jti"], auth.refresh_token_expiry
+        )
+
         user_resp = _user_response(user)
         await runner.run("auth:after_login", user_resp, ctx)
-        return JSONResponse({"token": token, "user": user_resp})
+
+        response_data = {"user": user_resp}
+        if isinstance(delivery, BearerTokenDelivery):
+            response_data["token"] = access_token
+
+        response = JSONResponse(response_data)
+        await delivery.attach_token(response, access_token, refresh_tok)
+        return response
 
     async def logout(request: Request) -> JSONResponse:
-        user, payload = await _get_current_user(request, db, secret)
+        user, payload = await _get_current_user(
+            request, db, secret, blocklist.is_blocked, delivery
+        )
         ctx = ZorkContext.from_request(request, operation="logout")
         user_resp = _user_response(user)
         await runner.run("auth:before_logout", user_resp, ctx)
-        exp = payload.get("exp", "")
-        expires_at = (
-            datetime.fromtimestamp(exp, tz=timezone.utc).isoformat()
-            if isinstance(exp, (int, float))
-            else str(exp)
-        )
-        await block_token(db, payload["jti"], expires_at)
+
+        await blocklist.block(payload["jti"], int(payload["exp"]))
+
+        if isinstance(delivery, CookieTokenDelivery):
+            refresh_jti_record = await get_refresh_token_by_jti(db, user["id"])
+            if refresh_jti_record:
+                jti_hash = refresh_jti_record.get("jti_hash")
+                if jti_hash:
+                    await delete_refresh_token(db, user["id"])
+
         await runner.run("auth:after_logout", user_resp, ctx)
-        return JSONResponse({"message": "Logged out"})
+        response = JSONResponse({"message": "Logged out"})
+        await delivery.clear_token(response)
+        return response
 
     async def me(request: Request) -> JSONResponse:
-        user, _ = await _get_current_user(request, db, secret)
+        user, _ = await _get_current_user(
+            request, db, secret, blocklist.is_blocked, delivery
+        )
         return JSONResponse(_user_response(user))
 
     async def refresh(request: Request) -> JSONResponse:
-        user, payload = await _get_current_user(request, db, secret)
-        exp = payload.get("exp", "")
-        expires_at = (
-            datetime.fromtimestamp(exp, tz=timezone.utc).isoformat()
-            if isinstance(exp, (int, float))
-            else str(exp)
-        )
-        await block_token(db, payload["jti"], expires_at)
-        new_token = create_token(user["id"], user["role"], auth.token_expiry, secret)
-        return JSONResponse({"token": new_token})
+        if isinstance(delivery, CookieTokenDelivery):
+            refresh_tok = await delivery.extract_refresh_token(request)
+            if not refresh_tok:
+                raise ZorkError(401, "Refresh token required")
+
+            payload = decode_token(refresh_tok, secret)
+            if not verify_token_type(payload, TOKEN_TYPE_REFRESH):
+                raise ZorkError(401, "Invalid token type")
+
+            if await blocklist.is_blocked(payload["jti"]):
+                raise ZorkError(401, "Token has been revoked")
+
+            stored = await get_refresh_token_by_jti(db, payload["jti"])
+            if not stored:
+                raise ZorkError(401, "Refresh token not found")
+
+            await blocklist.block(payload["jti"], int(payload["exp"]))
+            await delete_refresh_token(db, payload["jti"])
+
+            new_access = create_access_token(
+                payload["sub"], payload["role"], auth.access_token_expiry, secret
+            )
+            new_refresh = create_refresh_token(
+                payload["sub"], payload["role"], auth.refresh_token_expiry, secret
+            )
+
+            from zork.auth.tokens import decode_token as dt
+
+            new_refresh_payload = dt(new_refresh, secret)
+            await store_refresh_token(
+                db,
+                payload["sub"],
+                new_refresh_payload["jti"],
+                auth.refresh_token_expiry,
+            )
+
+            response = JSONResponse({"message": "Token refreshed"})
+            await delivery.attach_token(response, new_access, new_refresh)
+            return response
+        else:
+            user, payload = await _get_current_user(
+                request, db, secret, blocklist.is_blocked, delivery
+            )
+            await blocklist.block(payload["jti"], int(payload["exp"]))
+            new_token = create_access_token(
+                user["id"], user["role"], auth.access_token_expiry, secret
+            )
+            return JSONResponse({"token": new_token})
 
     async def forgot_password(request: Request) -> JSONResponse:
         body = await request.json()
@@ -272,6 +415,8 @@ def build_auth_routes(
         await db.execute(
             f"DELETE FROM {PASSWORD_RESETS_TABLE} WHERE token = ?", (token,)
         )
+
+        await revoke_all_user_refresh_tokens(db, reset["user_id"])
 
         return JSONResponse({"message": "Password updated"})
 

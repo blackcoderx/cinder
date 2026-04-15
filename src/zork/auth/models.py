@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -8,6 +9,7 @@ from zork.db.connection import Database
 
 USERS_TABLE = "_users"
 TOKEN_BLOCKLIST_TABLE = "_token_blocklist"
+REFRESH_TOKENS_TABLE = "_refresh_tokens"
 PASSWORD_RESETS_TABLE = "_password_resets"
 EMAIL_VERIFICATIONS_TABLE = "_email_verifications"
 
@@ -41,6 +43,16 @@ async def create_auth_tables(
     """)
 
     await db.execute(f"""
+        CREATE TABLE IF NOT EXISTS {REFRESH_TOKENS_TABLE} (
+            jti_hash TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES {USERS_TABLE}(id)
+        )
+    """)
+
+    await db.execute(f"""
         CREATE TABLE IF NOT EXISTS {PASSWORD_RESETS_TABLE} (
             token TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -55,6 +67,11 @@ async def create_auth_tables(
             email TEXT NOT NULL,
             expires_at TEXT NOT NULL
         )
+    """)
+
+    await db.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user 
+        ON {REFRESH_TOKENS_TABLE}(user_id, created_at)
     """)
 
 
@@ -112,3 +129,121 @@ async def cleanup_expired_verifications(db: Database) -> None:
     await db.execute(
         f"DELETE FROM {EMAIL_VERIFICATIONS_TABLE} WHERE expires_at < ?", (now,)
     )
+
+
+def hash_jti(jti: str) -> str:
+    """Hash a JTI using SHA256 for secure storage."""
+    return hashlib.sha256(jti.encode()).hexdigest()
+
+
+async def store_refresh_token(
+    db: Database, user_id: str, jti: str, expires_in: int
+) -> None:
+    """Store a refresh token hash for a user.
+
+    Args:
+        db: Database connection.
+        user_id: The user's ID.
+        jti: The JWT ID (jti claim) of the refresh token.
+        expires_in: Seconds until token expiration.
+    """
+    jti_hash = hash_jti(jti)
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(seconds=expires_in)).isoformat()
+    created_at = now.isoformat()
+
+    try:
+        await db.execute(
+            f"INSERT INTO {REFRESH_TOKENS_TABLE} "
+            "(jti_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",
+            (jti_hash, user_id, expires_at, created_at),
+        )
+    except DatabaseIntegrityError:
+        pass
+
+
+async def get_refresh_token_by_jti(db: Database, jti: str) -> dict | None:
+    """Look up a refresh token by its JTI hash.
+
+    Args:
+        db: Database connection.
+        jti: The JWT ID (jti claim) of the refresh token.
+
+    Returns:
+        The stored token record (with hashed jti) or None if not found.
+    """
+    jti_hash = hash_jti(jti)
+    row = await db.fetch_one(
+        f"SELECT * FROM {REFRESH_TOKENS_TABLE} WHERE jti_hash = ?", (jti_hash,)
+    )
+    return dict(row) if row else None
+
+
+async def delete_refresh_token(db: Database, jti: str) -> None:
+    """Delete a specific refresh token by JTI.
+
+    Args:
+        db: Database connection.
+        jti: The JWT ID (jti claim) of the refresh token to delete.
+    """
+    jti_hash = hash_jti(jti)
+    await db.execute(
+        f"DELETE FROM {REFRESH_TOKENS_TABLE} WHERE jti_hash = ?", (jti_hash,)
+    )
+
+
+async def revoke_all_user_refresh_tokens(db: Database, user_id: str) -> None:
+    """Revoke all refresh tokens for a user.
+
+    Used when password is changed or account needs full logout.
+
+    Args:
+        db: Database connection.
+        user_id: The user's ID.
+    """
+    await db.execute(
+        f"DELETE FROM {REFRESH_TOKENS_TABLE} WHERE user_id = ?", (user_id,)
+    )
+
+
+async def enforce_refresh_token_limit(
+    db: Database, user_id: str, max_tokens: int
+) -> int:
+    """Enforce maximum refresh tokens per user.
+
+    Deletes oldest tokens if the limit is exceeded.
+
+    Args:
+        db: Database connection.
+        user_id: The user's ID.
+        max_tokens: Maximum allowed tokens per user.
+
+    Returns:
+        Number of tokens deleted.
+    """
+    row = await db.fetch_one(
+        f"SELECT COUNT(*) as cnt FROM {REFRESH_TOKENS_TABLE} WHERE user_id = ?",
+        (user_id,),
+    )
+    count = row["cnt"] if row else 0
+
+    if count >= max_tokens:
+        excess = count - max_tokens + 1
+        await db.execute(
+            f"""
+            DELETE FROM {REFRESH_TOKENS_TABLE} 
+            WHERE user_id = ? AND jti_hash IN (
+                SELECT jti_hash FROM {REFRESH_TOKENS_TABLE} 
+                WHERE user_id = ? ORDER BY created_at ASC LIMIT ?
+            )
+            """,
+            (user_id, user_id, excess),
+        )
+        return excess
+    return 0
+
+
+async def cleanup_expired_refresh_tokens(db: Database) -> None:
+    """Delete expired refresh tokens. Called at startup."""
+    now = datetime.now(timezone.utc).isoformat()
+    await db.execute(f"DELETE FROM {REFRESH_TOKENS_TABLE} WHERE expires_at < ?", (now,))
