@@ -22,6 +22,7 @@ from zork.collections.schema import (
     TextField,
     URLField,
 )
+from zork.db.connection import Database
 from zork.errors import ZorkError
 from zork.ratelimit.backends import (
     MemoryRateLimitBackend,
@@ -48,6 +49,8 @@ __all__ = [
     "RelationField",
     "FileField",
     "ZorkError",
+    # Database
+    "Database",
     # Cache
     "CacheBackend",
     "MemoryCacheBackend",

@@ -200,6 +200,79 @@ async def _safe_send(backend, message) -> None:
         logger.exception("Background email send failed (to=%s)", message.to)
 
 
+class _CORSConfig:
+    """CORS configuration facade — accessible via ``app.cors``.
+
+    By default, CORS is disabled (secure). Configure origins to enable.
+
+    Example::
+
+        app = Zork(database="app.db")
+        app.cors.allow_origins(["https://myapp.com"])
+        app.cors.allow_methods(["GET", "POST"])
+    """
+
+    def __init__(self) -> None:
+        self._allow_origins: list[str] = []
+        self._allow_credentials: bool = False
+        self._allow_methods: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        self._allow_headers: list[str] = []
+        self._expose_headers: list[str] = []
+        self._max_age: int | None = None
+
+    def allow_origins(self, origins: list[str]) -> "_CORSConfig":
+        """Set allowed origins.
+
+        Use ``["*"]`` to allow all origins (INSECURE with credentials).
+        Default: ``[]`` (no CORS).
+        """
+        self._allow_origins = origins
+        return self
+
+    def allow_credentials(self, allow: bool = True) -> "_CORSConfig":
+        """Allow credentials (cookies, auth headers).
+
+        When True, origins cannot be ``["*"]``. Default: False.
+        """
+        self._allow_credentials = allow
+        return self
+
+    def allow_methods(self, methods: list[str]) -> "_CORSConfig":
+        """Set allowed HTTP methods. Default: GET, POST, PUT, PATCH, DELETE."""
+        self._allow_methods = methods
+        return self
+
+    def allow_headers(self, headers: list[str]) -> "_CORSConfig":
+        """Set allowed request headers. Default: [] (allow all)."""
+        self._allow_headers = headers
+        return self
+
+    def expose_headers(self, headers: list[str]) -> "_CORSConfig":
+        """Set response headers exposed to the client."""
+        self._expose_headers = headers
+        return self
+
+    def max_age(self, seconds: int) -> "_CORSConfig":
+        """Set preflight cache duration in seconds."""
+        self._max_age = seconds
+        return self
+
+    def _is_configured(self) -> bool:
+        """Check if CORS has been configured."""
+        return bool(self._allow_origins)
+
+    def _build_config(self) -> dict:
+        """Build CORS config dict for pipeline."""
+        return {
+            "allow_origins": self._allow_origins,
+            "allow_credentials": self._allow_credentials,
+            "allow_methods": self._allow_methods,
+            "allow_headers": self._allow_headers,
+            "expose_headers": self._expose_headers,
+            "max_age": self._max_age,
+        }
+
+
 class _EmailConfig:
     """Fluent email configuration facade — accessible via ``app.email``.
 
@@ -429,6 +502,10 @@ class Zork:
         title: str = "Zork API",
         version: str = "1.0.0",
         auto_sync: bool | None = None,
+        cors_allow_origins: list[str] | None = None,
+        cors_allow_credentials: bool = False,
+        cors_allow_methods: list[str] | None = None,
+        cors_allow_headers: list[str] | None = None,
     ):
         self.database = database
         self.title = title
@@ -459,6 +536,16 @@ class Zork:
         self._storage_backend = None
         # Multi-DB: optional pre-configured backend (set via configure_database())
         self._db_backend_override = None
+        # CORS - configure via constructor or fluent API
+        self.cors: _CORSConfig = _CORSConfig()
+        if cors_allow_origins is not None:
+            self.cors.allow_origins(cors_allow_origins)
+        if cors_allow_credentials:
+            self.cors.allow_credentials(True)
+        if cors_allow_methods is not None:
+            self.cors.allow_methods(cors_allow_methods)
+        if cors_allow_headers is not None:
+            self.cors.allow_headers(cors_allow_headers)
 
     @property
     def auto_sync(self) -> bool:
@@ -921,7 +1008,21 @@ class Zork:
             hook_runner=self._runner,
             cache_middleware=cache_factory,
             ratelimit_middleware=rl_factory,
+            cors_config=self.cors._build_config()
+            if self.cors._is_configured()
+            else None,
         )
+
+        if self.cors._is_configured():
+            orig = self.cors._allow_origins
+            creds = self.cors._allow_credentials
+            if "*" in orig and creds:
+                logger.warning(
+                    "⚠️  WARNING: CORS is configured with allow_origins=['*'] and allow_credentials=True. "
+                    "This is insecure. Use specific origins in production."
+                )
+            elif orig:
+                logger.info("CORS enabled (origins: %s)", ", ".join(orig))
 
         # Wrap *outside* the existing middleware stack so lazy init fires first.
         return LazyInitMiddleware(wrapped)  # type: ignore[return-value]

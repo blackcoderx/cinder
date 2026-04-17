@@ -116,13 +116,14 @@ def build_middleware_stack(
     hook_runner: HookRunner | None = None,
     cache_middleware=None,
     ratelimit_middleware=None,
+    cors_config: dict | None = None,
 ) -> ASGIApp:
     """Wrap the app with the standard Zork middleware stack.
 
     Order (outermost to innermost):
     1. ErrorHandler — catches all errors
     2. RequestID — adds X-Request-ID header
-    3. CORS — handles cross-origin requests
+    3. CORS — handles cross-origin requests (optional)
     4. RateLimit — enforces per-IP/user request limits (optional)
     5. Cache — cache-aside for GET responses (optional)
     6. Auth — resolves JWT and sets request.state.user (when db+secret provided)
@@ -142,13 +143,27 @@ def build_middleware_stack(
     if ratelimit_middleware is not None:
         app = ratelimit_middleware(app)
 
-    app = CORSMiddleware(
-        app,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    if cors_config is not None:
+        app = CORSMiddleware(
+            app,
+            allow_origins=cors_config.get("allow_origins", ["*"]),
+            allow_credentials=cors_config.get("allow_credentials", False),
+            allow_methods=cors_config.get("allow_methods", ["*"]),
+            allow_headers=cors_config.get("allow_headers", ["*"]),
+            expose_headers=cors_config.get("expose_headers", []),
+            max_age=cors_config.get("max_age"),
+        )
+    else:
+        from starlette.middleware import Middleware
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        class DisabledCORSMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                response = await call_next(request)
+                return response
+
+        app = DisabledCORSMiddleware(app)
+
     app = RequestIDMiddleware(app)
     app = ErrorHandlerMiddleware(app)
     return app
