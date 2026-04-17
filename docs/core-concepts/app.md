@@ -16,10 +16,49 @@ The constructor accepts the following options:
 
 ```python
 app = Zork(
-    database="app.db",      # Database URL or file path
-    title="My API",         # API title for OpenAPI docs
-    version="1.0.0"         # API version
+    database="app.db",    # Database URL or file path
+    title="My API",       # API title for OpenAPI docs
+    api_version="1.0.0", # OpenAPI spec version
 )
+```
+
+### API Versioning
+
+Enable URL-based API versioning for production APIs:
+
+```python
+# Simple - no versioning (default, backward compatible)
+app = Zork(database="app.db")
+# Routes: /api/posts, /api/auth/...
+
+# Enable versioning
+app = Zork(database="app.db", version="v1")
+# Routes: /api/v1/posts, /api/v1/auth/...
+
+# Custom prefix
+app = Zork(database="app.db", version="v2", version_prefix="/custom")
+# Routes: /custom/v2/posts, /custom/v2/auth/...
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `version` | `None` | API version string (e.g., "v1", "v2") |
+| `version_prefix` | `"/api"` | URL prefix for routes |
+
+### Multiple Versions (Advanced)
+
+For running multiple API versions simultaneously:
+
+```python
+from zork import Zork
+
+# Create separate apps for each version
+app_v1 = Zork(database="app.db", version="v1", version_prefix="/api")
+app_v2 = Zork(database="app.db", version="v2", version_prefix="/api")
+
+# Build and mount (example with FastAPI or Starlette)
+main_app.mount("/api/v1", app_v1.build())
+main_app.mount("/api/v2", app_v2.build())
 ```
 
 ## Database Configuration

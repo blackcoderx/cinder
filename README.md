@@ -120,6 +120,7 @@ You now have:
 - Auto-generated OpenAPI 3.1 + Swagger UI
 - Zero boilerplate — one file to a working API
 - Configurable CORS — secure defaults, opt-in with specific origins
+- API versioning — URL-based versions (/api/v1, /api/v2)
 
 ## CORS Configuration
 
@@ -141,6 +142,24 @@ app.cors.allow_origins(["https://myapp.com"])
 ```
 
 **Security:** Never use `allow_origins=["*"]` with `allow_credentials=True`. Zork logs a warning if you do.
+
+## API Versioning
+
+Enable URL-based API versioning for production:
+
+```python
+# No versioning (default, backward compatible)
+app = Zork(database="app.db")
+# Routes: /api/posts, /api/auth/...
+
+# Enable versioning
+app = Zork(database="app.db", version="v1")
+# Routes: /api/v1/posts, /api/v1/auth/...
+
+# Custom prefix
+app = Zork(database="app.db", version="v2", version_prefix="/custom")
+# Routes: /custom/v2/posts, /custom/v2/auth/...
+```
 
 ## Documentation
 
