@@ -22,6 +22,9 @@ app = typer.Typer(
 migrate_app = typer.Typer(help="Manage database schema migrations.")
 app.add_typer(migrate_app, name="migrate")
 
+schema_app = typer.Typer(help="Schema management and inspection.")
+app.add_typer(schema_app, name="schema")
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -528,6 +531,118 @@ def migrate_create(
             await db.disconnect()
 
     asyncio.run(_auto_create())
+
+
+@migrate_app.command("sync")
+def migrate_sync(
+    app_path: Optional[str] = typer.Option(
+        None, "--app", help="Path to the Python file containing the Zork app"
+    ),
+    migrations_dir: str = typer.Option(
+        "migrations", "--dir", help="Directory containing migration files"
+    ),
+    collection: Optional[str] = typer.Option(
+        None, "--collection", help="Only sync specific collection"
+    ),
+    include_orphans: bool = typer.Option(
+        False, "--include-orphans", help="Generate drop migrations for orphan columns"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview migrations without creating files"
+    ),
+):
+    """Generate migration files from schema diff."""
+    from zork.db.connection import Database
+    from zork.migrate_sync import sync_to_migrations
+
+    db_url, zork_app = _get_db_url_for_migrate(app_path)
+    if zork_app is None:
+        typer.echo("Error: --app is required for migrate sync", err=True)
+        raise typer.Exit(1)
+
+    # Get collections to sync
+    if collection:
+        if collection not in zork_app._collections:
+            typer.echo(f"Error: Collection '{collection}' not found", err=True)
+            raise typer.Exit(1)
+        collections = [zork_app._collections[collection][0]]
+    else:
+        collections = [col for col, _ in zork_app._collections.values()]
+
+    async def _sync():
+        db = Database(db_url)
+        await db.connect()
+        try:
+            generated = await sync_to_migrations(
+                collections,
+                db,
+                migrations_dir,
+                include_orphans=include_orphans,
+                dry_run=dry_run,
+            )
+            if generated:
+                for f in generated:
+                    typer.echo(f"Generated: {f}")
+            else:
+                typer.echo("No migrations to generate.")
+        finally:
+            await db.disconnect()
+
+    asyncio.run(_sync())
+
+
+# ---------------------------------------------------------------------------
+# schema sub-app
+# ---------------------------------------------------------------------------
+
+
+@schema_app.command("diff")
+def schema_diff(
+    app_path: str = typer.Option(
+        ..., "--app", help="Path to the Python file containing the Zork app"
+    ),
+    collection: Optional[str] = typer.Option(
+        None, "--collection", help="Only show diff for specific collection"
+    ),
+    format: str = typer.Option(
+        "text", "--format", "-f", help="Output format: text, json"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show verbose output"),
+):
+    """Show schema differences between collections and database."""
+    from zork.db.connection import Database
+    from zork.schema_diff import generate_schema_diff
+
+    zork_app, _ = _load_app(app_path)
+    db_url = zork_app.database
+
+    # Get collections to diff
+    if collection:
+        if collection not in zork_app._collections:
+            typer.echo(f"Error: Collection '{collection}' not found", err=True)
+            raise typer.Exit(1)
+        collections = [zork_app._collections[collection][0]]
+    else:
+        collections = [col for col, _ in zork_app._collections.values()]
+
+    async def _diff():
+        db = Database(db_url)
+        await db.connect()
+        try:
+            for coll in collections:
+                diff_lines = await generate_schema_diff(coll, db, format=format)
+                if format == "json":
+                    typer.echo(diff_lines)
+                else:
+                    if diff_lines:
+                        for line in diff_lines:
+                            typer.echo(line)
+                    else:
+                        typer.echo(f"Collection '{coll.name}': schemas match")
+        finally:
+            await db.disconnect()
+
+    asyncio.run(_diff())
 
 
 # ---------------------------------------------------------------------------

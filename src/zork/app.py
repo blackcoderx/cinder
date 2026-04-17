@@ -399,6 +399,28 @@ class _AppHooks:
         return await self._runner.fire(event, payload, ctx)
 
 
+def _detect_auto_sync(database: str) -> bool:
+    """Detect whether auto-sync should be enabled based on database URL.
+
+    Auto-sync is enabled by default for SQLite (development-friendly).
+    Auto-sync is disabled by default for PostgreSQL and MySQL (production).
+    """
+    db_lower = database.lower()
+    # SQLite patterns
+    if db_lower in ("app.db", ":memory:"):
+        return True
+    if db_lower.startswith("sqlite:///"):
+        return True
+    # PostgreSQL
+    if "postgresql" in db_lower or db_lower.startswith("postgres://"):
+        return False
+    # MySQL
+    if "mysql" in db_lower:
+        return False
+    # Default to False for unknown databases (safer)
+    return False
+
+
 class Zork:
     def __init__(
         self,
@@ -406,10 +428,20 @@ class Zork:
         *,
         title: str = "Zork API",
         version: str = "1.0.0",
+        auto_sync: bool | None = None,
     ):
         self.database = database
         self.title = title
         self.version = version
+
+        # Auto-sync detection: explicit > env var > detection
+        if auto_sync is not None:
+            self._auto_sync = auto_sync
+        elif env_val := os.getenv("ZORK_AUTO_SYNC"):
+            self._auto_sync = env_val.lower() in ("true", "1", "yes")
+        else:
+            self._auto_sync = _detect_auto_sync(database)
+
         self._collections: dict[str, tuple[Collection, dict[str, str]]] = {}
         self._auth: Auth | None = None
         self._secret: str | None = None
@@ -427,6 +459,16 @@ class Zork:
         self._storage_backend = None
         # Multi-DB: optional pre-configured backend (set via configure_database())
         self._db_backend_override = None
+
+    @property
+    def auto_sync(self) -> bool:
+        """Whether auto-sync is enabled for this app.
+
+        Auto-sync automatically adds missing columns on startup.
+        Default is True for SQLite, False for PostgreSQL/MySQL.
+        Can be overridden via constructor or ZORK_AUTO_SYNC env var.
+        """
+        return self._auto_sync
 
     def configure_database(self, backend) -> "Zork":
         """Plug in a fully pre-configured :class:`~zork.db.backends.base.DatabaseBackend`.
@@ -560,7 +602,7 @@ class Zork:
             db._backend = self._db_backend_override
         else:
             db = Database(self.database)
-        store = CollectionStore(db)
+        store = CollectionStore(db, auto_sync=self.auto_sync)
         secret = self._get_secret()
         collections = self._collections
         auth = self._auth
@@ -578,6 +620,16 @@ class Zork:
         async def _init() -> None:
             if _init_done[0]:
                 return
+
+            # Warn if auto-sync is enabled with production databases
+            if self.auto_sync and not _detect_auto_sync(self.database):
+                logger.warning(
+                    "⚠️  WARNING: Auto-sync is enabled in production. "
+                    "This is intended for development only. "
+                    "For production, set ZORK_AUTO_SYNC=false or use migrations. "
+                    "Run `zork schema diff` to preview changes."
+                )
+
             await db.connect()
             logger.info(f"Connected to database: {self.database}")
 

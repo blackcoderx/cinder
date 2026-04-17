@@ -24,39 +24,60 @@ logger = logging.getLogger("zork.collections.store")
 class CollectionStore:
     """Handles SQLite CRUD operations and schema synchronization for collections."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, auto_sync: bool = True):
         self.db = db
+        self.auto_sync = auto_sync
 
     async def sync_schema(self, collection: Collection) -> None:
+        """Synchronize collection schema with database table.
+
+        Args:
+            collection: The collection to sync
+            auto_sync: Whether to automatically add missing columns.
+                      When False, only creates tables if they don't exist.
+        """
         if not await self.db.table_exists(collection.name):
             sql = collection.build_create_table_sql()
             await self.db.execute(sql)
+            logger.info(f"Created table '{collection.name}'")
 
         existing_cols = await self.db.get_columns(collection.name)
         existing_names = {col["name"] for col in existing_cols}
         schema_names = {f.name for f in collection.fields}
         schema_names.update({"id", "created_at", "updated_at"})
 
-        for field in collection.fields:
-            if field.name not in existing_names:
-                col_sql = field.column_sql()
-                await self.db.execute(
-                    f"ALTER TABLE {collection.name} ADD COLUMN {col_sql}"
-                )
-                logger.info(f"Added column '{field.name}' to table '{collection.name}'")
+        # Track orphans for warning
+        orphans: list[str] = []
 
         for col_name in existing_names:
             if col_name not in schema_names:
-                logger.warning(
-                    f"Column '{col_name}' exists in table '{collection.name}' "
-                    f"but is not in the schema. It will NOT be dropped."
-                )
+                orphans.append(col_name)
 
-        for sql in collection.build_index_sqls():
-            idx_name = sql.split()[5]
-            if not await self.db.index_exists(collection.name, idx_name):
-                await self.db.execute(sql)
-                logger.info("Created index %s on %s", idx_name, collection.name)
+        # Only add columns if auto_sync is enabled
+        if self.auto_sync:
+            for field in collection.fields:
+                if field.name not in existing_names:
+                    col_sql = field.column_sql()
+                    await self.db.execute(
+                        f"ALTER TABLE {collection.name} ADD COLUMN {col_sql}"
+                    )
+                    logger.info(
+                        f"Added column '{field.name}' to table '{collection.name}'"
+                    )
+
+            # Create indexes
+            for sql in collection.build_index_sqls():
+                idx_name = sql.split()[5]
+                if not await self.db.index_exists(collection.name, idx_name):
+                    await self.db.execute(sql)
+                    logger.info("Created index %s on %s", idx_name, collection.name)
+
+        # Warn about orphans (but never auto-delete)
+        for col_name in orphans:
+            logger.warning(
+                f"Column '{col_name}' exists in table '{collection.name}' "
+                f"but is not in the schema. It will NOT be dropped."
+            )
 
     async def create(
         self, collection: Collection, data: dict, ctx: ZorkContext | None = None
