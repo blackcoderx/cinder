@@ -153,6 +153,32 @@ app.email.configure(
 
 See the [Email Setup](/email/setup) guide for details.
 
+### CORS Configuration
+
+Configure Cross-Origin Resource Sharing for browser clients:
+
+```python
+# Constructor (recommended)
+app = Zork(
+    database="app.db",
+    cors_allow_origins=["https://myapp.com"],
+    cors_allow_credentials=True,
+    cors_allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    cors_allow_headers=["Content-Type", "Authorization"],
+)
+
+# Or fluent API
+app = Zork(database="app.db")
+app.cors.allow_origins(["https://myapp.com"])
+app.cors.allow_credentials(True)
+app.cors.allow_methods(["GET", "POST"])
+app.cors.allow_headers(["Content-Type"])
+```
+
+**Security:** By default, CORS is disabled. Never use `allow_origins=["*"]` with `allow_credentials=True`.
+
+See the [Middleware Stack](/core-concepts/middleware-stack) guide for CORS details.
+
 ### Caching Configuration
 
 Configure response caching:
@@ -252,6 +278,7 @@ Here is a summary of all Zork configuration methods:
 | `app.configure_storage(backend)` | Set file storage backend |
 | `app.configure_redis(url)` | Configure Redis |
 | `app.on(event, handler)` | Register lifecycle hook |
+| `app.cors` | Configure CORS |
 | `app.cache` | Configure caching |
 | `app.rate_limit` | Configure rate limiting |
 | `app.email` | Configure email |

@@ -82,19 +82,58 @@ This ID is also available in hook context for logging and debugging.
 
 ### CORSMiddleware
 
-Handles Cross-Origin Resource Sharing for browser-based clients. Zork configures CORS to allow all origins by default:
+Handles Cross-Origin Resource Sharing for browser-based clients.
+
+**By default, CORS is disabled (secure).** You must explicitly configure origins to enable CORS:
 
 ```python
-allow_origins=["*"]
-allow_credentials=True
-allow_methods=["*"]
-allow_headers=["*"]
+from zork import Zork
+
+# Option 1: Constructor args
+app = Zork(
+    database="app.db",
+    cors_allow_origins=["https://myapp.com"],
+    cors_allow_credentials=True,
+    cors_allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+)
+
+# Option 2: Fluent API
+app = Zork(database="app.db")
+app.cors.allow_origins(["https://myapp.com"])
+app.cors.allow_credentials(True)
+app.cors.allow_methods(["GET", "POST"])
+app.cors.allow_headers(["Content-Type"])
 ```
 
-For production, you may want to restrict origins:
+### Security Warning
+
+**Never use `allow_origins=["*"]` with `allow_credentials=True`** — this is insecure. Zork logs a warning at startup if you do:
+
+```
+⚠️  WARNING: CORS is configured with allow_origins=['*'] and allow_credentials=True.
+This is insecure. Use specific origins in production.
+```
+
+### CORS Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `cors_allow_origins` | `[]` (disabled) | List of allowed origins |
+| `cors_allow_credentials` | `False` | Allow cookies/auth headers |
+| `cors_allow_methods` | `["GET", "POST", "PUT", "PATCH", "DELETE"]` | Allowed HTTP methods |
+| `cors_allow_headers` | `[]` (all) | Allowed request headers |
+
+### Environment Variables
+
+You can also configure CORS via environment variables by using the fluent API with defaults:
 
 ```python
-# Set specific origins in your app configuration
+# In your app initialization
+import os
+
+app = Zork(database="app.db")
+if origins := os.getenv("CORS_ALLOW_ORIGINS"):
+    app.cors.allow_origins(origins.split(","))
 ```
 
 ### RateLimitMiddleware
@@ -190,19 +229,33 @@ Invalid data returns a 400 error with validation details:
 
 ## Handling CORS
 
-For browser clients making cross-origin requests, the CORSMiddleware handles preflight requests automatically.
+For browser clients making cross-origin requests, enable CORS first:
+
+```python
+app = Zork(database="app.db")
+app.cors.allow_origins(["https://myapp.com"])
+# Then register collections and build
+```
 
 ### Simple Requests
 
-Simple GET and POST requests work with default CORS settings.
+Once enabled, simple GET and POST requests include CORS headers automatically.
 
 ### Preflight Requests
 
 OPTIONS requests are handled automatically for preflight checking.
 
-### Configuring CORS
+### Secure by Default
 
-The default CORS configuration allows all origins. To customize, you would modify the middleware configuration in your app's pipeline.
+Zork disables CORS by default to prevent accidental exposure. Always use specific origins in production:
+
+```python
+# Development (okay for localhost)
+app.cors.allow_origins(["http://localhost:3000"])
+
+# Production (use specific domain)
+app.cors.allow_origins(["https://myapp.com"])
+```
 
 ## WebSocket Connections
 
