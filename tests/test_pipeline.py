@@ -61,7 +61,8 @@ class TestRequestID:
 
 
 class TestCORS:
-    def test_cors_headers_present(self):
+    def test_cors_disabled_by_default(self):
+        # By default, CORS is now disabled (secure)
         app = create_test_app([Route("/ok", ok_endpoint)])
         client = TestClient(app)
         resp = client.options(
@@ -71,4 +72,5 @@ class TestCORS:
                 "access-control-request-method": "GET",
             },
         )
-        assert "access-control-allow-origin" in resp.headers
+        # No CORS headers when disabled
+        assert "access-control-allow-origin" not in resp.headers
