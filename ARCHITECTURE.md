@@ -13,7 +13,8 @@
    - [2. The Database Layer](#2-the-database-layer-srczorkdb)
    - [3. Dynamic Collections & API Generation](#3-dynamic-collections--api-generation-srczorkcollections)
    - [4. Lifecycle Hooks](#4-lifecycle-hooks-srczorkhooks)
-   - [5. Authentication System](#5-authentication-system-srczorkauth)
+   - [5. Response Models](#5-response-models-srczorkresponsepy)
+   - [6. Authentication System](#6-authentication-system-srczorkauth)
    - [6. File Storage Subsystem](#6-file-storage-subsystem-srczorkstorage)
    - [7. Email Subsystem](#7-email-subsystem-srczorkemail)
    - [8. Cache Subsystem](#8-cache-subsystem-srczorkcache)
@@ -431,7 +432,21 @@ from zork.collections.schema import (
 * **`runner.py`** — Invokes registered hooks in registration order during the lifecycle of an HTTP request. Supports sync and async handlers transparently.
 * **`context.py`** — Defines `ZorkContext`, injected into every hook, carrying `user`, `request_id`, `collection`, `operation`, `request`, and `extra`.
 
-### 5. Authentication System (`src/zork/auth/`)
+### 5. Response Models (`src/zork/response.py`)
+
+* **`ResponseModel`** — Core class for transforming API responses. Supports include/exclude fields, computed properties via Pydantic model_validator, and serialization options (exclude_none, exclude_unset, by_alias).
+* **`create_response_model()`** — Factory function for creating reusable response models with hidden fields support.
+* **Field extensions** — All Field classes now support `hidden`, `read_only`, and `alias` parameters for response-level control.
+* **Collection.response()** — Fluent API for configuring response transformation on collections.
+* **Router integration** — Auto-generated routes apply response transformation via `_transform_response()`.
+* **Query param override** — Clients can override via `?fields=...`, `?exclude=...`, `?exclude_none=true`.
+
+**Public API:**
+```python
+from zork.response import ResponseModel, create_response_model
+```
+
+### 6. Authentication System (`src/zork/auth/`)
 
 **Public API:**
 ```python
@@ -840,6 +855,39 @@ auth = Auth(
 app.register(posts, auth=["read:public", "write:authenticated"])
 app.use_auth(auth)
 app.serve()
+```
+
+### App with Response Models
+
+```python
+from pydantic import BaseModel, model_validator
+from zork import Zork, Collection, TextField, IntField
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    slug: str | None = None
+
+    @model_validator(mode="before")
+    def compute_slug(cls, data):
+        if isinstance(data, dict) and "name" in data:
+            data["slug"] = data["name"].lower().replace(" ", "-")
+        return data
+
+users = Collection("users", fields=[
+    TextField("name", required=True),
+    TextField("email", required=True),
+    TextField("password_hash", hidden=True),  # Always hidden
+])
+
+users.response(
+    model=UserResponse,
+    exclude={"password_hash"},
+    exclude_none=True
+)
+
+app = Zork(collections={"users": users})
 ```
 
 ### App with Database Selection
