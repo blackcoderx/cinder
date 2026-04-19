@@ -763,9 +763,29 @@ class ZorkOpenAPI:
                         "type": "array",
                         "items": {"$ref": f"#/components/schemas/{title_name}Response"},
                     },
-                    "total": {"type": "integer"},
-                    "limit": {"type": "integer"},
-                    "offset": {"type": "integer"},
+                    "pagination": {
+                        "type": "object",
+                        "properties": {
+                            "total": {"type": "integer"},
+                            "limit": {"type": "integer"},
+                            "offset": {"type": "integer"},
+                            "has_more": {"type": "boolean"},
+                            "next_offset": {"type": "integer", "nullable": True},
+                            "prev_offset": {"type": "integer", "nullable": True},
+                            "page": {"type": "integer"},
+                            "total_pages": {"type": "integer"},
+                        },
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "self": {"type": "string"},
+                            "next": {"type": "string", "nullable": True},
+                            "prev": {"type": "string", "nullable": True},
+                            "first": {"type": "string"},
+                            "last": {"type": "string"},
+                        },
+                    },
                 },
             }
 
