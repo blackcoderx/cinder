@@ -14,13 +14,14 @@
    - [3. Dynamic Collections & API Generation](#3-dynamic-collections--api-generation-srczorkcollections)
    - [4. Lifecycle Hooks](#4-lifecycle-hooks-srczorkhooks)
    - [5. Response Models](#5-response-models-srczorkresponsepy)
-   - [6. Authentication System](#6-authentication-system-srczorkauth)
-   - [6. File Storage Subsystem](#6-file-storage-subsystem-srczorkstorage)
-   - [7. Email Subsystem](#7-email-subsystem-srczorkemail)
-   - [8. Cache Subsystem](#8-cache-subsystem-srczorkcache)
-   - [9. Rate-Limit Subsystem](#9-rate-limit-subsystem-srczorkratelimit)
-   - [10. Realtime Subsystem](#10-realtime-subsystem-srczorkrealtime)
-   - [11. Migrations Subsystem](#11-migrations-subsystem-srczorkmigrations)
+   - [6. Pagination Metadata](#6-pagination-metadata-srczorkcollectionsrouterpy)
+   - [7. Authentication System](#7-authentication-system-srczorkauth)
+   - [8. File Storage Subsystem](#8-file-storage-subsystem-srczorkstorage)
+   - [9. Email Subsystem](#9-email-subsystem-srczorkemail)
+   - [10. Cache Subsystem](#10-cache-subsystem-srczorkcache)
+   - [11. Rate-Limit Subsystem](#11-rate-limit-subsystem-srczorkratelimit)
+   - [12. Realtime Subsystem](#12-realtime-subsystem-srczorkrealtime)
+   - [13. Migrations Subsystem](#13-migrations-subsystem-srczorkmigrations)
 5. [Test Suite Overview](#test-suite-overview)
 6. [Important Architectural Principles](#important-architectural-principles)
 7. [Environment Variables Reference](#environment-variables-reference)
@@ -446,7 +447,57 @@ from zork.collections.schema import (
 from zork.response import ResponseModel, create_response_model
 ```
 
-### 6. Authentication System (`src/zork/auth/`)
+### 6. Pagination Metadata (`src/zork/collections/router.py`)
+
+All list endpoints return enhanced pagination metadata following REST API best practices.
+
+* **`pagination` object** — Contains:
+  * `total` — Total count of all records (unpaginated)
+  * `limit` — Items per page
+  * `offset` — Current offset
+  * `has_more` — Boolean indicating more records exist
+  * `next_offset` — Offset for next page (or `null`)
+  * `prev_offset` — Offset for previous page (or `null`)
+  * `page` — Current page number (1-indexed)
+  * `total_pages` — Total number of pages
+
+* **`links` object** — HAL-style navigation links:
+  * `self` — Current page URL
+  * `next` — Next page URL (or `null`)
+  * `prev` — Previous page URL (or `null`)
+  * `first` — First page URL
+  * `last` — Last page URL
+
+**Features:**
+* Query parameters (filters, sorting) are preserved in pagination links
+* Handles edge cases: first page, last page, empty results
+* Compatible with OpenAPI specification
+
+**Response format:**
+```json
+{
+  "items": [...],
+  "pagination": {
+    "total": 100,
+    "limit": 20,
+    "offset": 0,
+    "has_more": true,
+    "next_offset": 20,
+    "prev_offset": null,
+    "page": 1,
+    "total_pages": 5
+  },
+  "links": {
+    "self": "/api/posts?offset=0&limit=20",
+    "next": "/api/posts?offset=20&limit=20",
+    "prev": null,
+    "first": "/api/posts?offset=0&limit=20",
+    "last": "/api/posts?offset=80&limit=20"
+  }
+}
+```
+
+### 7. Authentication System (`src/zork/auth/`)
 
 **Public API:**
 ```python
