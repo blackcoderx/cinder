@@ -49,7 +49,7 @@ class TestZorkApp:
 
         resp = client.get("/api/posts")
         assert resp.status_code == 200
-        assert resp.json()["total"] == 1
+        assert resp.json()["pagination"]["total"] == 1
 
     def test_collections_registered(self, app):
         assert "posts" in app._collections

@@ -80,8 +80,8 @@ class TestCollectionCRUD:
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
-        assert "total" in data
-        assert data["total"] == 2
+        assert "pagination" in data
+        assert data["pagination"]["total"] == 2
         assert len(data["items"]) == 2
 
     @pytest.mark.asyncio
@@ -91,10 +91,12 @@ class TestCollectionCRUD:
             client.post("/api/posts", json={"title": f"Post {i}"})
         resp = client.get("/api/posts?limit=2&offset=0")
         data = resp.json()
-        assert data["total"] == 5
+        assert data["pagination"]["total"] == 5
         assert len(data["items"]) == 2
-        assert data["limit"] == 2
-        assert data["offset"] == 0
+        assert data["pagination"]["limit"] == 2
+        assert data["pagination"]["offset"] == 0
+        assert data["pagination"]["has_more"] is True
+        assert data["pagination"]["next_offset"] == 2
 
     @pytest.mark.asyncio
     async def test_list_filter(self, app_with_collection):
@@ -103,7 +105,7 @@ class TestCollectionCRUD:
         client.post("/api/posts", json={"title": "Popular", "views": 100})
         resp = client.get("/api/posts?views=100")
         data = resp.json()
-        assert data["total"] == 1
+        assert data["pagination"]["total"] == 1
         assert data["items"][0]["title"] == "Popular"
 
     @pytest.mark.asyncio
@@ -261,7 +263,7 @@ class TestExpand:
         resp = client.get("/api/items?expand=brand")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["total"] == 2
+        assert data["pagination"]["total"] == 2
         for item in data["items"]:
             assert "expand" in item
             assert item["expand"]["brand"]["name"] == "Acme"

@@ -313,9 +313,8 @@ class TestZorkOpenAPI:
         assert "PostsListResponse" in schemas
         list_schema = schemas["PostsListResponse"]
         assert "items" in list_schema["properties"]
-        assert "total" in list_schema["properties"]
-        assert "limit" in list_schema["properties"]
-        assert "offset" in list_schema["properties"]
+        assert "pagination" in list_schema["properties"]
+        assert "links" in list_schema["properties"]
 
 
 class TestZorkOpenAPIStandalone:

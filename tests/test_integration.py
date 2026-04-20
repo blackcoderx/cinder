@@ -67,7 +67,7 @@ class TestEndToEnd:
         # 2. Public read before any data exists
         resp = client.get("/api/products")
         assert resp.status_code == 200
-        assert resp.json()["total"] == 0
+        assert resp.json()["pagination"]["total"] == 0
 
         # 3. Create a category (requires auth)
         cat = client.post(
@@ -115,12 +115,12 @@ class TestEndToEnd:
             headers=headers,
         )
         resp = client.get("/api/products?stock=49")
-        assert resp.json()["total"] == 1
+        assert resp.json()["pagination"]["total"] == 1
         assert resp.json()["items"][0]["name"] == "Phone"
 
         # 8. Pagination
         resp = client.get("/api/products?limit=1&offset=0")
-        assert resp.json()["total"] == 2
+        assert resp.json()["pagination"]["total"] == 2
         assert len(resp.json()["items"]) == 1
 
         # 9. Delete
