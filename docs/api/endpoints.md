@@ -56,9 +56,23 @@ curl "http://localhost:8000/api/posts?order_by=-created_at"
       "updated_at": "2024-01-15T10:30:00Z"
     }
   ],
-  "total": 50,
-  "limit": 20,
-  "offset": 0
+  "pagination": {
+    "total": 50,
+    "limit": 20,
+    "offset": 0,
+    "has_more": true,
+    "next_offset": 20,
+    "prev_offset": null,
+    "page": 1,
+    "total_pages": 3
+  },
+  "links": {
+    "self": "/api/posts?offset=0&limit=20",
+    "next": "/api/posts?offset=20&limit=20",
+    "prev": null,
+    "first": "/api/posts?offset=0&limit=20",
+    "last": "/api/posts?offset=40&limit=20"
+  }
 }
 ```
 
@@ -223,22 +237,55 @@ curl "http://localhost:8000/api/posts?limit=10&offset=20"
 
 ### Response Metadata
 
-The list response includes pagination metadata:
+The list response includes comprehensive pagination metadata:
 
 ```json
 {
   "items": [...],
-  "total": 150,
-  "limit": 10,
-  "offset": 20
+  "pagination": {
+    "total": 150,
+    "limit": 10,
+    "offset": 20,
+    "has_more": true,
+    "next_offset": 30,
+    "prev_offset": 10,
+    "page": 3,
+    "total_pages": 15
+  },
+  "links": {
+    "self": "/api/posts?offset=20&limit=10",
+    "next": "/api/posts?offset=30&limit=10",
+    "prev": "/api/posts?offset=10&limit=10",
+    "first": "/api/posts?offset=0&limit=10",
+    "last": "/api/posts?offset=140&limit=10"
+  }
 }
 ```
 
-Use `total` and `limit` to calculate total pages:
+#### Pagination Fields
 
-```
-total_pages = ceil(total / limit)
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `total` | integer | Total count of all records |
+| `limit` | integer | Items per page |
+| `offset` | integer | Current offset |
+| `has_more` | boolean | Whether more records exist |
+| `next_offset` | integer \| null | Offset for next page |
+| `prev_offset` | integer \| null | Offset for previous page |
+| `page` | integer | Current page number (1-indexed) |
+| `total_pages` | integer | Total number of pages |
+
+#### Navigation Links
+
+The `links` object provides HAL-style URLs for easy navigation:
+
+- `self` — Current page URL
+- `next` — Next page URL (null on last page)
+- `prev` — Previous page URL (null on first page)
+- `first` — First page URL
+- `last` — Last page URL
+
+Query parameters (filters, sorting) are automatically preserved in all links.
 
 ## Sorting
 
@@ -297,4 +344,4 @@ curl "http://localhost:8000/api/posts?order_by=status,-created_at"
 
 - [OpenAPI](/api/openapi) — API documentation
 - [Filtering](/api/filtering) — Advanced filtering options
-- [Pagination](/api/pagination) — Pagination options
+- [Pagination](/api/Pagination) — Comprehensive pagination guide

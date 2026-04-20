@@ -143,9 +143,23 @@ The response includes your posts in a paginated format:
       "updated_at": "2024-01-15T10:30:00Z"
     }
   ],
-  "total": 1,
-  "limit": 20,
-  "offset": 0
+  "pagination": {
+    "total": 1,
+    "limit": 20,
+    "offset": 0,
+    "has_more": false,
+    "next_offset": null,
+    "prev_offset": null,
+    "page": 1,
+    "total_pages": 1
+  },
+  "links": {
+    "self": "/api/posts?offset=0&limit=20",
+    "next": null,
+    "prev": null,
+    "first": "/api/posts?offset=0&limit=20",
+    "last": "/api/posts?offset=0&limit=20"
+  }
 }
 ```
 
