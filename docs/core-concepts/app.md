@@ -248,6 +248,24 @@ app.rate_limit.rule("/api/search", limit=10, window=60)
 
 See the [Rate Limiting Setup](/rate-limiting/setup) guide for details.
 
+### Static Files Configuration
+
+Serve static files (CSS, JS, images) from your application:
+
+```python
+# Simple static mount
+app.static("/static", "./static")
+
+# Multiple mounts
+app.static("/assets", "./assets")
+app.static("/images", "./images")
+
+# SPA mode (fallback to index.html for unmatched routes)
+app.static("/", "./dist", html=True)
+```
+
+See the [Static Files Setup](/static-files/setup) guide for details.
+
 ## Lifecycle Hooks
 
 Register global hooks that run on all collections:
@@ -322,6 +340,7 @@ Here is a summary of all Zork configuration methods:
 | `app.rate_limit` | Configure rate limiting |
 | `app.email` | Configure email |
 | `app.realtime` | Configure realtime features |
+| `app.static(path, directory)` | Serve static files |
 | `app.build()` | Build ASGI application |
 | `app.serve()` | Start development server |
 
