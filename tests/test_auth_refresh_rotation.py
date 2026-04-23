@@ -333,6 +333,7 @@ class TestPasswordResetRevokesTokens:
     @pytest.mark.asyncio
     async def test_password_reset_revokes_all_refresh_tokens(self, auth_app, db):
         import uuid
+        from zork.auth.models import hash_jti
 
         email = f"reset{uuid.uuid4().hex[:8]}@example.com"
 
@@ -363,14 +364,18 @@ class TestPasswordResetRevokesTokens:
 
         reset_token = f"reset-token-{uuid.uuid4().hex[:8]}"
         expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        # Insert with new schema: token (hashed), user_id, expires_at, lookup
+        token_hash = hash_jti(reset_token)
+        lookup = hash_jti(reset_token + email)  # token + email order
         await db.execute(
-            "INSERT INTO _password_resets (token, user_id, expires_at) VALUES (?, ?, ?)",
-            (reset_token, user_id, expires_at),
+            "INSERT INTO _password_resets (token, user_id, expires_at, lookup) VALUES (?, ?, ?, ?)",
+            (token_hash, user_id, expires_at, lookup),
         )
 
         response = auth_app.post(
             "/api/auth/reset-password",
             json={
+                "email": email,
                 "token": reset_token,
                 "new_password": "newpassword",
             },

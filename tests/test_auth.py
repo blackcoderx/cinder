@@ -184,3 +184,54 @@ class TestRefresh:
             "/api/auth/me", headers={"Authorization": f"Bearer {new_token}"}
         )
         assert resp3.status_code == 200
+
+
+class TestSecurity:
+    @pytest.mark.asyncio
+    async def test_login_same_error_message(self, auth_app):
+        """Test that login returns same error for wrong email OR wrong password."""
+        client, db, auth = auth_app
+        register_user(client)
+        resp1 = client.post(
+            "/api/auth/login",
+            json={"email": "wrong@example.com", "password": "password123"},
+        )
+        resp2 = client.post(
+            "/api/auth/login",
+            json={"email": "test@example.com", "password": "wrongpassword"},
+        )
+        assert resp1.status_code == 401
+        assert resp2.status_code == 401
+        assert resp1.json()["error"] == resp2.json()["error"]
+
+
+class TestSQLInjection:
+    @pytest.mark.asyncio
+    async def test_column_validation_rejects_sql_injection(self):
+        """Test that SQL injection in extend_columns is rejected."""
+        from zork.auth.models import _validate_column_name
+        with pytest.raises(ValueError, match="Invalid column name"):
+            _validate_column_name("id; DROP TABLE users--")
+        with pytest.raises(ValueError, match="Invalid column name"):
+            _validate_column_name("1column")
+        with pytest.raises(ValueError, match="Invalid column name"):
+            _validate_column_name("column name")
+
+
+class TestPasswordResetToken:
+    @pytest.mark.asyncio
+    async def test_reset_token_requires_email(self, auth_app):
+        """Test that password reset now requires email parameter."""
+        client, db, auth = auth_app
+        register_user(client)
+        resp = client.post(
+            "/api/auth/forgot-password",
+            json={"email": "test@example.com"},
+        )
+        assert resp.status_code == 200
+        token = "some-token"
+        resp = client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "newpass123"},
+        )
+        assert resp.status_code == 400
