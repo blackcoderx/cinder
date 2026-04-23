@@ -13,6 +13,7 @@ from zork.collections.schema import (
     FileField,
     JSONField,
 )
+from zork.collections.validation import validate_column_name
 from zork.db.backends.base import DatabaseIntegrityError
 from zork.db.connection import Database
 from zork.errors import CANCEL_DELETE_MESSAGE, ZorkError
@@ -174,6 +175,7 @@ class CollectionStore:
 
         if filters:
             for key, value in filters.items():
+                validate_column_name(key, collection)
                 where_clauses.append(f"{key} = ?")
                 params.append(value)
 
@@ -187,6 +189,7 @@ class CollectionStore:
         )
         total = count_row["total"] if count_row else 0
 
+        validate_column_name(order_by, collection)
         query = (
             f"SELECT * FROM {collection.name}{where_sql} "
             f"ORDER BY {order_by} LIMIT ? OFFSET ?"

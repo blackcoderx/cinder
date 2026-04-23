@@ -7,6 +7,7 @@ from starlette.routing import Route
 
 from zork.collections.schema import Collection, FileField, RelationField
 from zork.collections.store import CollectionStore
+from zork.collections.validation import validate_pagination_params
 from zork.errors import ZorkError
 from zork.hooks.context import ZorkContext
 from zork.response import ResponseModel
@@ -130,8 +131,10 @@ def _routes_for_collection(
     async def list_records(request: Request) -> JSONResponse:
         _check_auth(request, read_rule)
         params = dict(request.query_params)
-        limit = int(params.pop("limit", "20"))
-        offset = int(params.pop("offset", "0"))
+        limit, offset = validate_pagination_params(
+            params.pop("limit", "20"),
+            params.pop("offset", "0"),
+        )
         order_by = params.pop("order_by", "created_at")
         expand_fields = (
             params.pop("expand", "").split(",") if "expand" in params else []
