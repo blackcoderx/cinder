@@ -81,11 +81,11 @@ Rule parameters:
 - `path_prefix` — Path to limit (must start with `/`)
 - `limit` — Maximum requests allowed
 - `window` — Time window in seconds
-- `scope` — `ip` (default) or `user`
+- `scope` — `ip` (default), `user`, or `both`
 
 ## Scope Options
 
-Rate limits can be applied per IP address or per user:
+Rate limits can be applied per IP address or per user, or both:
 
 ### Per IP (Default)
 
@@ -99,6 +99,14 @@ Requires authentication:
 
 ```python
 app.rate_limit.rule("/api/upload", limit=100, scope="user")
+```
+
+### Both (User or IP)
+
+Uses user ID if authenticated, otherwise falls back to IP:
+
+```python
+app.rate_limit.rule("/api/posts", limit=50, scope="both")
 ```
 
 ## Response Headers
@@ -143,6 +151,25 @@ Or via configuration:
 ```python
 app.rate_limit.enable(False)
 ```
+
+## Trust Forwarded For
+
+When running behind a reverse proxy, you may need to trust the `X-Forwarded-For` header to get the real client IP:
+
+```python
+app.build(middleware_stack=[
+    # ... other middleware
+    app.rate_limit.middleware(trust_forwarded_for=True)
+])
+```
+
+Or in the configuration:
+
+```python
+app.rate_limit.configure(trust_forwarded_for=True)
+```
+
+**Security Note:** Only enable `trust_forwarded_for` when Zork is behind a trusted reverse proxy that always sets this header. Otherwise, attackers could spoof it to bypass rate limits.
 
 ## Custom Rate Limit Backend
 
@@ -206,6 +233,16 @@ ZORK_RATE_LIMIT_USER=500/60
 | `ZORK_RATE_LIMIT_ENABLED` | Enable/disable | true |
 | `ZORK_RATE_LIMIT_ANON` | Anonymous limit | 100/60 |
 | `ZORK_RATE_LIMIT_USER` | Authenticated limit | 1000/60 |
+| `ZORK_RATE_LIMIT_TRUST_FORWARDED_FOR` | Trust X-Forwarded-For header | false |
+
+## Input Validation
+
+The rate limiter validates inputs and raises `ValueError` for invalid values:
+
+- `limit` must be positive (> 0)
+- `window_seconds` must be positive (> 0)
+
+This prevents unexpected behavior from misconfiguration.
 
 ## Next Steps
 
