@@ -261,9 +261,38 @@ Before deploying to production:
 - Configure appropriate token expiry times
 - Enable CSRF protection for cookie delivery
 - Use Redis blocklist for multi-server deployments
-- Consider implementing additional rate limiting
+- Consider implementing rate limiting with `app.rate_limit.auth_limits()`
 - Enable email verification for sensitive operations
 - Monitor for unusual authentication patterns
+
+## Optional Rate Limiting
+
+Zork includes built-in rate limiting that you can enable for auth endpoints:
+
+```python
+app = Zork()
+app.rate_limit.auth_limits()
+```
+
+This applies stricter limits to authentication endpoints:
+- Login: 5 requests/minute per IP
+- Register: 3 requests/minute per IP
+- Forgot password: 3 requests/hour per IP
+
+Disable rate limiting entirely if needed:
+
+```python
+app.rate_limit.enable(False)
+# Or via environment: ZORK_RATE_LIMIT_ENABLED=false
+```
+
+Or customize specific endpoints:
+
+```python
+app = Zork()
+app.rate_limit.default(limit=100, window=60)  # Default: 100 req/min
+app.rate_limit.rule("/api/auth/login", limit=10, window=60, scope="ip")  # Custom
+```
 
 ## Next Steps
 

@@ -230,6 +230,7 @@ Reset password using a token from the forgot password flow.
 
 ```json
 {
+  "email": "alice@example.com",
   "token": "reset-token-from-email",
   "new_password": "newsecret123"
 }
@@ -242,6 +243,8 @@ Reset password using a token from the forgot password flow.
   "message": "Password updated"
 }
 ```
+
+Note: The `email` field is now required for secure token lookup.
 
 This also revokes all refresh tokens for the user, forcing re-login on all devices.
 
