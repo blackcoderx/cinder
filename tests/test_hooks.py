@@ -178,6 +178,36 @@ async def test_before_list_can_mutate_filters(store_with_posts):
 
 
 @pytest.mark.asyncio
+async def test_before_read_can_mutate_id(store_with_posts):
+    store, posts = store_with_posts
+    rec = await store.create(posts, {"title": "Test"})
+    original_id = rec["id"]
+
+    def add_prefix(id_value, ctx):
+        return f"PREFIX-{id_value}"
+
+    posts.on("before_read", add_prefix)
+    result = await store.get(posts, original_id)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_after_read_receives_record(store_with_posts):
+    store, posts = store_with_posts
+    rec = await store.create(posts, {"title": "Test Post"})
+    seen = []
+
+    def on_read(record, ctx):
+        seen.append(record)
+
+    posts.on("after_read", on_read)
+    result = await store.get(posts, rec["id"])
+    assert len(seen) == 1
+    assert seen[0]["title"] == "Test Post"
+    assert result["title"] == "Test Post"
+
+
+@pytest.mark.asyncio
 async def test_custom_collection_event(store_with_posts):
     store, posts = store_with_posts
     received = []
