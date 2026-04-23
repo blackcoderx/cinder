@@ -62,6 +62,9 @@ class MemoryRateLimitBackend(RateLimitBackend):
         self._windows: dict[str, deque[float]] = defaultdict(deque)
 
     async def check(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+        if limit <= 0 or window_seconds <= 0:
+            raise ValueError(f"limit and window_seconds must be positive, got limit={limit}, window={window_seconds}")
+        
         now = time.monotonic()
         window_start = now - window_seconds
         window = self._windows[key]
@@ -147,15 +150,28 @@ class RedisRateLimitBackend(RateLimitBackend):
         return self._sha
 
     async def check(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
+        if limit <= 0 or window_seconds <= 0:
+            raise ValueError(f"limit and window_seconds must be positive, got limit={limit}, window={window_seconds}")
+        
         r = await self._redis()
         now_ms = time.time() * 1000
         window_ms = window_seconds * 1000
         member = f"{now_ms:.3f}-{id(object())}"
 
         sha = await self._get_sha(r)
-        result = await r.evalsha(
-            sha, 1, key, str(now_ms), str(window_ms), str(limit), member
-        )
+        try:
+            result = await r.evalsha(
+                sha, 1, key, str(now_ms), str(window_ms), str(limit), member
+            )
+        except Exception as e:
+            if "NOSCRIPT" in str(e):
+                self._sha = None
+                sha = await self._get_sha(r)
+                result = await r.evalsha(
+                    sha, 1, key, str(now_ms), str(window_ms), str(limit), member
+                )
+            else:
+                raise
 
         allowed = bool(result[0])
         remaining = int(result[1])

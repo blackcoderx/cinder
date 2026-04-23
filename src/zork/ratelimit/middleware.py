@@ -58,6 +58,7 @@ class RateLimitMiddleware:
         user_limit: int = 1000,
         user_window: int = 60,
         enabled: bool = True,
+        trust_forwarded_for: bool = False,
     ) -> None:
         self.app = app
         self.backend = backend
@@ -66,6 +67,7 @@ class RateLimitMiddleware:
         self.user_limit = user_limit
         self.user_window = user_window
         self.enabled = enabled
+        self.trust_forwarded_for = trust_forwarded_for
         self._rules: list[RateLimitRule] = []
 
     def add_rule(self, rule: RateLimitRule) -> None:
@@ -79,15 +81,17 @@ class RateLimitMiddleware:
         return None
 
     def _get_ip(self, scope: Scope) -> str:
+        """Extract client IP from scope, optionally trusting X-Forwarded-For header."""
         client = scope.get("client")
-        if client:
-            return client[0]
-        # Check X-Forwarded-For via headers
-        headers = dict(scope.get("headers", []))
-        xff = headers.get(b"x-forwarded-for", b"").decode()
-        if xff:
-            return xff.split(",")[0].strip()
-        return "unknown"
+        direct_ip = client[0] if client else None
+
+        if self.trust_forwarded_for:
+            headers = dict(scope.get("headers", []))
+            xff = headers.get(b"x-forwarded-for", b"").decode()
+            if xff:
+                return xff.split(",")[0].strip()
+
+        return direct_ip if direct_ip else "unknown"
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if not self.enabled or scope["type"] != "http":
@@ -113,9 +117,11 @@ class RateLimitMiddleware:
 
         # Build rate-limit key
         if rl_scope == "user" and user:
-            rl_key = f"ratelimit:{path}:user:{user['id']}"
+            user_id = user.get("id") if isinstance(user, dict) else None
+            rl_key = f"ratelimit:{path}:user:{user_id}"
         elif rl_scope == "both":
-            user_part = str(user["id"]) if user else ip
+            user_id = user.get("id") if isinstance(user, dict) else None
+            user_part = str(user_id) if user_id else ip
             rl_key = f"ratelimit:{path}:both:{user_part}"
         else:
             rl_key = f"ratelimit:{path}:ip:{ip}"

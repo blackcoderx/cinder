@@ -71,6 +71,18 @@ class TestMemoryRateLimitBackend:
         result = await backend.check("k", limit=5, window_seconds=60)
         assert result.allowed is True
 
+    async def test_invalid_limit_raises(self, backend):
+        with pytest.raises(ValueError):
+            await backend.check("k", limit=0, window_seconds=60)
+
+    async def test_invalid_window_raises(self, backend):
+        with pytest.raises(ValueError):
+            await backend.check("k", limit=5, window_seconds=0)
+
+    async def test_negative_values_raise(self, backend):
+        with pytest.raises(ValueError):
+            await backend.check("k", limit=-1, window_seconds=60)
+
 
 # ---------------------------------------------------------------------------
 # RedisRateLimitBackend - requires real Redis for testing

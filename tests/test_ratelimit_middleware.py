@@ -124,3 +124,67 @@ def test_ratelimit_headers_on_allowed():
     assert "x-ratelimit-limit" in r.headers
     assert "x-ratelimit-remaining" in r.headers
     assert "x-ratelimit-reset" in r.headers
+
+
+def test_scope_both_uses_user_or_ip():
+    """scope='both' should fallback to IP when user is not authenticated."""
+    from starlette.testclient import TestClient
+
+    backend = MemoryRateLimitBackend()
+    app = build_app(backend, anon_limit=2)
+
+    rule = RateLimitRule("/api/posts", limit=2, window=60, scope="both")
+    app.add_rule(rule)
+
+    client = TestClient(app)
+
+    r1 = client.get("/api/posts")
+    assert r1.status_code == 200
+    r2 = client.get("/api/posts")
+    assert r2.status_code == 200
+    r3 = client.get("/api/posts")
+    assert r3.status_code == 429  # exhausted both slots
+
+
+def test_trust_forwarded_for_disabled_by_default():
+    """X-Forwarded-For should not be trusted unless trust_forwarded_for=True."""
+    from starlette.testclient import TestClient
+
+    backend = MemoryRateLimitBackend()
+
+    async def hello_withxff(request: Request):
+        return JSONResponse({"ok": True})
+
+    routes = [Route("/api/posts", hello_withxff, methods=["GET"])]
+    app = Starlette(routes=routes)
+    app = RateLimitMiddleware(app, backend, anon_limit=1, trust_forwarded_for=False)
+
+    client = TestClient(app, headers={"X-Forwarded-For": "1.2.3.4"})
+
+    r1 = client.get("/api/posts")
+    r2 = client.get("/api/posts")
+    assert r2.status_code == 429  # blocked (used actual client IP)
+
+
+def test_trust_forwarded_for_enabled():
+    """X-Forwarded-For should be trusted when trust_forwarded_for=True."""
+    from starlette.testclient import TestClient
+
+    backend = MemoryRateLimitBackend()
+
+    async def hello_withxff(request: Request):
+        return JSONResponse({"ok": True})
+
+    routes = [Route("/api/posts", hello_withxff, methods=["GET"])]
+    app = Starlette(routes=routes)
+    app = RateLimitMiddleware(
+        app, backend, anon_limit=1, trust_forwarded_for=True
+    )
+
+    client = TestClient(app, headers={"X-Forwarded-For": "1.2.3.4"})
+    client2 = TestClient(app, headers={"X-Forwarded-For": "5.6.7.8"})
+
+    r1 = client.get("/api/posts")
+    r2 = client2.get("/api/posts")
+    assert r1.status_code == 200
+    assert r2.status_code == 200  # different X-Forwarded-For = different rate limit
