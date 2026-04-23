@@ -49,6 +49,53 @@ Registering a collection automatically creates five REST endpoints:
 | PATCH | `/api/{name}/{id}` | Update specific fields of a record |
 | DELETE | `/api/{name}/{id}` | Delete a record |
 
+## Query Validation
+
+Zork automatically validates query parameters to prevent security issues and ensure API reliability:
+
+### Filter Validation
+
+Filter keys must match valid collection field names:
+
+```python
+# Valid - filters on defined fields
+ GET /api/articles?status=published
+
+# Invalid - returns 400 error
+GET /api/articles?invalid_field=value
+# Error: "Invalid field: invalid_field"
+```
+
+Built-in columns (`id`, `created_at`, `updated_at`) are always allowed.
+
+### Pagination Limits
+
+Query parameters are validated with sensible defaults:
+
+| Parameter | Default | Maximum | Minimum |
+|-----------|---------|---------|---------|
+| `limit` | 20 | 100 | 1 |
+| `offset` | 0 | 10000 | 0 |
+
+```python
+# These are automatically clamped to valid ranges
+GET /api/articles?limit=500   # → limit=100 (max)
+GET /api/articles?limit=-5      # → limit=1 (min)
+GET /api/articles?offset=20000  # → offset=10000 (max)
+```
+
+### Order By Validation
+
+The `order_by` parameter must reference a valid field:
+
+```python
+# Valid - sorts by created_at
+GET /api/articles?order_by=created_at
+
+# Invalid - returns 400 error
+GET /api/articles?order_by=invalid_column
+```
+
 ## Registering a Collection
 
 Add your collection to the app:
