@@ -555,3 +555,187 @@ async def test_realtime_publish_passthrough_if_already_envelope():
     env = await asyncio.wait_for(sub.get(), timeout=1)
     assert env is pre_built
     await app.realtime.broker.unsubscribe(sub)
+
+
+# =============================================================================
+# 7. Channel Validation Tests
+# =============================================================================
+
+
+def test_ws_valid_channel_formats(realtime_app):
+    """WebSocket accepts properly formatted channel names."""
+    from zork.realtime.websocket import _validate_channel
+
+    valid_channels = [
+        "collection:posts",
+        "my_channel",
+        "my-channel",
+        "my.channel",
+        "channel123",
+        "a",
+        "a" * 256,  # exactly 256 chars is valid
+    ]
+    for channel in valid_channels:
+        assert _validate_channel(channel) is None, f"Failed for: {channel}"
+
+
+def test_ws_invalid_channel_format():
+    """WebSocket rejects malformed channel names."""
+    from zork.realtime.websocket import _validate_channel
+
+    invalid_channels = [
+        ("../../etc/passwd", "Invalid channel name format"),
+        ("has spaces", "Invalid channel name format"),
+        ("has\nnewlines", "Invalid channel name format"),
+        ("has\ttabs", "Invalid channel name format"),
+        ("path/to/file", "Invalid channel name format"),
+        ("<script>", "Invalid channel name format"),
+    ]
+    for channel, expected_msg in invalid_channels:
+        result = _validate_channel(channel)
+        assert result is not None, f"Should reject: {channel}"
+        assert expected_msg in result
+
+
+def test_ws_empty_channel():
+    """WebSocket rejects empty channel names."""
+    from zork.realtime.websocket import _validate_channel
+
+    result = _validate_channel("")
+    assert result is not None
+    assert "cannot be empty" in result
+
+
+def test_ws_channel_too_long():
+    """WebSocket rejects channels exceeding max length."""
+    from zork.realtime.websocket import _validate_channel
+
+    long_channel = "a" * 257  # exceeds max of 256
+    result = _validate_channel(long_channel)
+    assert result is not None
+    assert "exceeds maximum length" in result
+
+
+def test_sse_valid_channel_format():
+    """SSE accepts properly formatted channel names."""
+    from zork.realtime.sse import _validate_channel
+
+    valid_channels = [
+        "collection:posts",
+        "my_channel",
+        "my-channel",
+        "channel123",
+    ]
+    for channel in valid_channels:
+        assert _validate_channel(channel) is None
+
+
+def test_sse_invalid_channel_format():
+    """SSE rejects malformed channel names."""
+    from zork.realtime.sse import _validate_channel
+
+    result = _validate_channel("../../etc/passwd")
+    assert result is not None
+    assert "Invalid channel name format" in result
+
+
+# =============================================================================
+# 8. RedisBroker Reconnection Tests
+# =============================================================================
+
+
+def test_redis_broker_max_retries_zero_warns(monkeypatch, caplog):
+    """RedisBroker logs warning when max_retries=0."""
+    import logging
+
+    from zork.realtime.redis_broker import RedisBroker
+
+    caplog.set_level(logging.WARNING)
+    RedisBroker()  # creates instance, triggers warning
+    assert any("max_retries=0" in record.message for record in caplog.records)
+
+
+def test_redis_broker_default_params():
+    """RedisBroker accepts all reconnection parameters."""
+    from zork.realtime.redis_broker import RedisBroker
+
+    broker = RedisBroker(
+        queue_size=50,
+        max_retries=3,
+        retry_base_delay=0.5,
+        retry_max_delay=10.0,
+    )
+    assert broker._queue_size == 50
+    assert broker._max_retries == 3
+    assert broker._retry_base_delay == 0.5
+    assert broker._retry_max_delay == 10.0
+
+
+def test_redis_broker_registers_task_callback():
+    """RedisBroker._on_task_done schedules cleanup for closed subscriptions."""
+    from zork.realtime.redis_broker import RedisBroker
+
+    broker = RedisBroker(max_retries=3)
+    assert broker._subscriptions == []
+
+
+# =============================================================================
+# 9. CORS and Origin Validation Tests
+# =============================================================================
+
+
+def test_realtime_configure_cors():
+    """RealtimeFacade.configure_cors sets CORS config."""
+    from zork.realtime import RealtimeFacade
+    from zork.realtime.broker import RealtimeBroker
+
+    broker = RealtimeBroker()
+    facade = RealtimeFacade(broker, app_ref=None)
+
+    facade.configure_cors(allow_origins=["https://example.com"])
+    assert facade._cors_config["allow_origins"] == ["https://example.com"]
+
+    facade.configure_cors(allow_origins="*", allow_origin_regex="https://.*\\.example\\.com")
+    assert facade._cors_config["allow_origins"] == "*"
+    assert facade._cors_config["allow_origin_regex"] == "https://.*\\.example\\.com"
+
+
+def test_realtime_configure_origin_check():
+    """RealtimeFacade.configure_origin_check sets origin validation config."""
+    from zork.realtime import RealtimeFacade
+    from zork.realtime.broker import RealtimeBroker
+
+    broker = RealtimeBroker()
+    facade = RealtimeFacade(broker, app_ref=None)
+
+    facade.configure_origin_check(enabled=True, origin_regex="https://.*\\.example\\.com")
+    assert facade._origin_check is True
+    assert facade._origin_regex == "https://.*\\.example\\.com"
+
+
+def test_match_origin_valid():
+    """_match_origin returns True for matching origin."""
+    from zork.realtime.sse import _match_origin
+
+    assert _match_origin("https://app.example.com", r"https://.*\.example\.com") is True
+    assert _match_origin("https://example.com", r"https://.*") is True
+
+
+def test_match_origin_invalid():
+    """_match_origin returns False for non-matching origin."""
+    from zork.realtime.sse import _match_origin
+
+    assert _match_origin("http://evil.com", r"https://.*") is False
+    assert _match_origin("https://example.com", r"https://.*\.example\.com") is False
+
+
+def test_filter_for_rule_with_custom_owner_field():
+    """filter_for_rule accepts custom owner_field parameter."""
+    from zork.realtime.auth_filter import filter_for_rule
+
+    owner_filter = filter_for_rule("owner", owner_field="user_id")
+    envelope = {"record": {"user_id": "user123"}}
+    user = {"id": "user123"}
+
+    assert owner_filter(envelope, user) is True
+    assert owner_filter(envelope, {"id": "other"}) is False
