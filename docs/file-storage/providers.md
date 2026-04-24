@@ -7,7 +7,7 @@ Zork supports multiple storage providers through S3-compatible backends. This gu
 Cloud storage requires the S3 extra:
 
 ```bash
-pip install "zork[s3]"
+pip install "zork-api[s3]"
 ```
 
 ## AWS S3

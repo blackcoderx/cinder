@@ -2,9 +2,9 @@
 
 <p align="center">
 
-[![PyPI version](https://img.shields.io/pypi/v/zork?color=f47b20&label=zork&style=flat-square)](https://pypi.org/project/zork/)
+[![PyPI version](https://img.shields.io/pypi/v/zork-api?color=f47b20&label=zork&style=flat-square)](https://pypi.org/project/zork-api/)
 [![CI](https://github.com/blackcoderx/zork/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/blackcoderx/zork/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/pypi/pyversions/zork?color=3572A5&style=flat-square)](https://pypi.org/project/zork/)
+[![Python](https://img.shields.io/pypi/pyversions/zork-api?color=3572A5&style=flat-square)](https://pypi.org/project/zork-api/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-zork.vercel.app-f47b20?style=flat-square)](https://zork.vercel.app)
 
@@ -15,25 +15,25 @@ Define your data schema — Zork auto-generates a production-ready REST API with
 ## Install
 
 ```bash
-pip install zork
+pip install zork-api
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add zork
+uv add zork-api
 ```
 
 **Optional extras:**
 
 | Extra | Installs |
 |-------|----------|
-| `zork[postgres]` | PostgreSQL support via asyncpg |
-| `zork[mysql]` | MySQL support via aiomysql |
-| `zork[s3]` | S3-compatible storage via boto3 |
-| `zork[email]` | Email delivery via aiosmtplib |
-| `zork[redis]` | Redis for caching, sessions, and realtime |
-| `zork[all]` | All of the above |
+| `zork-api[postgres]` | PostgreSQL support via asyncpg |
+| `zork-api[mysql]` | MySQL support via aiomysql |
+| `zork-api[s3]` | S3-compatible storage via boto3 |
+| `zork-api[email]` | Email delivery via aiosmtplib |
+| `zork-api[redis]` | Redis for caching, sessions, and realtime |
+| `zork-api[all]` | All of the above |
 
 ## Quick Start
 

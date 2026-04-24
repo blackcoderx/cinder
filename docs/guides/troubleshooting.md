@@ -14,7 +14,7 @@ python -c "import sys; print(sys.executable)"
 
 # Reinstall Zork
 pip uninstall zork
-pip install zork
+pip install zork-api
 ```
 
 ### "Module not found" errors
@@ -23,16 +23,16 @@ Install the required extras:
 
 ```bash
 # For PostgreSQL support
-pip install "zork[postgres]"
+pip install "zork-api[postgres]"
 
 # For Redis support
-pip install "zork[redis]"
+pip install "zork-api[redis]"
 
 # For file storage
-pip install "zork[s3]"
+pip install "zork-api[s3]"
 
 # For email
-pip install "zork[email]"
+pip install "zork-api[email]"
 ```
 
 ## Authentication Issues

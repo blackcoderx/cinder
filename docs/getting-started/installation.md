@@ -20,13 +20,13 @@ python --version
 Install the core Zork package using pip:
 
 ```bash
-pip install zork
+pip install zork-api
 ```
 
 Or using uv (recommended for faster installs):
 
 ```bash
-uv add zork
+uv add zork-api
 ```
 
 The core package includes SQLite support out of the box. No additional configuration is needed to get started.
@@ -51,25 +51,25 @@ Zork uses optional dependency groups to keep the core installation minimal. Inst
 Install a single extra:
 
 ```bash
-pip install "zork[postgres]"
+pip install "zork-api[postgres]"
 ```
 
 Install multiple extras:
 
 ```bash
-pip install "zork[postgres,redis,email]"
+pip install "zork-api[postgres,redis,email]"
 ```
 
 Using uv:
 
 ```bash
-uv add "zork[postgres,redis,email]"
+uv add "zork-api[postgres,redis,email]"
 ```
 
 Install everything:
 
 ```bash
-pip install "zork[all]"
+pip install "zork-api[all]"
 ```
 
 ## Verifying Installation

@@ -17,8 +17,8 @@ app = Zork()  # Uses app.db by default
 | Database | URL Format | Package Required |
 |----------|-----------|------------------|
 | SQLite | `app.db` or `sqlite:///path` | Built-in |
-| PostgreSQL | `postgresql://...` | `zork[postgres]` |
-| MySQL | `mysql://...` | `zork[mysql]` |
+| PostgreSQL | `postgresql://...` | `zork-api[postgres]` |
+| MySQL | `mysql://...` | `zork-api[mysql]` |
 
 ## SQLite
 
@@ -51,7 +51,7 @@ PostgreSQL is recommended for production deployments.
 ### Installation
 
 ```bash
-pip install "zork[postgres]"
+pip install "zork-api[postgres]"
 ```
 
 ### Configuration
@@ -100,7 +100,7 @@ MySQL is supported for existing MySQL/MariaDB infrastructure.
 ### Installation
 
 ```bash
-pip install "zork[mysql]"
+pip install "zork-api[mysql]"
 ```
 
 ### Configuration

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "zork"
+name = "zork-api"
 version = "1.0.0"
 description = "A lightweight backend framework for Python. Build production-ready REST APIs with built-in auth and dynamic collections."
 readme = "README.md"
