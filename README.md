@@ -6,7 +6,7 @@
 [![CI](https://github.com/blackcoderx/zork/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/blackcoderx/zork/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/zork-api?color=3572A5&style=flat-square)](https://pypi.org/project/zork-api/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-zork.vercel.app-f47b20?style=flat-square)](https://zork.vercel.app)
+
 
 </p>
 
