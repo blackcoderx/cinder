@@ -6,8 +6,6 @@ is covered by test_storage_routes.py::TestCleanup which does full integration te
 
 from __future__ import annotations
 
-import pytest
-
 from zork.collections.schema import Collection, FileField, TextField
 from zork.hooks.registry import HookRegistry
 from zork.storage.backends import LocalFileBackend

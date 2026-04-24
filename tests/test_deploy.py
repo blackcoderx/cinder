@@ -1,7 +1,5 @@
 """Tests for the zork deploy command and deployment generators."""
 
-import os
-from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -9,7 +7,6 @@ from typer.testing import CliRunner
 from zork.cli import app
 from zork.deploy.config import generate_zork_toml
 from zork.deploy.introspect import AppProfile
-from zork.deploy.platforms.base import GeneratedFile
 from zork.deploy.platforms.docker import DockerGenerator
 from zork.deploy.platforms.fly import FlyGenerator
 from zork.deploy.platforms.railway import RailwayGenerator

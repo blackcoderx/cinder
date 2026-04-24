@@ -1,15 +1,13 @@
 import pytest
-from pydantic import BaseModel, Field, model_validator, ConfigDict
-
-from zork.response import ResponseModel, create_response_model
-from zork.collections.schema import Collection, TextField, IntField
-from zork.collections.router import build_collection_routes, _transform_response
-from zork.collections.store import CollectionStore
-from zork.db.connection import Database
+from pydantic import BaseModel, ConfigDict, model_validator
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
-from starlette.requests import Request
-from starlette.routing import Route
+
+from zork.collections.router import _transform_response, build_collection_routes
+from zork.collections.schema import Collection, TextField
+from zork.collections.store import CollectionStore
+from zork.db.connection import Database
+from zork.response import ResponseModel, create_response_model
 
 
 @pytest.fixture
@@ -74,12 +72,12 @@ class TestResponseModelBasic:
 
     def test_exclude_default_values(self):
         """Test excluding fields with default values using Pydantic model."""
-        
+
         class User(BaseModel):
             id: str
             name: str
             status: str = "active"
-        
+
         model = ResponseModel(model=User, exclude_defaults=True)
         data = {"id": "1", "name": "John", "status": "active"}
         result = model.transform(data)

@@ -1,6 +1,5 @@
-import pytest
 from zork.collections.schema import Collection, TextField
-from zork.migrations.diff import SchemaComparator, AddIndex, DropIndex
+from zork.migrations.diff import AddIndex, DropIndex, SchemaComparator
 
 
 class TestMigrationDiffIndexes:

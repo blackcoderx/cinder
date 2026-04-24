@@ -8,7 +8,7 @@ from starlette.testclient import TestClient
 from zork.auth.models import block_token, create_auth_tables
 from zork.auth.tokens import create_token, decode_token
 from zork.db.connection import Database
-from zork.pipeline import AuthMiddleware, build_middleware_stack
+from zork.pipeline import build_middleware_stack
 
 SECRET = "test-middleware-secret"
 

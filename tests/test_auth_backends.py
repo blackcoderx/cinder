@@ -7,6 +7,7 @@ Covers:
 """
 
 import time
+
 import pytest
 import pytest_asyncio
 
@@ -54,7 +55,7 @@ class TestDatabaseBlocklist:
 
     @pytest.mark.asyncio
     async def test_cleanup_removes_expired(self, blocklist, db):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         jti_expired = "expired-jti"
         jti_valid = "valid-jti"

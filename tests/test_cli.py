@@ -1,6 +1,5 @@
 import asyncio
 
-import pytest
 from typer.testing import CliRunner
 
 from zork.cli import app

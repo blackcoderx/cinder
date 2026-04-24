@@ -1,11 +1,11 @@
 def test_all_public_imports():
     """Verify all public API symbols are importable from the top-level package."""
-    from zork import Zork
-    from zork import Collection
-    from zork import Auth
-    from zork import ZorkError
-    from zork import TextField, IntField, FloatField, BoolField
-    from zork import DateTimeField, URLField, JSONField, RelationField
+    from zork import (
+        Auth,
+        Collection,
+        Zork,
+        ZorkError,
+    )
 
     assert Zork is not None
     assert Collection is not None

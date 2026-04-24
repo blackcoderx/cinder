@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from zork.email.templates import (
     email_verification_email,
     password_reset_email,
     welcome_email,
 )
-
 
 # ---------------------------------------------------------------------------
 # password_reset_email

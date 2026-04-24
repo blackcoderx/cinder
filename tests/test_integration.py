@@ -6,12 +6,12 @@ from starlette.testclient import TestClient
 from zork.app import Zork
 from zork.auth import Auth
 from zork.collections.schema import (
-    Collection,
-    TextField,
-    IntField,
-    FloatField,
-    RelationField,
     BoolField,
+    Collection,
+    FloatField,
+    IntField,
+    RelationField,
+    TextField,
 )
 
 

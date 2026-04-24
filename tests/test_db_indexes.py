@@ -1,5 +1,3 @@
-import pytest
-from zork.collections.schema import Collection, TextField
 
 
 class TestDbIndexes:

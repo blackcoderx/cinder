@@ -1,4 +1,3 @@
-import pytest
 from zork.collections.schema import Collection, TextField
 from zork.collections.store import CollectionStore
 

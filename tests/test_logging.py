@@ -1,6 +1,3 @@
-import pytest
-import os
-import logging
 
 
 class TestLoggingSetup:
@@ -48,49 +45,49 @@ class TestLoggingSetup:
 class TestGetLogger:
     def test_get_default_logger(self):
         """Test getting logger with default name"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup()
         log = get_logger()
         assert log is not None
 
     def test_get_named_logger(self):
         """Test getting logger with custom name"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup()
         log = get_logger("custom")
         assert log is not None
 
     def test_logger_can_log_info(self):
         """Test logger can emit info level messages"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG")
         log = get_logger("test")
         log.info("test_message", key="value")
 
     def test_logger_can_log_debug(self):
         """Test logger can emit debug level messages"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG")
         log = get_logger("test")
         log.debug("debug_message")
 
     def test_logger_can_log_warning(self):
         """Test logger can emit warning level messages"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG")
         log = get_logger("test")
         log.warning("warning_message")
 
     def test_logger_can_log_error(self):
         """Test logger can emit error level messages"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG")
         log = get_logger("test")
         log.error("error_message")
 
     def test_logger_with_structured_data(self):
         """Test logger accepts structured data"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG")
         log = get_logger("test")
         log.info(
@@ -104,21 +101,21 @@ class TestGetLogger:
 class TestContextualLogging:
     def test_bind_and_reset_context(self):
         """Test binding and clearing context"""
-        from zork.logging import setup, bind_context, reset_context
+        from zork.logging import bind_context, reset_context, setup
         setup()
         bind_context(request_id="test-123", user_id=42)
         reset_context()  # Should not raise
 
     def test_context_isolation(self):
         """Test context is cleared after reset"""
-        from zork.logging import setup, bind_context, reset_context
+        from zork.logging import bind_context, reset_context, setup
         setup()
         bind_context(test="value")
         reset_context()
 
     def test_context_binding(self):
         """Test binding context makes it available in logs"""
-        from zork.logging import setup, get_logger, bind_context, reset_context
+        from zork.logging import bind_context, get_logger, reset_context, setup
         setup(level="DEBUG")
         bind_context(request_id="abc", user_id=99)
         log = get_logger("test")
@@ -202,7 +199,7 @@ class TestLoggerOutput:
 
     def test_json_output_format(self):
         """Test JSON format produces valid-like output"""
-        from zork.logging import setup, get_logger
+        from zork.logging import get_logger, setup
         setup(level="DEBUG", format="json")
         log = get_logger("json_test")
         log.info("test_event", key="value")

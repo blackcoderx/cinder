@@ -1,15 +1,14 @@
-import pytest
 from zork.collections.schema import (
-    Collection,
-    TextField,
-    IntField,
-    FloatField,
     BoolField,
+    Collection,
     DateTimeField,
-    URLField,
-    JSONField,
     FileField,
+    FloatField,
+    IntField,
+    JSONField,
     RelationField,
+    TextField,
+    URLField,
 )
 
 

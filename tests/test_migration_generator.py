@@ -1,14 +1,13 @@
 import re
-import pytest
 from datetime import datetime, timezone
-from zork.collections.schema import Collection, TextField, IntField
-from zork.migrations.diff import AddTable, AddColumn, DropColumn
+
+from zork.collections.schema import Collection, TextField
+from zork.migrations.diff import AddColumn, AddTable, DropColumn
 from zork.migrations.generator import (
-    generate_migration_id,
     generate_migration_content,
+    generate_migration_id,
     write_migration_file,
 )
-
 
 # ---------------------------------------------------------------------------
 # generate_migration_id

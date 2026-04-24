@@ -10,19 +10,15 @@ These tests cover:
 - Production warnings
 """
 
-import os
 import re
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
 
-from zork import Zork, Collection, TextField, IntField
-from zork.collections.schema import TextField, IntField
+from zork import Collection, IntField, TextField, Zork
+from zork.collections.schema import IntField, TextField
 from zork.collections.store import CollectionStore
 from zork.db.connection import Database
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -394,7 +390,6 @@ class TestOrphanDetection:
     @pytest.mark.asyncio
     async def test_orphan_not_auto_deleted(self, mem_db, store):
         """Orphan columns should never be automatically deleted."""
-        from zork.schema_diff import generate_schema_diff
 
         await mem_db.execute("""
             CREATE TABLE posts (
@@ -496,7 +491,6 @@ class TestProductionWarnings:
 
     def test_no_warning_sqlite_auto_sync(self, monkeypatch, caplog):
         """No warning for SQLite with auto-sync enabled (expected)."""
-        import logging
 
         monkeypatch.setenv("ZORK_AUTO_SYNC", "true")
         app = Zork(database="app.db")
@@ -835,7 +829,7 @@ class TestSchemaSafetyEdgeCases:
     @pytest.mark.asyncio
     async def test_self_referential_typo_not_flagged(self, mem_db):
         """Self-referential typo should not cause issues."""
-        from zork.schema_diff import detect_typo, generate_schema_diff
+        from zork.schema_diff import generate_schema_diff
 
         # If column name is in schema, it shouldn't be flagged as orphan
         await mem_db.execute("""
@@ -859,7 +853,6 @@ class TestSchemaSafetyEdgeCases:
 
     def test_empty_collection_name(self):
         """Empty collection name should be handled gracefully."""
-        from zork.schema_diff import generate_schema_diff
 
         # Collection requires fields, but name can be empty
         # This tests that empty name is handled

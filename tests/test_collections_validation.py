@@ -1,11 +1,12 @@
 """Tests for collection query validation."""
 
 import pytest
+
+from zork.collections.schema import Collection, IntField, TextField
 from zork.collections.validation import (
     validate_column_name,
     validate_pagination_params,
 )
-from zork.collections.schema import Collection, TextField, IntField
 from zork.errors import ZorkError
 
 

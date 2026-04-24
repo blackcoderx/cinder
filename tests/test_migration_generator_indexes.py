@@ -1,4 +1,3 @@
-import pytest
 from zork.migrations.diff import AddIndex, DropIndex
 from zork.migrations.generator import generate_migration_content
 

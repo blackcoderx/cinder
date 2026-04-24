@@ -23,7 +23,6 @@ from zork.db.connection import Database
 from zork.realtime.auth_filter import filter_for_rule
 from zork.realtime.broker import RealtimeBroker
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -451,8 +450,9 @@ def test_sse_end_to_end_create_event(db_path, monkeypatch):
     fires on the correct event loop without the TestClient streaming portal
     blocking concurrent HTTP requests.
     """
-    import threading
     import asyncio
+    import threading
+
     import zork.realtime.sse as sse_module
 
     monkeypatch.setattr(sse_module, "HEARTBEAT_INTERVAL", 2)  # cap max wait at 2s

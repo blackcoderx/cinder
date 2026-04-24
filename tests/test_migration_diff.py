@@ -1,7 +1,5 @@
-import pytest
-from zork.collections.schema import Collection, TextField, IntField
-from zork.migrations.diff import SchemaComparator, AddTable, AddColumn, DropColumn
-
+from zork.collections.schema import Collection, IntField, TextField
+from zork.migrations.diff import AddColumn, AddTable, DropColumn, SchemaComparator
 
 # ---------------------------------------------------------------------------
 # diff tests

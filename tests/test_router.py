@@ -2,15 +2,15 @@ import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
+from zork.collections.router import build_collection_routes
 from zork.collections.schema import (
     Collection,
-    TextField,
-    IntField,
     FloatField,
+    IntField,
     RelationField,
+    TextField,
 )
 from zork.collections.store import CollectionStore
-from zork.collections.router import build_collection_routes
 from zork.db.connection import Database
 from zork.pipeline import build_middleware_stack
 

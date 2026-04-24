@@ -1,12 +1,11 @@
 import pytest
 
 from zork.app import Zork
-from zork.collections.schema import Collection, TextField, IntField
+from zork.collections.schema import Collection, IntField, TextField
 from zork.collections.store import CollectionStore
 from zork.db.connection import Database
 from zork.errors import ZorkError
-from zork.hooks import ZorkContext, HookRegistry, HookRunner
-
+from zork.hooks import HookRegistry, HookRunner, ZorkContext
 
 # ---------- Registry + Runner unit tests ----------
 
@@ -320,6 +319,7 @@ async def test_zork_on_shorthand():
 
 def test_app_error_hook_fires_on_unhandled_exception(tmp_path):
     from starlette.testclient import TestClient
+
     from zork.collections.schema import Collection, TextField
 
     app = Zork(database=str(tmp_path / "err.db"))
@@ -346,6 +346,7 @@ def test_app_error_hook_fires_on_unhandled_exception(tmp_path):
 @pytest.mark.asyncio
 async def test_auth_register_fires_before_and_after(tmp_path):
     from starlette.testclient import TestClient
+
     from zork.auth import Auth
 
     app = Zork(database=str(tmp_path / "auth.db"))

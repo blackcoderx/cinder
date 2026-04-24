@@ -1,14 +1,14 @@
 import pytest
-from zork.db.connection import Database
+
 from zork.collections.schema import (
-    Collection,
-    TextField,
-    IntField,
     BoolField,
-    FloatField,
+    Collection,
+    IntField,
     JSONField,
+    TextField,
 )
 from zork.collections.store import CollectionStore
+from zork.db.connection import Database
 
 
 @pytest.fixture

@@ -15,7 +15,6 @@ async def db(db_path):
 
 @pytest.mark.asyncio
 async def test_connect_creates_file(db, db_path):
-    import os
 
     assert os.path.exists(db_path)
 
@@ -202,7 +201,6 @@ def test_resolve_backend_zork_url_beats_database_url(monkeypatch):
     """ZORK_DATABASE_URL beats DATABASE_URL when both are set."""
     from zork.db.backends import resolve_backend
     from zork.db.backends.postgresql import PostgreSQLBackend
-    from zork.db.backends.sqlite import SQLiteBackend
 
     monkeypatch.setenv("ZORK_DATABASE_URL", "postgresql://a:b@host/prod")
     monkeypatch.setenv("DATABASE_URL", "sqlite:///dev.db")

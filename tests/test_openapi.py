@@ -2,6 +2,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from zork.app import Zork
+from zork.auth import Auth
 from zork.collections.schema import (
     BoolField,
     Collection,
@@ -11,7 +12,6 @@ from zork.collections.schema import (
     IntField,
     TextField,
 )
-from zork.auth import Auth
 from zork.openapi import ZorkOpenAPI
 from zork.storage.backends import LocalFileBackend
 

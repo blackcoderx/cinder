@@ -4,14 +4,12 @@ and zork.email.smtp (SMTPBackend — provider presets + retry logic).
 
 from __future__ import annotations
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from zork.email.backends import ConsoleEmailBackend, EmailMessage
 from zork.email.smtp import SMTPBackend
-
 
 # ---------------------------------------------------------------------------
 # EmailMessage

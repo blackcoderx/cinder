@@ -5,12 +5,11 @@ unsubscribe cleanup, and close() cancels background tasks.
 """
 
 import asyncio
-import json
+
 import pytest
 
-from zork.realtime.broker import BrokerProtocol, RealtimeBroker, Subscription
+from zork.realtime.broker import BrokerProtocol, RealtimeBroker
 from zork.realtime.redis_broker import RedisBroker
-
 
 # ---------------------------------------------------------------------------
 # BrokerProtocol structural compliance

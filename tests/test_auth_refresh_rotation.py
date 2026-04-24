@@ -12,31 +12,28 @@ Covers:
 import pytest
 import pytest_asyncio
 from starlette.applications import Starlette
-from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from zork.auth import Auth
-from zork.auth.delivery import CookieTokenDelivery, BearerTokenDelivery
 from zork.auth.models import (
     REFRESH_TOKENS_TABLE,
     create_auth_tables,
+    enforce_refresh_token_limit,
     get_refresh_token_by_jti,
+    hash_jti,
     revoke_all_user_refresh_tokens,
     store_refresh_token,
-    enforce_refresh_token_limit,
-    hash_jti,
 )
 from zork.auth.routes import build_auth_routes
 from zork.auth.tokens import (
+    TOKEN_TYPE_ACCESS,
+    TOKEN_TYPE_REFRESH,
     create_access_token,
     create_refresh_token,
     decode_token,
-    TOKEN_TYPE_ACCESS,
-    TOKEN_TYPE_REFRESH,
 )
 from zork.db.connection import Database
 from zork.pipeline import build_middleware_stack
-
 
 SECRET = "test-secret-for-refresh-tests"
 
@@ -333,6 +330,7 @@ class TestPasswordResetRevokesTokens:
     @pytest.mark.asyncio
     async def test_password_reset_revokes_all_refresh_tokens(self, auth_app, db):
         import uuid
+
         from zork.auth.models import hash_jti
 
         email = f"reset{uuid.uuid4().hex[:8]}@example.com"

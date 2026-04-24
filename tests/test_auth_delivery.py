@@ -7,7 +7,6 @@ Covers:
 """
 
 import pytest
-from starlette.datastructures import Headers, URL
 from starlette.requests import Request
 from starlette.responses import Response
 
