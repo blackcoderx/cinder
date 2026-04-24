@@ -408,19 +408,13 @@ class Collection:
         fields: list[Field],
         indexes: list[tuple[str, ...]] | None = None,
         pagination: bool | str = True,
+        owner_field: str = "created_by",
     ):
         self.name = name
         self.fields = fields
         self.indexes: list[tuple[str, ...]] = indexes or []
-        # Each collection starts with its own registry/runner so it is
-        # usable standalone (tests, scripts). When the collection is
-        # registered on a Zork app, ``bind_registry`` swaps in the app's
-        # shared registry and migrates any pre-registered handlers so that
-        # app-level, collection-level and auth-level hooks all live in the
-        # same place — namespaced purely by event string.
         self._registry: HookRegistry = HookRegistry()
         self._runner: HookRunner = HookRunner(self._registry)
-        # Response model configuration
         self._response_model: type[BaseModel] | None = None
         self._response_include: set[str] | None = None
         self._response_exclude: set[str] | None = None
@@ -428,8 +422,8 @@ class Collection:
         self._response_exclude_unset: bool = False
         self._response_exclude_defaults: bool = False
         self._response_by_alias: bool = False
-        # Pagination configuration: True (always), False (never), "auto" (smart)
         self._pagination: bool | str = pagination
+        self.owner_field: str = owner_field
 
     def response(
         self,

@@ -39,10 +39,27 @@ logger = logging.getLogger("zork.realtime.redis_broker")
 class RedisBroker:
     """Redis pub/sub broker satisfying :class:`~zork.realtime.broker.BrokerProtocol`."""
 
-    def __init__(self, *, queue_size: int = 100) -> None:
+    def __init__(
+        self,
+        *,
+        queue_size: int = 100,
+        max_retries: int = 0,
+        retry_base_delay: float = 1.0,
+        retry_max_delay: float = 30.0,
+    ) -> None:
         self._queue_size = queue_size
+        self._max_retries = max_retries
+        self._retry_base_delay = retry_base_delay
+        self._retry_max_delay = retry_max_delay
         self._subscriptions: list[tuple[Subscription, asyncio.Task]] = []
         self._lock = asyncio.Lock()
+
+        if max_retries == 0:
+            logger.warning(
+                "RedisBroker: max_retries=0 (fail-fast mode). "
+                "Connection failures will not be retried. "
+                "Set max_retries > 0 for resilience."
+            )
 
     async def _redis(self):
         from zork.cache.redis_client import get_client
@@ -86,24 +103,60 @@ class RedisBroker:
 
         return sub
 
-    async def _listen(self, pubsub, sub: Subscription, channels: list[str]) -> None:
+    async def _listen(
+        self,
+        pubsub,
+        sub: Subscription,
+        channels: list[str],
+    ) -> None:
         """Background task: pull messages from Redis and deliver to the subscription."""
+        retries = 0
         try:
-            async for message in pubsub.listen():
-                if sub._closed:
-                    break
-                if message["type"] != "message":
-                    continue
+            while not sub._closed:
                 try:
-                    envelope = json.loads(message["data"])
-                except (json.JSONDecodeError, TypeError):
-                    logger.warning("Redis broker: invalid JSON in message, skipping")
-                    continue
-                sub._deliver(envelope)
-        except asyncio.CancelledError:
-            pass
-        except Exception:
-            logger.exception("Redis broker listen loop error")
+                    await pubsub.subscribe(*channels)
+                    async for message in pubsub.listen():
+                        if sub._closed:
+                            break
+                        if message["type"] != "message":
+                            continue
+                        try:
+                            envelope = json.loads(message["data"])
+                        except (json.JSONDecodeError, TypeError):
+                            logger.warning(
+                                "Redis broker: invalid JSON in message, skipping"
+                            )
+                            continue
+                        sub._deliver(envelope)
+                except asyncio.CancelledError:
+                    break
+                except Exception:
+                    if self._max_retries == 0:
+                        logger.exception(
+                            "Redis broker: connection failed (max_retries=0, not retrying)"
+                        )
+                        break
+
+                    retries += 1
+                    if retries > self._max_retries:
+                        logger.error(
+                            "Redis broker: exceeded max retries (%d) on channels %s",
+                            self._max_retries,
+                            channels,
+                        )
+                        break
+
+                    delay = min(
+                        self._retry_base_delay * (2 ** (retries - 1)),
+                        self._retry_max_delay,
+                    )
+                    logger.warning(
+                        "Redis broker: connection lost (attempt %d/%d), reconnecting in %.1fs",
+                        retries,
+                        self._max_retries,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
         finally:
             try:
                 await pubsub.unsubscribe(*channels)
@@ -114,6 +167,14 @@ class RedisBroker:
     def _on_task_done(self, task: asyncio.Task) -> None:
         if not task.cancelled() and task.exception():
             logger.error("Redis broker task failed: %s", task.exception())
+
+        async def _cleanup():
+            async with self._lock:
+                for i, (sub, _) in enumerate(self._subscriptions):
+                    if sub._closed:
+                        self._subscriptions.pop(i)
+
+        asyncio.create_task(_cleanup())
 
     async def unsubscribe(self, subscription: Subscription) -> None:
         """Remove a subscription, cancel its listener task, and close its queue."""

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from typing import TYPE_CHECKING
 
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
@@ -16,19 +17,58 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("zork.realtime.websocket")
 
-# How often the server sends a ping frame to keep the connection alive (seconds)
 PING_INTERVAL = 30
 
+CHANNEL_VALIDATION_REGEX = re.compile(r"^[a-zA-Z0-9:_\-.]+$")
+CHANNEL_MAX_LENGTH = 256
 
-def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
+
+def _validate_channel(channel: str) -> str | None:
+    """Validate channel name format.
+
+    Returns None if valid, or an error message if invalid.
+    Channel names must be alphanumeric with colons, underscores, hyphens, and dots.
+    """
+    if not channel:
+        return "Channel name cannot be empty"
+    if len(channel) > CHANNEL_MAX_LENGTH:
+        return f"Channel name exceeds maximum length of {CHANNEL_MAX_LENGTH}"
+    if not CHANNEL_VALIDATION_REGEX.match(channel):
+        return "Invalid channel name format"
+    return None
+
+
+def _match_origin(origin: str, pattern: str) -> bool:
+    """Check if origin matches the given regex pattern."""
+    try:
+        return bool(re.match(pattern, origin))
+    except re.error:
+        return False
+
+
+def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str, origin_check: bool = False, origin_regex: str | None = None):
     """Return the WebSocket ASGI endpoint closure bound to this app's
     realtime facade, database, and JWT secret.
 
     Called once from ``Zork.build()``; the resulting coroutine is registered
     as a ``WebSocketRoute``.
+
+    Args:
+        facade: RealtimeFacade instance
+        db: Database instance
+        secret: JWT secret
+        origin_check: If True, validate Origin header against origin_regex (disabled by default)
+        origin_regex: Regex pattern for origin validation (when origin_check=True)
     """
 
     async def ws_endpoint(websocket: WebSocket) -> None:
+        origin = websocket.headers.get("origin", "")
+
+        if origin_check and origin:
+            if not _match_origin(origin, origin_regex or ""):
+                await websocket.close(code=1008, reason="Origin not allowed")
+                return
+
         await websocket.accept()
 
         # ------------------------------------------------------------------
@@ -97,10 +137,11 @@ def ws_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 
                     elif action == "subscribe":
                         channel = msg.get("channel", "")
-                        if not channel:
+                        validation_error = _validate_channel(channel)
+                        if validation_error:
                             await _send(
                                 websocket,
-                                {"type": "error", "message": "Missing channel"},
+                                {"type": "error", "message": validation_error},
                             )
                             continue
 
@@ -221,6 +262,6 @@ def _maybe_attach_filter(
     if collection_name not in collections:
         return
 
-    _, auth_rules = collections[collection_name]
+    collection, auth_rules = collections[collection_name]
     read_rule = auth_rules.get("read", "public")
-    subscription.filter = filter_for_rule(read_rule)
+    subscription.filter = filter_for_rule(read_rule, collection.owner_field)

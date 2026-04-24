@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from starlette.requests import Request
@@ -18,14 +19,36 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("zork.realtime.sse")
 
-# How often to send an SSE comment heartbeat (seconds).
-# Keeps proxies and load balancers from killing idle connections.
-# Override via the ZORK_SSE_HEARTBEAT env var or by patching this module in tests.
-
 HEARTBEAT_INTERVAL: float = float(os.getenv("ZORK_SSE_HEARTBEAT", "15"))
 
+CHANNEL_VALIDATION_REGEX = re.compile(r"^[a-zA-Z0-9:_\-.]+$")
+CHANNEL_MAX_LENGTH = 256
 
-def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
+
+def _validate_channel(channel: str) -> str | None:
+    """Validate channel name format.
+
+    Returns None if valid, or an error message if invalid.
+    Channel names must be alphanumeric with colons, underscores, hyphens, and dots.
+    """
+    if not channel:
+        return "Channel name cannot be empty"
+    if len(channel) > CHANNEL_MAX_LENGTH:
+        return f"Channel name exceeds maximum length of {CHANNEL_MAX_LENGTH}"
+    if not CHANNEL_VALIDATION_REGEX.match(channel):
+        return "Invalid channel name format"
+    return None
+
+
+def _match_origin(origin: str, pattern: str) -> bool:
+    """Check if origin matches the given regex pattern."""
+    try:
+        return bool(re.match(pattern, origin))
+    except re.error:
+        return False
+
+
+def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str, cors_config: dict | None = None):
     """Return the SSE HTTP handler bound to this app's realtime facade.
 
     Called once from ``Zork.build()``; the resulting coroutine is registered
@@ -39,8 +62,22 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 
         GET /api/realtime/sse?token=<jwt>&channel=collection:posts&channel=collection:comments
     """
+    if cors_config is None:
+        cors_config = {"allow_origins": "*", "allow_origin_regex": None}
 
     async def sse_endpoint(request: Request) -> StreamingResponse:
+        origin = request.headers.get("origin", "")
+
+        if cors_config.get("allow_origins") != "*":
+            allowed_origins = cors_config.get("allow_origins", [])
+            origin_regex = cors_config.get("allow_origin_regex")
+            if isinstance(allowed_origins, list) and origin not in allowed_origins:
+                if not origin_regex or not _match_origin(origin, origin_regex):
+                    return JSONResponse(
+                        {"status": 403, "error": "Origin not allowed"},
+                        status_code=403,
+                    )
+
         # ------------------------------------------------------------------
         # 1. Authenticate
         # ------------------------------------------------------------------
@@ -58,7 +95,7 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                 )
 
         # ------------------------------------------------------------------
-        # 2. Collect requested channels
+        # 2. Collect and validate requested channels
         # ------------------------------------------------------------------
         channels = request.query_params.getlist("channel")
         if not channels:
@@ -68,6 +105,17 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
                 {"status": 400, "error": "At least one channel is required"},
                 status_code=400,
             )
+
+        # Validate channel names
+        for channel in channels:
+            validation_error = _validate_channel(channel)
+            if validation_error:
+                from starlette.responses import JSONResponse
+
+                return JSONResponse(
+                    {"status": 400, "error": validation_error},
+                    status_code=400,
+                )
 
         # ------------------------------------------------------------------
         # 3. Subscribe and build per-channel filters
@@ -134,7 +182,6 @@ def sse_endpoint_factory(facade: "RealtimeFacade", db, secret: str):
 def _build_filter(channels: list[str], facade: "RealtimeFacade", user: dict | None):
     """Build a combined filter that applies per-collection auth rules for
     built-in ``collection:{name}`` channels.  Custom channels pass through."""
-    # Collect per-channel filters
     channel_filters: dict[str, object] = {}
     for channel in channels:
         if not channel.startswith("collection:"):
@@ -143,9 +190,9 @@ def _build_filter(channels: list[str], facade: "RealtimeFacade", user: dict | No
         collections = facade._collections
         if name not in collections:
             continue
-        _, auth_rules = collections[name]
+        collection, auth_rules = collections[name]
         read_rule = auth_rules.get("read", "public")
-        channel_filters[channel] = filter_for_rule(read_rule)
+        channel_filters[channel] = filter_for_rule(read_rule, collection.owner_field)
 
     if not channel_filters:
         return None  # all custom channels — no filter

@@ -51,23 +51,19 @@ class RealtimeFacade:
     def __init__(self, broker: RealtimeBroker, app_ref) -> None:
         self.broker: RealtimeBroker = broker
 
-        # Set to False to disable all auto-emit (built-in CRUD → broker)
         self.enabled: bool = True
 
-        # Override to change the envelope shape for all auto-emitted events
         self.envelope_builder: Callable = default_envelope
 
-        # Internal: collections dict set by Zork.build()
         self._collections: dict = {}
 
-        # Internal: weak reference back to the Zork app (for auth_rules lookup)
         self._app_ref = app_ref
 
-        # Per-collection opt-out
         self._disabled: set[str] = set()
 
-        # Developer-registered extra WebSocket routes
         self._extra_ws_routes: list[tuple[str, Any]] = []
+
+        self._cors_config: dict = {"allow_origins": "*", "allow_origin_regex": None}
 
     # ------------------------------------------------------------------
     # Public helpers
@@ -110,6 +106,32 @@ class RealtimeFacade:
         """
         self._extra_ws_routes.append((path, handler))
 
+    def configure_cors(
+        self,
+        allow_origins: str | list[str] = "*",
+        allow_origin_regex: str | None = None,
+    ) -> None:
+        """Configure CORS settings for SSE endpoint.
+
+        Args:
+            allow_origins: Origin(s) to allow. Defaults to "*" (backward compatible).
+            allow_origin_regex: Optional regex pattern to validate origins dynamically.
+        """
+        if isinstance(allow_origins, str):
+            self._cors_config = {"allow_origins": allow_origins, "allow_origin_regex": allow_origin_regex}
+        else:
+            self._cors_config = {"allow_origins": list(allow_origins), "allow_origin_regex": allow_origin_regex}
+
+    def configure_origin_check(self, enabled: bool = True, origin_regex: str | None = None) -> None:
+        """Configure WebSocket origin validation.
+
+        Args:
+            enabled: If True, validate Origin header against origin_regex (disabled by default).
+            origin_regex: Regex pattern to validate origins.
+        """
+        self._origin_check = enabled
+        self._origin_regex = origin_regex
+
     # ------------------------------------------------------------------
     # Internal: called from Zork.build()
     # ------------------------------------------------------------------
@@ -117,11 +139,13 @@ class RealtimeFacade:
     def _build_routes(self, db, secret: str, prefix: str | None = None) -> list:
         """Return the list of Starlette routes for the realtime layer."""
         realtime_prefix = f"{prefix}/realtime" if prefix else "/api/realtime"
+        origin_check = getattr(self, "_origin_check", False)
+        origin_regex = getattr(self, "_origin_regex", None)
         routes = [
-            WebSocketRoute(realtime_prefix, ws_endpoint_factory(self, db, secret)),
+            WebSocketRoute(realtime_prefix, ws_endpoint_factory(self, db, secret, origin_check, origin_regex)),
             Route(
                 f"{realtime_prefix}/sse",
-                sse_endpoint_factory(self, db, secret),
+                sse_endpoint_factory(self, db, secret, cors_config=self._cors_config),
                 methods=["GET"],
             ),
         ]

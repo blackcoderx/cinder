@@ -109,11 +109,11 @@ def _check_auth(request: Request, rule: str) -> None:
         return  # per-record check done in handlers
 
 
-def _check_owner(request: Request, record: dict) -> None:
+def _check_owner(request: Request, record: dict, owner_field: str = "created_by") -> None:
     user = getattr(request.state, "user", None)
     if user is None:
         raise ZorkError(401, "Authentication required")
-    if record.get("created_by") != user.get("id"):
+    if record.get(owner_field) != user.get("id"):
         raise ZorkError(403, "You do not have permission to access this record")
 
 
@@ -168,7 +168,8 @@ def _routes_for_collection(
             user = getattr(request.state, "user", None)
             if user is None:
                 raise ZorkError(401, "Authentication required")
-            items = [i for i in items if i.get("created_by") == user["id"]]
+            owner_field = collection.owner_field
+            items = [i for i in items if i.get(owner_field) == user["id"]]
             total = len(items)
         if expand_fields:
             for item in items:
@@ -231,7 +232,7 @@ def _routes_for_collection(
         if record is None:
             raise ZorkError(404, "Record not found")
         if read_rule == "owner":
-            _check_owner(request, record)
+            _check_owner(request, record, collection.owner_field)
         expand_param = request.query_params.get("expand", "")
         if expand_param:
             record["expand"] = {}
@@ -248,7 +249,7 @@ def _routes_for_collection(
         if write_rule == "owner" or read_rule == "owner":
             user = getattr(request.state, "user", None)
             if user:
-                body["created_by"] = user["id"]
+                body[collection.owner_field] = user["id"]
         ctx = ZorkContext.from_request(
             request, collection=collection.name, operation="create"
         )

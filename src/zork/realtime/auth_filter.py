@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Callable
 
 
-def filter_for_rule(rule: str) -> Callable[[dict, dict | None], bool]:
+def filter_for_rule(
+    rule: str, owner_field: str = "created_by"
+) -> Callable[[dict, dict | None], bool]:
     """Return a filter callable that mirrors the collection's ``read`` auth rule.
 
     The filter is called per-envelope per-subscriber when the broker fans out
@@ -17,6 +19,10 @@ def filter_for_rule(rule: str) -> Callable[[dict, dict | None], bool]:
 
     Developers can always bypass this by passing their own ``filter`` callable
     when subscribing through ``broker.subscribe(...)`` directly.
+
+    Args:
+        rule: Auth rule ("public", "authenticated", "admin", "owner")
+        owner_field: Field name to check for ownership (default: "created_by")
     """
     if rule == "public":
         return _public_filter
@@ -28,9 +34,8 @@ def filter_for_rule(rule: str) -> Callable[[dict, dict | None], bool]:
         return _admin_filter
 
     if rule == "owner":
-        return _owner_filter
+        return lambda env, u: _owner_filter(env, u, owner_field)
 
-    # Unknown rule — treat as authenticated (safe default)
     return _authenticated_filter
 
 
@@ -51,8 +56,8 @@ def _admin_filter(envelope: dict, user: dict | None) -> bool:  # noqa: ARG001
     return user is not None and user.get("role") == "admin"
 
 
-def _owner_filter(envelope: dict, user: dict | None) -> bool:
+def _owner_filter(envelope: dict, user: dict | None, owner_field: str = "created_by") -> bool:
     if user is None:
         return False
     record = envelope.get("record") or {}
-    return record.get("created_by") == user.get("id")
+    return record.get(owner_field) == user.get("id")
