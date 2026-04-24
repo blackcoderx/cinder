@@ -15,7 +15,7 @@ import re
 import pytest
 import pytest_asyncio
 
-from zork import Collection, IntField, TextField, Zork
+from zork import Collection, Zork
 from zork.collections.schema import IntField, TextField
 from zork.collections.store import CollectionStore
 from zork.db.connection import Database

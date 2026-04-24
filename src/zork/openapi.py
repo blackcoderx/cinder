@@ -819,7 +819,6 @@ class ZorkOpenAPI:
 
             for field in collection.fields:
                 if isinstance(field, FileField):
-                    field_name = field.name.title()
                     schemas[f"{title_name}_{field.name}_UploadRequest"] = {
                         "type": "object",
                         "properties": {

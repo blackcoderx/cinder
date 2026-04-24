@@ -221,8 +221,6 @@ def create_response_model(
         model_config_dict = dict(getattr(model, "model_config", {}))
         model_config_dict["hidden_fields"] = list(model_config_dict.get("hidden_fields", [])) + hidden_fields
 
-        hidden = hidden_fields
-
         class ConfiguredModel(model):
             model_config = ConfigDict(**model_config_dict)
 

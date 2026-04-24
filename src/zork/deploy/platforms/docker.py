@@ -20,10 +20,6 @@ class DockerGenerator(PlatformGenerator):
 
     def _dockerfile(self) -> str:
         p = self.profile
-        extras = ""
-        if p.optional_groups:
-            extras = f"[{','.join(p.optional_groups)}]"
-
         return dedent(f"""\
             # --- Build stage ---
             FROM python:{p.python_version}-slim AS builder

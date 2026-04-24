@@ -76,7 +76,7 @@ async def create_auth_tables(
         )
     """)
     await db.execute(f"""
-        CREATE INDEX IF NOT EXISTS idx_password_resets_user 
+        CREATE INDEX IF NOT EXISTS idx_password_resets_user
         ON {PASSWORD_RESETS_TABLE}(user_id)
     """)
 
@@ -90,7 +90,7 @@ async def create_auth_tables(
     """)
 
     await db.execute(f"""
-        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user 
+        CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user
         ON {REFRESH_TOKENS_TABLE}(user_id, created_at)
     """)
 
@@ -317,9 +317,9 @@ async def enforce_refresh_token_limit(
         excess = count - max_tokens + 1
         await db.execute(
             f"""
-            DELETE FROM {REFRESH_TOKENS_TABLE} 
+            DELETE FROM {REFRESH_TOKENS_TABLE}
             WHERE user_id = ? AND jti_hash IN (
-                SELECT jti_hash FROM {REFRESH_TOKENS_TABLE} 
+                SELECT jti_hash FROM {REFRESH_TOKENS_TABLE}
                 WHERE user_id = ? ORDER BY created_at ASC LIMIT ?
             )
             """,

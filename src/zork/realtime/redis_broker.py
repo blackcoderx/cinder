@@ -74,12 +74,12 @@ class RedisBroker:
         filter: Callable[[dict, dict | None], bool] | None = None,
     ) -> Subscription:
         """Create a new subscription backed by Redis pub/sub."""
-        try:
-            import redis.asyncio as aioredis  # type: ignore[import]
-        except ImportError as exc:
+        import importlib.util
+
+        if importlib.util.find_spec("redis.asyncio") is None:
             raise ImportError(
                 "Redis not installed. Install with: pip install 'zork[redis]'"
-            ) from exc
+            )
 
         sub = Subscription(
             channels,

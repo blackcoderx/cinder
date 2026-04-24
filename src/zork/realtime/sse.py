@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from starlette.requests import Request
-from starlette.responses import StreamingResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
 from zork.errors import ZorkError
 from zork.realtime.auth import authenticate_ws_token

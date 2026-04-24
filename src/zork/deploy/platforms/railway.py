@@ -14,7 +14,6 @@ class RailwayGenerator(PlatformGenerator):
         return [GeneratedFile("railway.toml", self._railway_toml())]
 
     def _railway_toml(self) -> str:
-        p = self.profile
         return dedent(f"""\
             [build]
             builder = "NIXPACKS"
